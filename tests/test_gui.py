@@ -2,6 +2,7 @@
 
 import os
 import time
+from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
@@ -308,7 +309,7 @@ def test_restart_restores_recording_and_details_without_network(window, app, mon
         monkeypatch.setattr(restored.player, "play", play)
         restored.toggle_playback()
         play.assert_called_once()
-        assert restored.player.source().toLocalFile() == str(path)
+        assert Path(restored.player.source().toLocalFile()) == path.resolve()
         client.assert_not_called()
     finally:
         restored.close()

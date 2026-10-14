@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -126,7 +127,11 @@ def test_finder_launch_can_find_homebrew_ffmpeg(tmp_path, monkeypatch):
     executable.write_text("#!/bin/sh\n")
     executable.chmod(0o755)
     assert audio.ffmpeg_executable() == str(executable)
-    executable.chmod(0o644)
+    if os.name == "posix":
+        executable.chmod(0o644)
+        assert audio.ffmpeg_executable() is None
+    # Simulate denied execution on every host; Windows chmod has no executable bit.
+    monkeypatch.setattr(audio.os, "access", lambda path, mode: False)
     assert audio.ffmpeg_executable() is None
 
 

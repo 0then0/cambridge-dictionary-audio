@@ -20,6 +20,8 @@ def test_other_platforms_do_not_create_a_bundle(tmp_path, monkeypatch, platform)
 
 def test_macos_bundle_preserves_environment_and_exit_status(tmp_path, monkeypatch):
     interpreter = tmp_path / "venv" / "bin" / "python"
+    interpreter.parent.mkdir(parents=True)
+    interpreter.write_bytes(b"interpreter")
     dependencies = tmp_path / "venv" / "lib" / "site-packages"
     monkeypatch.setattr(desktop.sys, "platform", "darwin")
     monkeypatch.setattr(desktop.sys, "executable", str(interpreter))
@@ -32,7 +34,8 @@ def test_macos_bundle_preserves_environment_and_exit_status(tmp_path, monkeypatc
     assert desktop.launch_macos_bundle(tmp_path / "cache") == 7
     command = run.call_args.args[0]
     launcher = Path(command[0])
-    assert launcher.readlink() == interpreter
+    assert launcher.is_symlink()
+    assert launcher.samefile(interpreter)
     metadata = plistlib.loads((launcher.parent.parent / "Info.plist").read_bytes())
     assert metadata["CFBundleName"] == desktop.APPLICATION_NAME
     assert metadata["CFBundleExecutable"] == launcher.name

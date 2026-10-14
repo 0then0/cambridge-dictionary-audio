@@ -2,8 +2,10 @@
 
 import hashlib
 import importlib.metadata
+import os
 import plistlib
 import tarfile
+from pathlib import Path
 
 import pytest
 from packaging.version import Version
@@ -84,6 +86,14 @@ def test_linux_payload_and_installer_metadata_are_consistent(tmp_path, monkeypat
             assert "Version: 0.3.0~rc1" in spec
             assert "/usr/bin/cambridge-audio-gui" in spec
 
+    chmod_calls = []
+    original_chmod = Path.chmod
+
+    def chmod(path, mode, **kwargs):
+        chmod_calls.append((path, mode))
+        return original_chmod(path, mode, **kwargs)
+
+    monkeypatch.setattr(Path, "chmod", chmod)
     monkeypatch.setattr(package_desktop, "run", run)
     package_desktop.linux(Version("0.3.0rc1"))
     launcher = tmp_path / "build/linux-root/usr/bin/cambridge-audio-gui"
@@ -91,10 +101,15 @@ def test_linux_payload_and_installer_metadata_are_consistent(tmp_path, monkeypat
         'exec "/opt/cambridge-dictionary-audio/Cambridge Dictionary Audio" "$@"'
         in launcher.read_text()
     )
-    assert launcher.stat().st_mode & 0o111
+    assert (launcher, 0o755) in chmod_calls
+    if os.name == "posix":
+        assert launcher.stat().st_mode & 0o111
     assert [command[0] for command in commands] == ["dpkg-deb", "rpmbuild"]
     with tarfile.open(next(output.glob("*.tar.gz"))) as stream:
-        assert stream.getmember(f"{package_desktop.NAME}/{package_desktop.NAME}").mode & 0o111
+        member = stream.getmember(f"{package_desktop.NAME}/{package_desktop.NAME}")
+        assert member.size == len(b"binary")
+        if os.name == "posix":
+            assert member.mode & 0o111
 
 
 def test_macos_installer_cannot_relocate_to_a_cached_source_bundle(tmp_path, monkeypatch):
