@@ -103,6 +103,7 @@ export function audioFilename(word: string, accent: Accent): string {
   let stem = word
     .normalize('NFC')
     .toLowerCase()
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: Windows filenames exclude ASCII control characters.
     .replace(/[<>:"/\\|?*\u0000-\u001f\u007f]/g, '-')
     .replace(/\s+/g, ' ')
     .replace(/^[ .]+|[ .]+$/g, '');

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { setImmediate } from 'node:timers/promises';
 import test from 'node:test';
+import { setImmediate } from 'node:timers/promises';
 import { JSDOM } from 'jsdom';
 import { startPopup } from '../build/popup.js';
 import { parsePage } from './helpers.mjs';
@@ -187,7 +187,7 @@ test('supports multiple entries and variants and renders dictionary text safely'
 });
 
 for (const language of ['en', 'ru']) {
-  test(`all UI labels and links are translated in ${language}`, async t => {
+  test(`all UI labels and links are translated in ${language}`, async (t) => {
     const { dom } = await popup(t, { settings: { language } });
     for (const node of dom.window.document.querySelectorAll('[data-i18n]')) {
       assert.ok(node.textContent.trim(), `Missing translation: ${node.dataset.i18n}`);
@@ -197,3 +197,16 @@ for (const language of ['en', 'ru']) {
     }
   });
 }
+
+test('CSS keeps settings hidden until opened and hides them again after closing', async (t) => {
+  const { dom, byId } = await popup(t);
+  const style = dom.window.document.createElement('style');
+  style.textContent = await readFile(new URL('../popup.css', import.meta.url), 'utf8');
+  dom.window.document.head.append(style);
+  const panel = byId('settings-panel');
+  assert.equal(dom.window.getComputedStyle(panel).display, 'none');
+  byId('settings-toggle').click();
+  assert.equal(dom.window.getComputedStyle(panel).display, 'grid');
+  byId('settings-toggle').click();
+  assert.equal(dom.window.getComputedStyle(panel).display, 'none');
+});

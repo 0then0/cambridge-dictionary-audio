@@ -9,12 +9,15 @@
     "node": "^24.15.0 || >=26.0.0"
   },
   "scripts": {
-    "check": "tsc --noEmit",
+    "check": "npm run lint && tsc --noEmit",
     "build": "node scripts/build.mjs",
     "test": "npm run build && node --test tests/*.test.mjs",
-    "package": "npm test && node scripts/package.mjs"
+    "package": "npm test && node scripts/package.mjs",
+    "lint": "biome check . --error-on-warnings",
+    "format": "biome format --write ."
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.15",
     "@types/chrome": "0.3.5",
     "jsdom": "30.1.2",
     "typescript": "7.0.2"

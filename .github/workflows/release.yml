@@ -135,6 +135,7 @@ jobs:
           cache: npm
           cache-dependency-path: extension/package-lock.json
       - run: npm ci --ignore-scripts
+      - run: npm run check
       - run: npm run package
       - name: Validate Firefox manifest and code
         env:

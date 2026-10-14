@@ -60,6 +60,11 @@ npm run check
 npm test
 ```
 
+`npm run check` runs Biome's formatting, lint and import checks, followed by TypeScript
+checking. `npm run format` formats the source; `npx biome check --write .` also applies
+safe lint and import fixes. Generated bundles, dependencies, the npm lockfile and
+third-party HTML test fixtures are excluded from source checks.
+
 `npm test` compiles TypeScript, builds both browser folders, and runs offline tests
 with Node's test runner and jsdom. Tests cover actual DOM parsing, serialized script
 injection, URL filtering, filenames, popup interaction, preferences and bundle contents.

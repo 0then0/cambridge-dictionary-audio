@@ -1,7 +1,7 @@
-import { audioFilename, isDictionaryPage, readPage } from './page.js';
 import type { Entry, Pronunciation } from './page.js';
-import { messages, parseSettings } from './settings.js';
+import { audioFilename, isDictionaryPage, readPage } from './page.js';
 import type { Message, Settings } from './settings.js';
+import { messages, parseSettings } from './settings.js';
 
 export type BrowserApi = Pick<typeof chrome, 'tabs' | 'scripting' | 'downloads' | 'storage'>;
 
@@ -91,7 +91,6 @@ export async function startPopup(document: Document, api: BrowserApi): Promise<v
     theme.value = settings.theme;
     if (status) report(status, statusError);
     else element('status').textContent = '';
-    element('filename').setAttribute('aria-label', text('filename'));
     element('settings-icon-title').textContent = text('settings');
     element('refresh-icon-title').textContent = text('retry');
     for (const control of accentControls) {

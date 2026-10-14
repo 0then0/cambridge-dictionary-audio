@@ -13,7 +13,7 @@
   font-family: system-ui, sans-serif;
   font-size: 14px;
 }
-:root[data-theme='dark'] {
+:root[data-theme="dark"] {
   color-scheme: dark;
   --background: #181d24;
   --surface: #222933;
@@ -27,7 +27,7 @@
   --error: #f29ba9;
 }
 @media (prefers-color-scheme: dark) {
-  :root[data-theme='system'] {
+  :root[data-theme="system"] {
     color-scheme: dark;
     --background: #181d24;
     --surface: #222933;
@@ -44,9 +44,6 @@
 * {
   box-sizing: border-box;
 }
-[hidden] {
-  display: none !important;
-}
 body {
   width: 360px;
   margin: 0;
@@ -59,6 +56,14 @@ header {
   align-items: center;
   gap: 10px;
   margin-bottom: 20px;
+}
+p {
+  line-height: 1.5;
+}
+footer p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
 }
 .heading {
   flex: 1;
@@ -79,9 +84,6 @@ h2 {
   font-size: 22px;
   font-weight: 650;
   overflow-wrap: anywhere;
-}
-p {
-  line-height: 1.5;
 }
 button,
 select {
@@ -248,7 +250,7 @@ select {
 .status:empty {
   display: none;
 }
-.status[data-error='true'] {
+.status[data-error="true"] {
   color: var(--error);
 }
 .page-actions {
@@ -268,8 +270,7 @@ footer {
   padding-top: 14px;
   border-top: 1px solid var(--border);
 }
-footer p {
-  margin: 0;
-  color: var(--muted);
-  font-size: 12px;
+
+[hidden] {
+  display: none;
 }

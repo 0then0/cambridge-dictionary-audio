@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
 import { readFile } from 'node:fs/promises';
+import test from 'node:test';
 import { audioFilename, isDictionaryPage } from '../build/page.js';
-import { parsePage } from './helpers.mjs';
 import { parseSettings } from '../build/settings.js';
+import { parsePage } from './helpers.mjs';
 
 const html = await readFile(new URL('fixtures/hello.html', import.meta.url), 'utf8');
 
@@ -115,4 +115,10 @@ test('limits filenames and accepts only supported preferences', () => {
     theme: 'dark',
     accent: 'uk',
   });
+});
+
+test('strips ASCII control characters from portable filenames', () => {
+  for (const word of ['a\u0000b', 'a\u001fb', 'a\u007fb']) {
+    assert.equal(audioFilename(word, 'us'), 'a-b.us.mp3');
+  }
 });

@@ -36,14 +36,14 @@ for (const browser of ['chrome', 'firefox']) {
     await mkdir(directory, { recursive: true });
     await writeFile(
       new URL('messages.json', directory),
-      JSON.stringify(
+      `${JSON.stringify(
         {
           name: { message: 'Cambridge Dictionary Audio' },
           description: { message: description },
         },
         null,
         2,
-      ) + '\n',
+      )}\n`,
     );
   }
   const manifest = {
@@ -75,6 +75,6 @@ for (const browser of ['chrome', 'firefox']) {
           },
         }),
   };
-  await writeFile(new URL('manifest.json', output), JSON.stringify(manifest, null, 2) + '\n');
+  await writeFile(new URL('manifest.json', output), `${JSON.stringify(manifest, null, 2)}\n`);
 }
 console.log('Built Chrome and Firefox extensions in extension/dist/');
