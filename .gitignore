@@ -221,3 +221,6 @@ __marimo__/
 
 # macOS Finder metadata
 .DS_Store
+
+# Browser extension dependencies
+node_modules/

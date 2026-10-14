@@ -92,6 +92,20 @@ See [PySide6 releases](https://pypi.org/project/PySide6/) for platform details.
 
 On Windows, `start-gui.bat` runs the desktop app from source through uv.
 
+## Browser extension
+
+A small TypeScript extension for Chrome and Firefox downloads audio from the open
+Cambridge Dictionary page. Choose US or UK; when a page has multiple entries or
+pronunciation variants, choose the recording. The gear button selects English or
+Russian and system, light or dark appearance. Preferences are remembered locally.
+
+The extension needs neither Python nor the desktop app. Downloads use the browser's
+normal destination and file-chooser preferences. It reads the page only when opened
+and leaves translations, a recording library and phrase synthesis to the application.
+See [extension installation and development](extension/README.md) for build commands,
+developer installation, permissions and privacy. Releases include Chrome and Firefox
+ZIP archives; CI also provides them as the `browser-extensions` artifact.
+
 ## CLI quick start
 
 The PyPI package contains only the CLI, without Qt or GUI modules:
@@ -266,6 +280,11 @@ To include the desktop tests, use `uv run --group gui pytest`.
 GUI tests use an offscreen Qt platform, temporary settings and mocked HTTP responses.
 The [desktop design system](docs/design.md) documents layout, appearance and behavior.
 
+Browser extension development uses a separate npm lockfile in `extension/`.
+Node.js 24.15+ provides the TypeScript compiler and DOM tests; CI checks it on all
+three OSes and validates the Firefox bundle with Mozilla's `web-ext` tool. The npm
+tools are not required for Python CLI or GUI development.
+
 ## Project layout
 
 - `cambridge_audio/dictionary.py`: dictionary entries, HTML parsing, HTTP requests and MP3 saving.
@@ -280,6 +299,7 @@ The [desktop design system](docs/design.md) documents layout, appearance and beh
 - `cambridge_audio/library.py`: saved recordings and optional JSON details.
 - `cambridge_audio/i18n.py`: English and Russian interface messages.
 - `assets/icon.svg`: editable vector icon; `assets/icon.ico` is its Windows export.
+- `extension/`: TypeScript browser popup, browser manifests, DOM tests and build scripts.
 - `tests/`: offline behavior tests and optional FFmpeg integration tests.
 - `scripts/` and `packaging/`: release validation, native bundle builders and installer templates.
 

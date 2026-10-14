@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en" data-theme="system">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cambridge Dictionary Audio</title>
+    <link rel="stylesheet" href="popup.css" />
+    <script type="module" src="main.js"></script>
+  </head>
+  <body>
+    <header>
+      <img src="icons/icon.svg" alt="" width="36" height="36" />
+      <div class="heading">
+        <h1>Cambridge Audio</h1>
+        <p data-i18n="subtitle">Pronunciation from this page</p>
+      </div>
+      <button
+        id="settings-toggle"
+        class="icon-button"
+        type="button"
+        aria-label="Settings"
+        aria-expanded="false"
+        aria-controls="settings-panel"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          width="20"
+          height="20"
+          role="img"
+          aria-labelledby="settings-icon-title"
+        >
+          <title id="settings-icon-title">Settings</title>
+          <path
+            d="m10 3-.5 2-2 .9-1.8-.6-2 3.4 1.4 1.4V13l-1.4 1.4 2 3.4 1.8-.6 2 .9.5 2h4l.5-2 2-.9 1.8.6 2-3.4-1.4-1.4v-2.9l1.4-1.4-2-3.4-1.8.6-2-.9L14 3Z"
+          />
+          <circle cx="12" cy="11.5" r="3" />
+        </svg>
+      </button>
+    </header>
+    <section id="settings-panel" class="settings" aria-labelledby="settings-heading" hidden>
+      <h2 id="settings-heading" data-i18n="settings">Settings</h2>
+      <label for="language" data-i18n="language">Language</label>
+      <select id="language">
+        <option value="en">English</option>
+        <option value="ru">Русский</option>
+      </select>
+      <label for="theme" data-i18n="theme">Appearance</label>
+      <select id="theme">
+        <option value="system" data-i18n="system">System</option>
+        <option value="light" data-i18n="light">Light</option>
+        <option value="dark" data-i18n="dark">Dark</option>
+      </select>
+    </section>
+    <main>
+      <div id="entry-field" class="field" hidden>
+        <label for="entry" data-i18n="entry">Dictionary entry</label>
+        <select id="entry"></select>
+      </div>
+      <section id="recording" aria-labelledby="word" hidden>
+        <div class="word-line">
+          <h2 id="word"></h2>
+          <span id="part-of-speech"></span>
+        </div>
+        <p id="definition" class="definition"></p>
+        <fieldset class="accent-field">
+          <legend data-i18n="pronunciation">Pronunciation</legend>
+          <div class="accents">
+            <label><input type="radio" name="accent" value="us" checked /><span>US</span></label>
+            <label><input type="radio" name="accent" value="uk" /><span>UK</span></label>
+          </div>
+        </fieldset>
+        <div id="variant-field" class="field" hidden>
+          <label for="variant" data-i18n="variant">Recording</label>
+          <select id="variant"></select>
+        </div>
+        <p id="ipa" class="ipa"></p>
+        <p id="unavailable" class="hint" data-i18n="unavailable" hidden>
+          This pronunciation is unavailable. Choose the other accent.
+        </p>
+        <p id="filename" class="filename" aria-label="Filename"></p>
+        <button id="download" class="primary" type="button" data-i18n="download" disabled>
+          Download MP3
+        </button>
+      </section>
+      <p id="status" class="status" role="status" aria-live="polite" aria-atomic="true">
+        Reading this page…
+      </p>
+      <div class="page-actions">
+        <a
+          href="https://dictionary.cambridge.org/us/"
+          target="_blank"
+          rel="noopener noreferrer"
+          data-i18n="open"
+          >Open Cambridge Dictionary</a
+        >
+        <button id="refresh" class="icon-button" type="button" aria-label="Refresh page recordings">
+          <svg
+            viewBox="0 0 24 24"
+            width="18"
+            height="18"
+            role="img"
+            aria-labelledby="refresh-icon-title"
+          >
+            <title id="refresh-icon-title">Refresh</title>
+            <path d="M20 6v5h-5M19 10a7 7 0 1 0-1 7" />
+          </svg>
+        </button>
+      </div>
+    </main>
+    <footer>
+      <p data-i18n="more">For translations, saved recordings and phrase synthesis, use the app.</p>
+    <a href="https://github.com/0then0/cambridge-dictionary-audio/releases" target="_blank" rel="noopener noreferrer" data-i18n="app">Get the app</a></footer>
+  </body>
+</html>
