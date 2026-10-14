@@ -119,3 +119,55 @@ def test_language_roundtrip_and_legacy_unknown_language(tmp_path):
     assert library.read_recording(path).translation_language == "french"
     library.save_metadata(record, ("привет",))
     assert library.read_recording(path).translation_language is None
+
+
+def test_metadata_replace_waits_for_active_reader(tmp_path, monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+    from concurrent.futures import TimeoutError as FutureTimeoutError
+    from threading import Event
+
+    path = tmp_path / "hello.us.mp3"
+    path.write_bytes(b"ID3saved")
+    record = Recording("hello", "us", path, "", "old")
+    library.save_metadata(record)
+    reading, release, staged = Event(), Event(), Event()
+    original_read = type(path).read_text
+    original_replace = library.os.replace
+    original_dump = library.json.dump
+
+    def read(path, *args, **kwargs):
+        reading.set()
+        try:
+            assert release.wait(5)
+            return original_read(path, *args, **kwargs)
+        finally:
+            reading.clear()
+
+    def dump(*args, **kwargs):
+        original_dump(*args, **kwargs)
+        staged.set()
+
+    def replace(source, destination):
+        if reading.is_set():
+            raise PermissionError("Windows sharing violation: reader is active")
+        return original_replace(source, destination)
+
+    monkeypatch.setattr(type(path), "read_text", read)
+    monkeypatch.setattr(library.json, "dump", dump)
+    monkeypatch.setattr(library.os, "replace", replace)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        reader = pool.submit(library.read_recording, path)
+        writer = None
+        try:
+            assert reading.wait(5)
+            writer = pool.submit(library.save_metadata, Recording("hello", "us", path, "", "new"))
+            assert staged.wait(5)
+            with pytest.raises(FutureTimeoutError):
+                writer.result(timeout=0.05)
+        finally:
+            release.set()
+        assert reader.result(timeout=5).recording.definition == "old"
+        writer.result(timeout=5)
+    assert library.read_recording(path).recording.definition == "new"
+    assert path.read_bytes() == b"ID3saved"
+    assert not list(tmp_path.glob("*.tmp"))

@@ -1,6 +1,7 @@
 """Exercise the actual terminal UI without a network, player or display server."""
 
 import asyncio
+import time
 from contextlib import suppress
 from threading import Event
 from unittest.mock import Mock
@@ -28,6 +29,13 @@ async def finish_download(app, pilot):
     await pilot.pause()
 
 
+async def wait_for_ui(pilot, predicate, timeout=5):
+    deadline = time.monotonic() + timeout
+    while not predicate() and time.monotonic() < deadline:
+        await pilot.pause(0.01)
+    assert predicate(), "Terminal UI did not reach the expected state"
+
+
 @pytest.mark.parametrize("size", [(110, 34), (80, 24), (60, 30)])
 def test_saved_library_keyboard_playback_filter_and_translation(tmp_path, monkeypatch, size):
     record = saved(tmp_path)
@@ -43,10 +51,10 @@ def test_saved_library_keyboard_playback_filter_and_translation(tmp_path, monkey
             await pilot.pause()
             assert app.query_one("#recordings", DataTable).row_count == 2
             assert app.query_one("#detail-scroll").size.height >= 3
+            await wait_for_ui(pilot, lambda: app.selected is not None)
             assert not app.query_one("#translation", Static).display
             app.query_one("#show-translation", Checkbox).value = True
-            await pilot.pause()
-            assert app.query_one("#translation", Static).display
+            await wait_for_ui(pilot, lambda: app.query_one("#translation", Static).display)
             app.query_one("#query", Input).value = "HELLO"
             await pilot.press("enter")
             await pilot.pause()

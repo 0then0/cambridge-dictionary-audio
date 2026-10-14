@@ -5,9 +5,13 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 from tempfile import NamedTemporaryFile
+from threading import RLock
 
 from .dictionary import audio_filename
 from .service import Recording
+
+# Windows cannot replace a file while another thread holds a normal read handle.
+_METADATA_LOCK = RLock()
 
 
 @dataclass(frozen=True)
@@ -34,7 +38,9 @@ def read_recording(path: Path) -> SavedRecording | None:
         stem = stem[1:]
     record = Recording(stem, accent, path, "", "")
     try:
-        data = json.loads(path.with_suffix(".json").read_text(encoding="utf-8"))
+        with _METADATA_LOCK:
+            content = path.with_suffix(".json").read_text(encoding="utf-8")
+        data = json.loads(content)
         if not isinstance(data, dict) or data.get("version") != 1:
             return SavedRecording(record)
         word = data.get("word")
@@ -91,7 +97,8 @@ def save_metadata(
             temporary = Path(stream.name)
             json.dump(data, stream, ensure_ascii=False, indent=2)
             stream.write("\n")
-        os.replace(temporary, destination)
+        with _METADATA_LOCK:
+            os.replace(temporary, destination)
     finally:
         if temporary is not None:
             temporary.unlink(missing_ok=True)
