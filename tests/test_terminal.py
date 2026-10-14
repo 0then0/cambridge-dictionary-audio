@@ -185,7 +185,10 @@ def test_settings_switch_language_theme_and_folder_and_escape_discards(tmp_path)
             screen.query_one("#directory", Input).value = str(other)
             screen.query_one("#translation", Input).value = "russian"
             screen.query_one("#apply", Button).press()
-            await pilot.pause()
+            await wait_for_ui(
+                pilot,
+                lambda: app.selected is not None and app.selected.recording.word == "world",
+            )
             assert app.options.language == "ru"
             assert app.options.translation == "russian"
             assert app.theme == "cambridge-light"
