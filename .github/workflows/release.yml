@@ -1,0 +1,167 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  python:
+    name: CLI distributions
+    outputs:
+      prerelease: ${{ steps.version.outputs.prerelease }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          version: '0.13.1'
+          python-version: '3.15'
+      - run: uv sync --locked --group release
+      - id: version
+        run: uv run --locked --group release python scripts/release.py validate
+      - run: uv run --locked --group release ruff check .
+      - run: uv run --locked --group release ruff format --check .
+      - run: uv run --locked --group release pytest
+      - run: uv build --out-dir dist/python
+      - run: uv run --locked --group release python scripts/release.py verify-python dist/python
+      - run: uv run --locked --group release twine check --strict dist/python/*
+      - name: Install and exercise the wheel without GUI dependencies
+        run: |
+          uv venv --python 3.10 .package-test
+          uv pip install --python .package-test dist/python/*.whl
+          cd /tmp
+          "$GITHUB_WORKSPACE/.package-test/bin/cambridge-audio" --help
+          "$GITHUB_WORKSPACE/.package-test/bin/cambridge-audio" --lang ru --help
+          "$GITHUB_WORKSPACE/.package-test/bin/python" -I -c "import importlib.util; assert importlib.util.find_spec('PySide6') is None; assert importlib.util.find_spec('cambridge_audio.gui') is None"
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: python-distributions
+          path: dist/python/*
+          if-no-files-found: error
+
+  desktop:
+    name: Desktop (${{ matrix.target }})
+    needs: python
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-2025, target: windows-x86_64 }
+          - { os: macos-15, target: macos-arm64 }
+          - { os: macos-15-intel, target: macos-x86_64 }
+          - { os: ubuntu-22.04, target: linux-x86_64 }
+    runs-on: ${{ matrix.os }}
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          version: '0.13.1'
+          python-version: '3.14'
+      - name: Install Linux runtime and packaging tools
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config rpm desktop-file-utils libegl1 libopengl0 libgl1 libpulse0 libxkbcommon0 libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-render-util0 libxcb-xinerama0 libdbus-1-3
+      - name: Install macOS build tools
+        if: runner.os == 'macOS'
+        run: brew install pkgconf
+      - run: uv sync --locked --group gui --group release
+      - run: uv run --locked --group gui --group release pytest tests/test_gui.py tests/test_theme.py tests/test_library.py
+      - uses: msys2/setup-msys2@v2.33.0
+        if: runner.os == 'Windows'
+        with:
+          msystem: UCRT64
+          install: make mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-pkgconf
+      - name: Build LGPL FFmpeg on Windows
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        run: .venv/Scripts/python.exe scripts/build_ffmpeg.py
+      - name: Build LGPL FFmpeg on macOS and Linux
+        if: runner.os != 'Windows'
+        run: uv run --locked --group gui --group release python scripts/build_ffmpeg.py
+      - run: uv run --locked --group gui --group release python scripts/build_desktop.py
+      - run: uv run --locked --group gui --group release python scripts/release.py smoke
+      - run: uv run --locked --group gui --group release python scripts/package_desktop.py
+      - name: Install and exercise Linux package
+        if: runner.os == 'Linux'
+        run: |
+          desktop-file-validate packaging/linux.desktop
+          sudo dpkg -i dist/installers/*.deb
+          cambridge-audio-gui --smoke-test
+          rpm -qip dist/installers/*.rpm
+      - name: Install and exercise macOS package
+        if: runner.os == 'macOS'
+        run: |
+          sudo installer -pkg dist/installers/*.pkg -target /
+          "/Applications/Cambridge Dictionary Audio.app/Contents/MacOS/Cambridge Dictionary Audio" --smoke-test
+      - name: Install and exercise Windows package
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $installer = (Get-ChildItem dist/installers/*-setup.exe).FullName
+          $destination = Join-Path $env:RUNNER_TEMP 'cambridge-installed'
+          $process = Start-Process $installer -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', "/DIR=`"$destination`"") -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw 'Installer failed' }
+          $process = Start-Process (Join-Path $destination 'Cambridge Dictionary Audio.exe') -ArgumentList '--smoke-test' -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw 'Installed GUI failed' }
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: desktop-${{ matrix.target }}
+          path: dist/installers/*
+          if-no-files-found: error
+
+  publish-pypi:
+    name: Publish CLI to PyPI
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: [python, desktop]
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/cambridge-dictionary-audio
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8.0.2
+        with:
+          name: python-distributions
+          path: dist
+      - uses: pypa/gh-action-pypi-publish@v1.14.2
+        with:
+          attestations: true
+
+  github-release:
+    name: Publish GitHub release
+    needs: [python, publish-pypi]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          version: '0.13.1'
+          python-version: '3.15'
+      - uses: actions/download-artifact@v8.0.2
+        with:
+          path: dist/release
+          merge-multiple: true
+      - run: uv run --locked python scripts/release.py checksums dist/release
+      - name: Upload installers, Python packages and checksums
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          PRERELEASE: ${{ needs.python.outputs.prerelease }}
+        run: |
+          args=()
+          if [[ "$PRERELEASE" == 'true' ]]; then args+=(--prerelease); fi
+          gh release create "$RELEASE_TAG" dist/release/* --verify-tag --generate-notes --title "$RELEASE_TAG" "${args[@]}"

@@ -1,0 +1,49 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="256"
+  height="256"
+  viewBox="0 0 256 256"
+  role="img"
+  aria-labelledby="title desc"
+>
+  <title id="title">Cambridge Dictionary Audio</title>
+  <desc
+    id="desc"
+  >An open dictionary with a sound wave and download arrow inside a red shield.</desc>
+  <path
+    d="M48 28h160v100c0 47-36 79-80 100-44-21-80-53-80-100Z"
+    fill="#b6384b"
+    stroke="#263646"
+    stroke-width="8"
+    stroke-linejoin="round"
+  />
+  <path
+    d="M68 77c20-10 40-10 60 0 20-10 40-10 60 0v58c-20-10-40-10-60 0-20-10-40-10-60 0Z"
+    fill="#fffaf0"
+    stroke="#263646"
+    stroke-width="5"
+    stroke-linejoin="round"
+  />
+  <path
+    d="M128 77v58M82 94h29M82 110h23"
+    fill="none"
+    stroke="#263646"
+    stroke-width="5"
+    stroke-linecap="round"
+  />
+  <path
+    d="M148 96v16M160 88v32M172 99v10"
+    fill="none"
+    stroke="#b6384b"
+    stroke-width="6"
+    stroke-linecap="round"
+  />
+  <path
+    d="M128 151v35m-16-16 16 16 16-16M103 191v10h50v-10"
+    fill="none"
+    stroke="#f0c56e"
+    stroke-width="7"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+</svg>

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+  <title>Settings</title>
+  <g fill="none" stroke="#626f7e" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <path
+      d="m9.5 3-.5 2-1.6.9-2-.6-2.5 4.4 1.5 1.4v1.8l-1.5 1.4 2.5 4.4 2-.6 1.6.9.5 2h5l.5-2 1.6-.9 2 .6 2.5-4.4-1.5-1.4v-1.8l1.5-1.4-2.5-4.4-2 .6-1.6-.9-.5-2z"
+    />
+    <circle cx="12" cy="12" r="3" />
+  </g>
+</svg>

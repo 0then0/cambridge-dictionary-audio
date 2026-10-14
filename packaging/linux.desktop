@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Cambridge Dictionary Audio
+Comment=Download and listen to English pronunciation
+Comment[ru]=Скачивание и прослушивание английского произношения
+Exec=cambridge-audio-gui
+Icon=cambridge-dictionary-audio
+Terminal=false
+Categories=Education;Languages;
+StartupNotify=true
+StartupWMClass=Cambridge Dictionary Audio

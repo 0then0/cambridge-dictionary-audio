@@ -1,0 +1,90 @@
+[project]
+name = "cambridge-dictionary-audio"
+version = "0.2.0"
+description = "Download UK and US pronunciations from Cambridge Dictionary"
+readme = "docs/cli.md"
+requires-python = ">=3.10,<3.16"
+license = "Apache-2.0"
+license-files = ["LICENSE", "LICENSE-MIT", "NOTICE"]
+dependencies = [
+    "beautifulsoup4>=4.15.0,<5",
+    "requests>=2.34.2,<3",
+    "rich>=15.0.0,<16",
+    "textual>=8.2.8,<9",
+]
+keywords = ["cambridge", "dictionary", "pronunciation", "audio", "cli"]
+classifiers = [
+    "Environment :: Console",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
+    "Topic :: Education",
+]
+
+[project.scripts]
+cambridge-audio = "cambridge_audio.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/0then0/cambridge-dictionary-audio"
+Repository = "https://github.com/0then0/cambridge-dictionary-audio"
+Issues = "https://github.com/0then0/cambridge-dictionary-audio/issues"
+
+[build-system]
+requires = ["hatchling==1.32.4"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build]
+exclude = [
+    "cambridge_audio/gui.py",
+    "cambridge_audio/desktop.py",
+    "cambridge_audio/preferences.py",
+    "cambridge_audio/theme.py",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["cambridge_audio"]
+
+[tool.hatch.build.targets.sdist]
+only-include = [
+    "cambridge_audio", "pyproject.toml", "docs/cli.md",
+    "LICENSE", "LICENSE-MIT", "NOTICE", "main.py",
+    "tests/conftest.py", "tests/test_audio.py", "tests/test_cli.py",
+    "tests/test_dictionary.py", "tests/test_entrypoints.py",
+    "tests/test_ffmpeg.py", "tests/test_service.py",
+    "tests/test_library.py", "tests/test_terminal.py",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1,<10",
+    "ruff>=0.17.0,<0.18",
+]
+gui = [
+    "pyside6-essentials>=6.12.0,<6.13",
+    "pyside6-addons>=6.12.0,<6.13",
+]
+release = [
+    "pyinstaller==6.22.3",
+    "pyinstaller-hooks-contrib==2026.8",
+    "twine==7.0.0",
+]
+
+[tool.uv]
+required-version = ">=0.13.0"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra"

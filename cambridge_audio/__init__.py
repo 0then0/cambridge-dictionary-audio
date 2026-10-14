@@ -1,0 +1,1 @@
+"""Cambridge Dictionary pronunciation downloader."""
