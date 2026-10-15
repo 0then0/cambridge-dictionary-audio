@@ -35,6 +35,8 @@ def app():
         widget.deleteLater()
     application.sendPostedEvents(None, QEvent.Type.DeferredDelete)
     application.processEvents()
+    application.shutdown()
+    assert gui.QApplication.instance() is None
 
 
 @pytest.fixture
