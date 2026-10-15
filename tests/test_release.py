@@ -13,6 +13,27 @@ from packaging.version import Version
 from scripts import package_desktop, release
 
 
+def test_windows_ffmpeg_configure_uses_msys_bash_instead_of_wsl(monkeypatch):
+    from unittest.mock import Mock
+
+    from scripts import build_ffmpeg
+
+    monkeypatch.setattr(build_ffmpeg.sys, "platform", "win32")
+    msys_bash = "D:\\tools\\msys64\\usr\\bin\\bash.exe"
+    convert = Mock(return_value=msys_bash + "\n")
+    monkeypatch.setattr(build_ffmpeg.subprocess, "check_output", convert)
+    assert build_ffmpeg.configure_shell() == msys_bash
+    convert.assert_called_once_with(["cygpath", "-w", "/usr/bin/bash"], text=True)
+
+
+@pytest.mark.parametrize("platform", ["darwin", "linux"])
+def test_unix_ffmpeg_configure_keeps_native_bash(monkeypatch, platform):
+    from scripts import build_ffmpeg
+
+    monkeypatch.setattr(build_ffmpeg.sys, "platform", platform)
+    assert build_ffmpeg.configure_shell() == "bash"
+
+
 def test_version_tag_must_match_package_metadata(monkeypatch):
     version = importlib.metadata.version("cambridge-dictionary-audio")
     monkeypatch.setenv("GITHUB_REF_TYPE", "tag")

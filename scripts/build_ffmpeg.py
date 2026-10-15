@@ -36,6 +36,13 @@ def configure_path(path: Path) -> str:
     return str(path)
 
 
+def configure_shell() -> str:
+    if sys.platform == "win32":
+        # Windows searches System32 before PATH and may otherwise launch WSL's bash.exe.
+        return subprocess.check_output(["cygpath", "-w", "/usr/bin/bash"], text=True).strip()
+    return "bash"
+
+
 def verify(executable: Path):
     """Exercise exactly the concat/loudnorm/MP3 pipeline used by the application."""
     report = subprocess.check_output([str(executable), "-hide_banner", "-version"], text=True)
@@ -143,9 +150,10 @@ def main():
         subprocess.run(command, cwd=cwd, env=environment, check=True)
 
     install_prefix = configure_path(prefix)
+    shell = configure_shell()
     run(
         [
-            "bash",
+            shell,
             "./configure",
             f"--prefix={install_prefix}",
             "--disable-frontend",
@@ -193,7 +201,7 @@ def main():
             "--disable-pthreads",
             "--enable-w32threads",
         ]
-    run(["bash", "./configure", *flags], trees["ffmpeg"])
+    run([shell, "./configure", *flags], trees["ffmpeg"])
     run(["make", f"-j{jobs}"], trees["ffmpeg"])
     filename = "ffmpeg.exe" if sys.platform == "win32" else "ffmpeg"
     output = ROOT / "build/bundled-ffmpeg"
