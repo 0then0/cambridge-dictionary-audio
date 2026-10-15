@@ -358,7 +358,7 @@ def test_translation_checkbox_fetches_missing_details_and_caches_both_accents(
     async def scenario():
         app = CambridgeApp(Options(tmp_path, play=False, translation=translation_language))
         async with app.run_test() as pilot:
-            await pilot.pause()
+            await wait_for_ui(pilot, lambda: app.selected is not None)
             checkbox = app.query_one("#show-translation", Checkbox)
             if not checkbox.value:
                 await pilot.click("#show-translation")  # Exercise a real click, not just .value.
@@ -370,15 +370,21 @@ def test_translation_checkbox_fetches_missing_details_and_caches_both_accents(
                 f"Cambridge\n{expected[0]}" in app.query_one("#translation", Static).render().plain
             )
             await pilot.click("#show-translation")
-            assert not app.query_one("#translation", Static).display
+            await wait_for_ui(
+                pilot,
+                lambda: not checkbox.value and not app.query_one("#translation", Static).display,
+            )
             await pilot.click("#show-translation")
-            assert app.query_one("#translation", Static).display
+            await wait_for_ui(
+                pilot, lambda: checkbox.value and app.query_one("#translation", Static).display
+            )
             client.translations.assert_called_once_with("hello", translation_language or "russian")
             for record in (first, second):
                 assert record.path.read_bytes() == b"ID3saved"
                 assert read_recording(record.path).translations == expected
         restored = CambridgeApp(Options(tmp_path, play=False, translation=translation_language))
         async with restored.run_test() as pilot:
+            await wait_for_ui(pilot, lambda: restored.selected is not None)
             if not restored.query_one("#show-translation", Checkbox).value:
                 await pilot.click("#show-translation")
             assert restored.selected.translations == expected
@@ -632,6 +638,8 @@ def test_tui_pronunciation_choice_saves_matching_variant(tmp_path, monkeypatch, 
                 lambda: (
                     isinstance(app.screen, terminal.ChooseOption)
                     and bool(app.screen.query("#choice"))
+                    and bool(app.screen.query("#accept"))
+                    and app.screen.query_one("#accept", Button).is_mounted
                 ),
             )
             selector = app.screen.query_one("#choice", Select)

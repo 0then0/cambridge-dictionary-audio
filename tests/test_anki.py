@@ -28,7 +28,10 @@ def collection(tmp_path):
 
 def rows(path):
     return list(
-        csv.reader(io.StringIO("\n".join(path.read_text().splitlines()[3:])), delimiter="\t")
+        csv.reader(
+            io.StringIO("\n".join(path.read_text(encoding="utf-8").splitlines()[3:])),
+            delimiter="\t",
+        )
     )
 
 
@@ -40,7 +43,7 @@ def test_tsv_audio_escaping_unicode_ids_and_repeat_export(tmp_path):
         for p in (s.recording.path, s.recording.path.with_suffix(".json"))
     }
     path = export_anki(records, tmp_path / "export")
-    content = path.read_text()
+    content = path.read_text(encoding="utf-8")
     assert content.startswith("#separator:Tab\n#html:true\n#columns:ID\tWord")
     values = rows(path)
     assert len(values) == 2
@@ -53,9 +56,9 @@ def test_tsv_audio_escaping_unicode_ids_and_repeat_export(tmp_path):
         media = row[7][7:-1]
         assert "/" not in media and "\\" not in media
         assert (path.parent / "media" / media).read_bytes().startswith(b"ID3original")
-    assert "collection.media" in (path.parent / "IMPORT.txt").read_text()
-    assert "CC BY-SA 4.0" in (path.parent / "SOURCES.txt").read_text()
-    assert export_anki(records, path.parent).read_text() == content
+    assert "collection.media" in (path.parent / "IMPORT.txt").read_text(encoding="utf-8")
+    assert "CC BY-SA 4.0" in (path.parent / "SOURCES.txt").read_text(encoding="utf-8")
+    assert export_anki(records, path.parent).read_text(encoding="utf-8") == content
     assert all(p.read_bytes() == data for p, data in originals.items())
 
 
@@ -78,7 +81,7 @@ def test_missing_invalid_unreadable_audio_and_unknown_destination_are_failures(
     (personal / "notes.txt").write_text("untouched")
     with pytest.raises(FileExistsError):
         export_anki(records, personal)
-    assert (personal / "notes.txt").read_text() == "untouched"
+    assert (personal / "notes.txt").read_text(encoding="utf-8") == "untouched"
     assert not (tmp_path / "new-export").exists()
 
 

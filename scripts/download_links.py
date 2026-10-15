@@ -130,7 +130,7 @@ def refresh(release):
     for filename, russian in (("README.md", False), ("README.ru.md", True)):
         path = ROOT / filename
         start, end = "<!-- downloads:start -->", "<!-- downloads:end -->"
-        text = path.read_text()
+        text = path.read_text(encoding="utf-8")
         replacement = start + "\n" + render(release, russian) + "\n" + end
         text, count = re.subn(
             re.escape(start) + r".*?" + re.escape(end),
@@ -140,7 +140,7 @@ def refresh(release):
         )
         if count != 1:
             raise ValueError(f"Expected one download marker in {filename}")
-        path.write_text(text)
+        path.write_text(text, encoding="utf-8")
 
 
 def main():
@@ -160,7 +160,7 @@ def main():
     if args.refresh:
         refresh(release)
     else:
-        saved = json.loads(SNAPSHOT.read_text())
+        saved = json.loads(SNAPSHOT.read_text(encoding="utf-8"))
         if assets_for(saved) != groups:
             raise ValueError("A newer stable release is available. Run with --refresh.")
     if args.verify_network:

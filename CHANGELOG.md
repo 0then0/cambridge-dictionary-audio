@@ -55,6 +55,8 @@ release dates are included only where a published release can be verified.
 
 ### Fixed
 
+- README download-link updates explicitly use UTF-8 on Windows and other
+  platforms, preserving Russian documentation regardless of the system locale.
 - TUI button widths are recalculated after language changes and playback state
   changes, keeping translated labels fully visible.
 - Closing the desktop window during WikDict installation exits the application

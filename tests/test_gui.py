@@ -15,7 +15,7 @@ from conftest import response
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 pytest.importorskip("PySide6", reason="Install the gui group to run desktop tests")
 
-from PySide6.QtCore import QSettings, Qt  # noqa: E402
+from PySide6.QtCore import QEvent, QSettings, Qt  # noqa: E402
 from PySide6.QtMultimedia import QAudioDevice  # noqa: E402
 from PySide6.QtTest import QTest  # noqa: E402
 from PySide6.QtWidgets import QMessageBox  # noqa: E402
@@ -29,6 +29,12 @@ def app():
     application = gui.create_application([])
     application.setQuitOnLastWindowClosed(False)
     yield application
+    # close() hides widgets; dispose them while Qt and its event loop are still
+    # usable, instead of leaving multimedia/animation teardown to Python exit.
+    for widget in application.topLevelWidgets():
+        widget.deleteLater()
+    application.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+    application.processEvents()
 
 
 @pytest.fixture
@@ -39,12 +45,14 @@ def window(app, tmp_path):
     instance.show()
     app.processEvents()
     yield instance
-    for worker in (instance._worker, instance._translation_worker):
+    for worker in (instance._worker, instance._translation_worker, instance._dictionary_worker):
         if worker is not None:
             worker.requestInterruption()
             worker.wait(5000)
             app.processEvents()
     instance.close()
+    instance.deleteLater()
+    app.sendPostedEvents(None, QEvent.Type.DeferredDelete)
     app.processEvents()
 
 
