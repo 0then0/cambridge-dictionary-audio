@@ -45,7 +45,14 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libegl1 libopengl0 libpulse0 libxkbcommon0
       - run: uv sync --locked --group gui
-      - run: uv run --locked --group gui pytest
+      - if: matrix.os != 'ubuntu-latest' || matrix.python != '3.10'
+        run: uv run --locked --group gui pytest
+      - name: Trace Linux Python 3.10 shutdown
+        if: matrix.os == 'ubuntu-latest' && matrix.python == '3.10'
+        run: >-
+          uv run --locked --group gui gdb --batch --return-child-result
+          -ex run -ex 'thread apply all bt'
+          --args python -X faulthandler -m pytest
 
   extension:
     name: Browser extension (${{ matrix.os }})
