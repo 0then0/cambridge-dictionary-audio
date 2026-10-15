@@ -6,15 +6,26 @@ import sys
 from importlib.metadata import version
 from pathlib import Path
 
+from .anki import export_anki
 from .audio import play_audio
 from .console import Output, is_terminal
 from .dictionary import (
     CambridgeClient,
     CambridgeError,
+    SelectionRequired,
+    variants,
 )
 from .i18n import translate
-from .library import save_metadata
+from .library import read_recording, save_metadata, scan_recordings
 from .service import Recording, download_recordings
+from .translations import (
+    cached_translation,
+    edit_translation,
+    persist_translation,
+    resolve_translation,
+    select_translation,
+)
+from .wikdict import PACKAGE, install_dictionary
 
 
 class HelpFormatter(argparse.HelpFormatter):
@@ -57,6 +68,17 @@ def positive_timeout(value: str, language: str = "en") -> float:
     return timeout
 
 
+def russian_translation(value: str, language: str = "en") -> str | None:
+    value = value.strip().casefold()
+    if not value:
+        return None
+    if value in {"russian", "ru", "русский"}:
+        return "russian"
+    raise argparse.ArgumentTypeError(
+        translate("Only Russian translation is supported. Use russian or ru.", language)
+    )
+
+
 def download_word(client: CambridgeClient, word: str, args, downloaded: set[Path]) -> None:
     output = Output(args.lang, plain=args.plain)
 
@@ -89,8 +111,8 @@ def download_word(client: CambridgeClient, word: str, args, downloaded: set[Path
                 file=sys.stderr,
             )
 
-    with output.working():
-        result = download_recordings(
+    def perform(variant_id=args.variant, entries=None):
+        return download_recordings(
             client,
             word,
             args.output_dir,
@@ -99,9 +121,29 @@ def download_word(client: CambridgeClient, word: str, args, downloaded: set[Path
             combine=args.combine,
             translation=args.translation,
             on_recording=saved,
+            variant_id=variant_id,
+            entries=entries,
+            dictionary_dir=args.dictionary_dir,
+            offline_translation=args.offline,
         )
-    for recording in result.recordings:
-        store_details(recording, result.translations)
+
+    try:
+        with output.working():
+            result = perform()
+    except SelectionRequired as exc:
+        if args.word:
+            raise
+        print(str(exc))
+        selected = input(translate("Pronunciation ID (empty cancels): ", args.lang)).strip()
+        if not selected:
+            return
+        with output.working():
+            result = perform(selected, exc.entries)
+    for i, recording in enumerate(result.recordings):
+        store_details(recording, () if result.translation_results else result.translations)
+        if result.translation_results:
+            persist_translation(read_recording(recording.path), result.translation_results[i])
+            output.message(result.translation_results[i].format(args.lang))
     output.details(result.recordings[0].word, result.recordings[0].definition, result.translations)
     if result.translation_error:
         print(
@@ -235,11 +277,141 @@ def main(argv: list[str] | None = None) -> int:
     )
     options.add_argument(
         "--translation",
+        type=lambda value: russian_translation(value, language),
+        metavar="russian",
         help=translate(
-            "Cambridge translation language, e.g. russian; disabled by default.", language
+            "Show Russian translations (russian, ru or русский); disabled by default.", language
         ),
     )
+    options.add_argument(
+        "--list-variants",
+        action="store_true",
+        help=translate("List pronunciation IDs without downloading.", language),
+    )
+    options.add_argument(
+        "--variant", help=translate("Download the listed pronunciation ID.", language)
+    )
+    options.add_argument(
+        "--dictionary-info",
+        action="store_true",
+        help=translate("Show the verified WikDict package, size and license.", language),
+    )
+    options.add_argument(
+        "--install-dictionary",
+        action="store_true",
+        help=translate("Install the displayed WikDict en → ru package.", language),
+    )
+    options.add_argument(
+        "--dictionary-dir", type=Path, help=translate("Local WikDict package directory.", language)
+    )
+    options.add_argument(
+        "--export-anki",
+        type=Path,
+        help=translate("Export the collection to an Anki TSV folder.", language),
+    )
+    options.add_argument(
+        "--recording",
+        action="append",
+        type=Path,
+        help=translate("Select a saved MP3 for translation or export; repeatable.", language),
+    )
+    options.add_argument(
+        "--translate-saved",
+        action="store_true",
+        help=translate("Translate selected saved recordings without downloading audio.", language),
+    )
+    options.add_argument(
+        "--offline",
+        action="store_true",
+        help=translate("Use only cached translations and installed WikDict.", language),
+    )
+    editing = options.add_mutually_exclusive_group()
+    editing.add_argument(
+        "--set-translation",
+        help=translate("Set a personal translation for the selected sense and language.", language),
+    )
+    editing.add_argument(
+        "--reset-translation",
+        action="store_true",
+        help=translate(
+            "Remove the personal translation for the selected sense and language.", language
+        ),
+    )
+    editing.add_argument(
+        "--choose-translation",
+        help=translate("Select a source sense by its displayed translation ID.", language),
+    )
     args = parser.parse_args(argv)
+    if (args.list_variants or args.variant) and not args.word:
+        parser.error("--list-variants and --variant require a word argument.")
+    if args.dictionary_info or args.install_dictionary:
+        print(PACKAGE.description)
+        print(PACKAGE.url)
+        print(PACKAGE.license_url)
+        if args.install_dictionary:
+            try:
+                print(install_dictionary(args.dictionary_dir))
+            except (CambridgeError, OSError) as exc:
+                print(str(exc), file=sys.stderr)
+                return 1
+        return 0
+    if (
+        args.recording
+        or args.export_anki
+        or args.translate_saved
+        or args.set_translation is not None
+        or args.reset_translation
+        or args.choose_translation
+    ):
+        try:
+            if args.word:
+                parser.error("Use --recording to select saved MP3 files, without a word argument.")
+            if args.recording:
+                records = []
+                for path in args.recording:
+                    saved = read_recording(path)
+                    if saved is None:
+                        raise ValueError(f"Missing or unreadable recording: {path}")
+                    records.append(saved)
+            else:
+                records = scan_recordings(args.output_dir)
+            editing_translation = (
+                args.set_translation is not None
+                or args.reset_translation
+                or args.choose_translation
+            )
+            if editing_translation and not args.recording:
+                parser.error("Translation edits require --recording.")
+            language = args.translation or "russian"
+            updated = []
+            for saved in records:
+                if args.set_translation is not None or args.reset_translation:
+                    saved = edit_translation(saved, language, args.set_translation)
+                elif args.choose_translation:
+                    saved = select_translation(saved, language, args.choose_translation)
+                elif args.translate_saved:
+                    with CambridgeClient(args.timeout, language=args.lang) as client:
+                        result = resolve_translation(
+                            client,
+                            saved,
+                            language,
+                            directory=args.dictionary_dir,
+                            offline=args.offline,
+                        )
+                    saved = persist_translation(saved, result)
+                    print(result.format(args.lang))
+                    if result.error:
+                        print(result.error, file=sys.stderr)
+                result = cached_translation(saved, language)
+                if result and not args.translate_saved:
+                    print(result.format(args.lang))
+                updated.append(saved)
+            if args.export_anki:
+                print(export_anki(updated, args.export_anki, language=language))
+            return 0
+        except (CambridgeError, OSError, ValueError) as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
     if args.tui and (args.word or not is_terminal()):
         parser.error(translate("--tui requires a terminal and no word argument.", language))
     if args.play is None:
@@ -260,6 +432,8 @@ def main(argv: list[str] | None = None) -> int:
                 translation=args.translation,
                 timeout=args.timeout,
                 overwrite=args.overwrite,
+                dictionary_dir=args.dictionary_dir,
+                offline=args.offline,
             )
         ).run()
         return 0
@@ -267,7 +441,11 @@ def main(argv: list[str] | None = None) -> int:
         if not args.word:
             return interactive(client, args)
         try:
-            download_word(client, " ".join(args.word), args, set())
+            if args.list_variants:
+                for choice in variants(client.lookup(" ".join(args.word)), args.accent):
+                    print(f"{choice.id}  {choice.label}")
+            else:
+                download_word(client, " ".join(args.word), args, set())
         except (CambridgeError, OSError, ValueError) as exc:
             print(translate("Error: {error}", args.lang, error=exc), file=sys.stderr)
             return 1

@@ -214,3 +214,38 @@ def test_atomic_publish_preserves_concurrent_file(monkeypatch, tmp_path, mp3):
         save_mp3(mp3, destination)
     assert destination.read_bytes() == b"concurrent"
     assert not list(tmp_path.glob("*.tmp"))
+
+
+def test_bilingual_translation_matches_selected_part_and_definition(client):
+    client.session.get.return_value = response("""
+    <div class="entry-body__el"><span class="pos">noun</span>
+    <div class="def-block"><div class="def ddef_d">a metal:</div>
+    <div class="def-body"><span class="trans">свинец</span></div></div></div>
+    <div class="entry-body__el"><span class="pos">verb</span>
+    <div class="def-block"><div class="def ddef_d">to guide:</div>
+    <div class="def-body"><span class="trans">вести</span></div></div></div>
+    """)
+    options = client.translation_options("lead", "russian", "to guide", "verb")
+    assert len(options) == 1
+    assert options[0].texts == ("вести",)
+    assert options[0].matched and options[0].part_of_speech == "verb"
+    assert "english-russian/lead" in options[0].origin
+    # English and bilingual definitions can differ. Keep a known matching part
+    # of speech, without claiming an exact match or including unrelated nouns.
+    options = client.translation_options("lead", "russian", "to show the way", "verb")
+    assert len(options) == 1 and options[0].texts == ("вести",)
+    assert options[0].definition == "to guide" and not options[0].matched
+    client.session.get.return_value = response("""
+    <div class="entry-body__el"><div class="def-body"><span class="trans">one</span></div>
+    <div class="def-body"><span class="trans">two</span></div></div>
+    """)
+    options = client.translation_options("lead", "russian", "to guide", "verb")
+    assert len(options) == 2 and not any(o.matched for o in options)
+
+
+def test_blocking_page_is_not_reported_as_absent_translation(client):
+    from cambridge_audio.dictionary import CambridgeBlockedError
+
+    client.session.get.return_value = response("<html>Access Denied CAPTCHA</html>")
+    with pytest.raises(CambridgeBlockedError):
+        client.translation_options("hello", "russian")

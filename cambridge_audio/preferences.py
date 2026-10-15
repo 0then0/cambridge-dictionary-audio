@@ -4,7 +4,6 @@ from PySide6.QtCore import QSettings, Signal
 from PySide6.QtGui import QColor, QIcon, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (
     QColorDialog,
-    QComboBox,
     QDialog,
     QFormLayout,
     QHBoxLayout,
@@ -14,11 +13,12 @@ from PySide6.QtWidgets import (
 )
 
 from .i18n import translate
-from .theme import stored_colors, theme_colors
+from .theme import ComboBox, stored_colors, theme_colors
 
 
 class PreferencesDialog(QDialog):
     changed = Signal()
+    about_requested = Signal()
 
     def __init__(self, settings: QSettings, parent=None):
         super().__init__(parent)
@@ -32,8 +32,8 @@ class PreferencesDialog(QDialog):
         form = QFormLayout()
         form.setHorizontalSpacing(16)
         form.setVerticalSpacing(12)
-        self.language_combo = QComboBox()
-        self.theme_combo = QComboBox()
+        self.language_combo = ComboBox()
+        self.theme_combo = ComboBox()
         self.language_label = QLabel()
         self.theme_label = QLabel()
         self.language_label.setBuddy(self.language_combo)
@@ -66,6 +66,9 @@ class PreferencesDialog(QDialog):
         self.reset_button.clicked.connect(self.reset_colors)
         layout.addWidget(self.reset_button)
         actions = QHBoxLayout()
+        self.about_button = QPushButton()
+        self.about_button.clicked.connect(self.about_requested.emit)
+        actions.addWidget(self.about_button)
         actions.addStretch()
         self.close_button = QPushButton()
         self.close_button.clicked.connect(self.accept)
@@ -92,6 +95,7 @@ class PreferencesDialog(QDialog):
         self.color_labels["background"].setText(self._t("Background colour"))
         self.color_labels["accent"].setText(self._t("Accent colour"))
         self.reset_button.setText(self._t("Restore default colours"))
+        self.about_button.setText(self._t("About"))
         self.close_button.setText(self._t("Close"))
         for combo, choices, selected in (
             (self.language_combo, [("English", "en"), ("Русский", "ru")], language),

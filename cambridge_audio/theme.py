@@ -5,9 +5,141 @@ from functools import lru_cache
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from PySide6.QtCore import QSettings, Qt
-from PySide6.QtGui import QColor, QIcon, QPalette
-from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import (
+    QAbstractAnimation,
+    QEasingCurve,
+    QPropertyAnimation,
+    QRectF,
+    QSettings,
+    QSignalBlocker,
+    Qt,
+    QVariantAnimation,
+)
+from PySide6.QtGui import QColor, QIcon, QPainter, QPalette
+from PySide6.QtWidgets import QApplication, QComboBox, QScrollBar, QStyle, QStyleOptionSlider
+
+
+class ScrollBar(QScrollBar):
+    """GTK-like thumb with a fixed hit area and native Qt input semantics."""
+
+    def __init__(self, orientation, parent=None):
+        super().__init__(orientation, parent)
+        self.setProperty("adaptive", True)
+        self._expansion = 0.0
+        self._hover_animation = QVariantAnimation(self)
+        self._hover_animation.setDuration(120)
+        self._hover_animation.setEasingCurve(QEasingCurve.Type.OutCubic)
+        self._hover_animation.valueChanged.connect(self._expand)
+        self._scroll_animation = QPropertyAnimation(self, b"value", self)
+        self._scroll_animation.setDuration(80)
+        self._scroll_animation.setEasingCurve(QEasingCurve.Type.OutCubic)
+        self.actionTriggered.connect(self._scroll_animation.stop)
+        self.sliderPressed.connect(self._scroll_animation.stop)
+        self.rangeChanged.connect(self._scroll_animation.stop)
+
+    def _expand(self, value):
+        self._expansion = float(value)
+        self.update()
+
+    def _hover(self, expanded):
+        self._hover_animation.stop()
+        self._hover_animation.setStartValue(self._expansion)
+        self._hover_animation.setEndValue(1.0 if expanded else 0.0)
+        self._hover_animation.start()
+
+    def enterEvent(self, event):
+        self._hover(True)
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):
+        if not self.isSliderDown():
+            self._hover(False)
+        super().leaveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        super().mouseReleaseEvent(event)
+        if not self.underMouse():
+            self._hover(False)
+
+    def wheelEvent(self, event):
+        current = self.value()
+        running = self._scroll_animation.state() == QAbstractAnimation.State.Running
+        target = self._scroll_animation.endValue() if running else current
+        self._scroll_animation.stop()
+        if not event.pixelDelta().isNull():
+            # Touchpads already supply precise, smooth motion (including momentum).
+            super().wheelEvent(event)
+            return
+        # Ask Qt to calculate direction, modifiers, partial ticks and bounds. Block
+        # the intermediate value so content moves only through the animation.
+        with QSignalBlocker(self):
+            self.setValue(target)
+            super().wheelEvent(event)
+            target = self.value()
+            self.setValue(current)
+        if target != current:
+            self._scroll_animation.setStartValue(current)
+            self._scroll_animation.setEndValue(target)
+            self._scroll_animation.start()
+
+    def paintEvent(self, event):
+        option = QStyleOptionSlider()
+        self.initStyleOption(option)
+        if self.maximum() <= self.minimum():
+            return
+        handle = QRectF(
+            self.style().subControlRect(
+                QStyle.ComplexControl.CC_ScrollBar,
+                option,
+                QStyle.SubControl.SC_ScrollBarSlider,
+                self,
+            )
+        )
+        width = 4 + 4 * self._expansion
+        if self.orientation() == Qt.Orientation.Vertical:
+            handle.setLeft(
+                2
+                if self.layoutDirection() == Qt.LayoutDirection.RightToLeft
+                else self.width() - 2 - width
+            )
+            handle.setWidth(width)
+        else:
+            handle.setTop(self.height() - 2 - width)
+            handle.setHeight(width)
+        colors = QApplication.instance().property("scrollbarColors")
+        normal, active = colors or ("#626f7e", "#1d2733")
+        color = QColor(blend(normal, active, self._expansion))
+        with QPainter(self) as painter:
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+            painter.setPen(Qt.PenStyle.NoPen)
+            track = self.palette().windowText().color()
+            track.setAlphaF(0.08 * self._expansion)
+            painter.setBrush(track)
+            painter.drawRoundedRect(QRectF(self.rect()), 6, 6)
+            painter.setBrush(color)
+            painter.drawRoundedRect(handle, width / 2, width / 2)
+
+
+def install_scrollbars(area):
+    area.setVerticalScrollBar(ScrollBar(Qt.Orientation.Vertical, area))
+    area.setHorizontalScrollBar(ScrollBar(Qt.Orientation.Horizontal, area))
+
+
+class ComboBox(QComboBox):
+    """Size short popups from their painted rows, including the view frame."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        install_scrollbars(self.view())
+
+    def showPopup(self):
+        view = self.view()
+        rows = min(self.count(), self.maxVisibleItems())
+        height = sum(view.sizeHintForRow(row) for row in range(rows))
+        available = self.screen().availableGeometry().height() - 2 * self.fontMetrics().height()
+        view.setMinimumHeight(min(height + 2 * view.frameWidth(), max(0, available)))
+        super().showPopup()
+
 
 COLORS = {
     "light": {
@@ -181,6 +313,7 @@ def apply_theme(
     for role in (QPalette.ColorRole.Text, QPalette.ColorRole.ButtonText):
         palette.setColor(QPalette.ColorGroup.Disabled, role, QColor(c["disabled_text"]))
     app.setPalette(palette)
+    app.setProperty("scrollbarColors", [c["scrollbar"], c["scrollbar_hover"]])
     app.setStyleSheet(f"""
         QMainWindow, QDialog, QScrollArea, QWidget#page {{ background: {c["background"]}; }}
         QLabel {{ color: {c["text"]}; background: transparent; }}
@@ -244,6 +377,10 @@ def apply_theme(
         QScrollBar:horizontal {{ height: 12px; margin: 4px 2px; }}
         QScrollBar:vertical:hover {{ margin: 2px 2px; }}
         QScrollBar:horizontal:hover {{ margin: 2px 2px; }}
+        QScrollBar[adaptive="true"]:vertical,
+        QScrollBar[adaptive="true"]:vertical:hover {{ margin: 2px 0; }}
+        QScrollBar[adaptive="true"]:horizontal,
+        QScrollBar[adaptive="true"]:horizontal:hover {{ margin: 0 2px; }}
         QScrollBar::handle {{ background: {c["scrollbar"]}; border-radius: 2px; }}
         QScrollBar::handle:vertical {{ min-height: 32px; }}
         QScrollBar::handle:horizontal {{ min-width: 32px; }}

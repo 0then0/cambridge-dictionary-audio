@@ -49,3 +49,16 @@ def test_combined_recording_is_explicit(monkeypatch, client, tmp_path, mp3):
     result = download_recordings(client, "hello world", tmp_path, combine=True)
     assert result.recordings[0].combined
     assert result.recordings[0].ipa == ""
+
+
+@pytest.mark.parametrize("word,accent", [("world", "us"), ("hello", "uk"), ("hello", "both")])
+def test_wrong_redownload_target_is_rejected_before_network(client, tmp_path, word, accent):
+    from cambridge_audio.service import Recording
+
+    path = tmp_path / "hello.us.mp3"
+    path.write_bytes(b"ID3original")
+    target = Recording("hello", "us", path, "", "greeting")
+    with pytest.raises(ValueError, match="does not match"):
+        download_recordings(client, word, tmp_path, accent, target=target, overwrite=True)
+    assert path.read_bytes() == b"ID3original"
+    client.session.get.assert_not_called()

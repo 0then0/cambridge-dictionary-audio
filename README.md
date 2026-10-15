@@ -14,7 +14,7 @@
 [![Release](https://img.shields.io/github/v/release/0then0/cambridge-dictionary-audio)](https://github.com/0then0/cambridge-dictionary-audio/releases)
 [![PyPI](https://img.shields.io/pypi/v/cambridge-dictionary-audio)](https://pypi.org/project/cambridge-dictionary-audio/)
 
-[Russian documentation](README.ru.md)
+[Russian documentation](README.ru.md) · [Changelog](CHANGELOG.md)
 
 Download English pronunciation recordings from
 [Cambridge Dictionary](https://dictionary.cambridge.org/) as MP3 files.
@@ -23,22 +23,35 @@ definitions and optional dictionary translations.
 
 ## Desktop app
 
-Download the matching installer from
-[Releases](https://github.com/0then0/cambridge-dictionary-audio/releases):
+<!-- downloads:start -->
+Direct downloads for published stable **v0.2.1**:
 
-- Windows x86-64: `*-setup.exe`, with uninstall support and optional desktop shortcut.
-- macOS 14+: `.pkg` or `.dmg`, separately for Apple Silicon (`arm64`) and Intel (`x86_64`).
-- Linux x86-64 with glibc 2.34+: `.deb` for Debian/Ubuntu or `.rpm` for Fedora-compatible systems.
-- Portable builds: `.zip` for Windows, `.tar.gz` for macOS and Linux.
-
-If no release is listed yet, use the source installation below.
+- Windows x86-64: [setup.exe](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-dictionary-audio-0.2.1-windows-x86_64-setup.exe), [portable.zip](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-dictionary-audio-0.2.1-windows-x86_64-portable.zip).
+- macOS 14+ Apple Silicon: [.pkg](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-dictionary-audio-0.2.1-macos-arm64.pkg), [.dmg](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-dictionary-audio-0.2.1-macos-arm64.dmg), [.tar.gz](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-dictionary-audio-0.2.1-macos-arm64.tar.gz).
+- macOS 14+ Intel: [.pkg](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-dictionary-audio-0.2.1-macos-x86_64.pkg), [.dmg](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-dictionary-audio-0.2.1-macos-x86_64.dmg), [.tar.gz](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-dictionary-audio-0.2.1-macos-x86_64.tar.gz).
+- Linux x86-64, glibc 2.34+: [.deb](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-dictionary-audio_0.2.1_amd64.deb), [.rpm](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-dictionary-audio-0.2.1-1.x86_64.rpm), [.tar.gz](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-dictionary-audio-0.2.1-linux-x86_64-portable.tar.gz).
+- Python CLI: [.whl](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge_dictionary_audio-0.2.1-py3-none-any.whl), [.tar.gz](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge_dictionary_audio-0.2.1.tar.gz).
+- Chrome / Firefox: [Chrome ZIP](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-audio-chrome-0.2.1.zip), [Firefox ZIP](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-audio-firefox-0.2.1.zip).
+- SHA-256: [SHA256SUMS.txt](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/SHA256SUMS.txt).
+<!-- downloads:end -->
 
 Installers and portable builds include Python, Qt and an audio-only LGPL build
 of FFmpeg with LAME. Phrase synthesis needs no additional installation or PATH
 configuration. Matching FFmpeg/LAME source archives and build parameters are
 included in each release. Releases also include the CLI wheel, source
-distribution and `SHA256SUMS.txt`. Current installers are not signed with a
+distribution and `SHA256SUMS.txt`. Windows installers require Windows 10 or later. Current installers are not signed with a
 publisher certificate; macOS builds are not notarized.
+
+Install the CLI separately from [PyPI](https://pypi.org/project/cambridge-dictionary-audio/):
+
+```sh
+uv tool install cambridge-dictionary-audio
+```
+
+The links above remain pinned to the published release until a new stable release
+exists. Run `uv run --no-sync python scripts/download_links.py --refresh` after a
+release to update both READMEs from GitHub API. Use `--verify-network` to also
+check each direct download. This does not publish anything.
 
 ### Run from source
 
@@ -61,12 +74,14 @@ or **Open folder** to find the MP3. No external player is needed for GUI playbac
   background and accent colours for the active light or dark palette; changes
   apply immediately and are remembered separately. Text and interface icons adapt
   for contrast. **Restore default colours** resets the active palette.
+  **About** in Settings shows the app version, repository link and license information.
 - US by default, UK or both available. Both recordings can be played individually.
-- Optional Russian dictionary translation and phrase synthesis using FFmpeg.
+- Optional dictionary translation and phrase synthesis using FFmpeg.
 - Downloads run in the background. Errors are shown in the window; replacing
   existing recordings requires confirmation.
 - Language, theme, pronunciation, options and folder are remembered using Qt's
-  platform settings. The default GUI folder is `Cambridge Dictionary Audio` inside
+  platform settings. The main window also restores its size, position and maximized
+  state after restarting. The default GUI folder is `Cambridge Dictionary Audio` inside
   the user's Downloads folder. **Choose...** selects a different destination.
 - **Saved recordings** lists existing `word.us.mp3` and `word.uk.mp3` files in the
   selected folder. Listen offline after restarting; **Refresh** picks up external
@@ -74,7 +89,7 @@ or **Open folder** to find the MP3. No external player is needed for GUI playbac
   only the missing variant. **Download again** asks before replacing a recording.
 - New GUI downloads save pronunciation details and translations in a matching
   JSON file beside the MP3. Older recordings remain playable without that file.
-  **Russian translation** shows or hides a cached Russian translation immediately.
+  **Show Russian translation** shows or hides a cached translation immediately.
   When it is missing, the app fetches it in the background without downloading
   audio again. Loading and errors appear in the recording panel; toggle the
   checkbox off and on to retry a failed request.
@@ -91,6 +106,13 @@ These Qt requirements do not apply to the standalone Python CLI.
 See [PySide6 releases](https://pypi.org/project/PySide6/) for platform details.
 
 On Windows, `start-gui.bat` runs the desktop app from source through uv.
+
+## Collection, translations and Anki
+
+See the [collection guide](docs/collection.md) for pronunciation selection,
+Russian translations, local WikDict installation and Anki export in the GUI, TUI
+and CLI. [Data sources and licenses](docs/data-sources.md) covers dictionary
+attribution and licensing separately from the application code.
 
 ## Browser extension
 
@@ -150,7 +172,8 @@ uv run -m cambridge_audio --lang ru --help
 - `--output-dir PATH`: select the destination directory; default: `downloads/` in the
   current working directory. The directory is created if necessary.
 - `--lang en|ru`: select the interface language, including help and application messages.
-- `--translation LANGUAGE`: request a Cambridge bilingual dictionary, e.g. `russian`.
+- `--translation russian`: enable Russian translations; `ru` and `русский` are aliases.
+  Other target languages are rejected.
   Translation is disabled by default and independent of the interface language.
 - `--play` / `--no-play`: enable or disable playback.
 - `--combine` / `--no-combine`: enable or disable synthesis of missing phrases.
@@ -187,22 +210,31 @@ downloaded. **Download again** asks before replacing an existing recording.
 - **Enter** in search: download or open saved audio; in the library: play the selected recording.
 - **Tab / Shift+Tab**: move between controls; **Up / Down**: navigate the library.
 - **Ctrl+L**: search; **Ctrl+P**: play/stop; **Ctrl+R**: refresh the library.
-- **Ctrl+S**: settings; **F1**: help; **Ctrl+Q**: quit.
+- **Ctrl+S**: settings; **F1**: help; **F2**: About; **Ctrl+Q**: quit.
 - **Ctrl+C**: cancel a download, stop playback or quit when idle. An in-flight request finishes
   before cancellation; completed files are kept.
 
+All commands also have shortcuts independent of the keyboard layout: **F3** search,
+**F4** play/stop, **F5** refresh, **F6** settings, **F7** export, **F8** translation,
+**F9** WikDict, **F10** pronunciation, **F11** cancel, **F12** quit.
+Ctrl shortcuts accept Russian and Ukrainian letters at the same key positions.
+If the terminal does not report Ctrl with non-Latin letters, use the function keys.
+
+The translation panel groups dictionary senses without technical IDs and shows a
+Ctrl+T hint for choosing a meaning. **F2** or **About** in Help opens the application
+version, repository link and license information.
+
 Settings include interface language, light/dark appearance, accent, destination,
-translation language, autoplay and phrase synthesis. Settings apply to the current
-session; CLI flags set options for future launches. The translation checkbox shows
-or hides saved translations immediately. If a translation is missing, enabling it
-fetches and caches the translation without downloading the MP3 again. The default
-translation language is Russian; settings or `--translation` override it. Loading
-and request errors appear in the recording panel. Details and translations are stored in
-JSON sidecars shared with the GUI. The cache records the translation language;
-changing that language fetches a fresh translation. Old sidecars without a language
-are treated as unknown and refreshed when translation is enabled. Older MP3s
-without sidecars can still be played. Empty files are excluded from the library.
-Symlink aliases retain their own accent, filename and sidecar.
+a Russian translation toggle, autoplay and phrase synthesis. Settings apply to the
+current session; CLI flags set options for future launches. The checkbox shows or
+hides Russian translations immediately, using cache or fetching a missing result
+without downloading the MP3 again. English definitions remain visible when
+translation is off. Interface language can be English or Russian independently.
+Loading and errors appear in the recording panel. JSON sidecars remain shared with
+the GUI. Existing foreign-language caches and personal edits are preserved without
+relabeling. Old sidecars without a translation language are treated as unknown.
+Older MP3s without sidecars remain playable; empty files are excluded from the
+library. Symlink aliases retain their own accent, filename and sidecar.
 
 Playback and phrase synthesis are enabled by default in interactive mode.
 US pronunciation and English remain the defaults. The workspace uses Textual and

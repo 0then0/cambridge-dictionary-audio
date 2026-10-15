@@ -2,13 +2,14 @@
 
 import json
 import os
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from threading import RLock
 
-from .dictionary import audio_filename
+from .dictionary import audio_filename, stable_id
 from .service import Recording
+from .translations import TranslationOption, TranslationResult
 
 # Windows cannot replace a file while another thread holds a normal read handle.
 _METADATA_LOCK = RLock()
@@ -19,6 +20,7 @@ class SavedRecording:
     recording: Recording
     translations: tuple[str, ...] = ()
     translation_language: str | None = None
+    translation_cache: tuple[TranslationResult, ...] = ()
 
 
 def read_recording(path: Path) -> SavedRecording | None:
@@ -41,10 +43,13 @@ def read_recording(path: Path) -> SavedRecording | None:
         with _METADATA_LOCK:
             content = path.with_suffix(".json").read_text(encoding="utf-8")
         data = json.loads(content)
-        if not isinstance(data, dict) or data.get("version") != 1:
+        if not isinstance(data, dict) or data.get("version") not in {1, 2}:
             return SavedRecording(record)
         word = data.get("word")
-        if not isinstance(word, str) or audio_filename(word, accent) != path.name:
+        if not isinstance(word, str) or (
+            data["version"] == 1
+            and path.name not in {audio_filename(word, accent), f"{word}.{accent}.mp3"}
+        ):
             return SavedRecording(record)
         if not all(isinstance(data.get(key), str) for key in ("ipa", "definition")):
             return SavedRecording(record)
@@ -58,12 +63,47 @@ def read_recording(path: Path) -> SavedRecording | None:
             data["ipa"],
             data["definition"],
             data.get("combined") is True,
+            *(
+                data.get(key, "") if isinstance(data.get(key, ""), str) else ""
+                for key in (
+                    "part_of_speech",
+                    "entry_id",
+                    "sense_id",
+                    "variant_id",
+                    "source_url",
+                    "audio_url",
+                    "lemma",
+                )
+            ),
         )
         language = data.get("translation_language")
         if not isinstance(language, str) or not language.strip():
             language = None
-        return SavedRecording(record, tuple(translations), language)
-    except (OSError, ValueError):
+        cache = data.get("translation_cache", [])
+        if not isinstance(cache, list):
+            cache = []
+        cache = tuple(
+            t
+            for item in cache
+            if isinstance(item, dict) and (t := TranslationResult.from_dict(item)) is not None
+        )
+        if data["version"] == 1 and translations and language:
+            cache = (
+                TranslationResult(
+                    language,
+                    record.sense_id,
+                    "Cambridge",
+                    (
+                        TranslationOption(
+                            stable_id(*translations),
+                            tuple(translations),
+                            origin="Legacy JSON cache; sense association unverified",
+                        ),
+                    ),
+                ),
+            )
+        return SavedRecording(record, tuple(translations), language, cache)
+    except (OSError, ValueError, TypeError):
         return SavedRecording(record)
 
 
@@ -77,28 +117,119 @@ def scan_recordings(directory: Path) -> list[SavedRecording]:
 
 
 def save_metadata(
-    record: Recording, translations: tuple[str, ...] = (), translation_language: str | None = None
+    record: Recording,
+    translations: tuple[str, ...] = (),
+    translation_language: str | None = None,
+    *,
+    translation_cache: tuple[TranslationResult, ...] | None = None,
 ) -> None:
-    destination = record.path.with_suffix(".json")
-    data = {
-        "version": 1,
-        "word": record.word,
-        "ipa": record.ipa,
-        "definition": record.definition,
-        "combined": record.combined,
-        "translations": translations,
-        "translation_language": translation_language,
-    }
-    temporary = None
-    try:
-        with NamedTemporaryFile(
-            mode="w", encoding="utf-8", dir=destination.parent, suffix=".tmp", delete=False
-        ) as stream:
-            temporary = Path(stream.name)
-            json.dump(data, stream, ensure_ascii=False, indent=2)
-            stream.write("\n")
-        with _METADATA_LOCK:
+    with _METADATA_LOCK:
+        destination = record.path.with_suffix(".json")
+        # Serialize read/merge/write as well as publication: late metadata updates must
+        # preserve translations and Windows readers must close before os.replace.
+        previous = {}
+        try:
+            previous = json.loads(destination.read_bytes())
+            if not isinstance(previous, dict):
+                previous = {}
+        except (OSError, ValueError):
+            pass
+        previous_saved = read_recording(record.path)
+        if translation_cache is None:
+            provided_translations = bool(translations)
+            if not provided_translations:
+                # A metadata-only save must retain legacy translations too, including
+                # an unknown language. Never relabel an old value with today's option.
+                old_texts = previous.get("translations", [])
+                if isinstance(old_texts, list) and all(isinstance(t, str) for t in old_texts):
+                    translations = tuple(old_texts)
+                    translation_language = previous.get("translation_language")
+            cache = previous_saved.translation_cache if previous_saved else ()
+            # Upgrade a legacy association only when its recorded meaning agrees.
+            # A changed meaning retains its old cache, but cannot use it as a fallback.
+            if (
+                previous_saved
+                and previous_saved.recording.word == record.word
+                and not previous_saved.recording.sense_id
+                and record.sense_id
+                and record.definition
+                and previous_saved.recording.definition.casefold() == record.definition.casefold()
+                and (
+                    not previous_saved.recording.part_of_speech
+                    or previous_saved.recording.part_of_speech == record.part_of_speech
+                )
+            ):
+                cache = tuple(
+                    replace(t, sense_id=record.sense_id) if not t.sense_id else t for t in cache
+                )
+            if record.sense_id and (
+                previous_saved is None or previous_saved.recording.sense_id != record.sense_id
+            ):
+                # A newly saved accent/pronunciation shares existing sense-level edits.
+                for related in scan_recordings(record.path.parent):
+                    if (
+                        related.recording.word != record.word
+                        or related.recording.sense_id != record.sense_id
+                    ):
+                        continue
+                    for result in related.translation_cache:
+                        if (
+                            result.source == "User"
+                            and result.sense_id == record.sense_id
+                            and not any(
+                                t.source == "User"
+                                and t.language == result.language
+                                and t.sense_id == record.sense_id
+                                for t in cache
+                            )
+                        ):
+                            cache += (result,)
+            if provided_translations and translation_language:
+                result = TranslationResult(
+                    translation_language,
+                    record.sense_id,
+                    "Cambridge",
+                    (
+                        TranslationOption(
+                            stable_id(*translations), tuple(translations), origin=record.source_url
+                        ),
+                    ),
+                )
+                # Compatibility callers must never overwrite detailed source provenance.
+                if not any(
+                    (t.language, t.source, t.sense_id)
+                    == (result.language, result.source, result.sense_id)
+                    for t in cache
+                ):
+                    cache += (result,)
+        else:
+            cache = translation_cache
+            from .translations import cached_translation
+
+            translation_language = (
+                cache[-1].language if cache else previous.get("translation_language")
+            )
+            active = cached_translation(
+                SavedRecording(record, translation_cache=cache), translation_language
+            )
+            translations = active.texts if active else ()
+        data = asdict(record)
+        data.pop("path")
+        data.update(
+            version=2,
+            translations=translations,
+            translation_language=translation_language,
+            translation_cache=[t.to_dict() for t in cache],
+        )
+        temporary = None
+        try:
+            with NamedTemporaryFile(
+                mode="w", encoding="utf-8", dir=destination.parent, suffix=".tmp", delete=False
+            ) as stream:
+                temporary = Path(stream.name)
+                json.dump(data, stream, ensure_ascii=False, indent=2)
+                stream.write("\n")
             os.replace(temporary, destination)
-    finally:
-        if temporary is not None:
-            temporary.unlink(missing_ok=True)
+        finally:
+            if temporary is not None:
+                temporary.unlink(missing_ok=True)

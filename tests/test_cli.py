@@ -138,3 +138,102 @@ def test_explicit_tui_requires_terminal(monkeypatch, capsys):
         cli.main(["--tui"])
     assert error.value.code == 2
     assert "requires a terminal" in capsys.readouterr().err
+
+
+def test_cli_variants_list_and_explicit_selection(monkeypatch, client, html, tmp_path, capsys):
+    from cambridge_audio.dictionary import dictionary_url, parse_entries, variants
+    from cambridge_audio.library import read_recording
+
+    other = (
+        html.replace("used when meeting someone", "a second meaning")
+        .replace("hello-us.mp3", "other.mp3")
+        .replace("heˈloʊ", "second")
+    )
+    entries = parse_entries(html + other, dictionary_url("hello"))
+    selected = variants(entries)[1]
+    monkeypatch.setattr(cli, "CambridgeClient", lambda *args, **kwargs: client)
+    client.session.get.return_value = response(html + other)
+    assert cli.main(["hello", "--list-variants", "--output-dir", str(tmp_path)]) == 0
+    assert selected.id in capsys.readouterr().out
+    assert not list(tmp_path.iterdir())
+    assert cli.main(["hello", "--output-dir", str(tmp_path)]) == 1
+    assert "Choose a dictionary entry" in capsys.readouterr().err
+    client.session.get.side_effect = [response(html + other), response(b"ID3selected")]
+    assert cli.main(["hello", "--variant", selected.id, "--output-dir", str(tmp_path)]) == 0
+    path = next(tmp_path.glob("*.mp3"))
+    record = read_recording(path).recording
+    assert record.definition == "a second meaning" and record.ipa == "second"
+
+
+def test_cli_download_fallback_retains_wikdict_provenance(monkeypatch, client, html, tmp_path):
+    from cambridge_audio import translations
+    from cambridge_audio.library import read_recording
+    from cambridge_audio.translations import TranslationOption, cached_translation
+
+    client.session.get.side_effect = [response(html), response(b"ID3audio")]
+    client.translations = Mock(return_value=())
+    monkeypatch.setattr(
+        translations,
+        "lookup",
+        lambda *args: (
+            TranslationOption("one", ("привет",), "greeting", origin="WikDict fixture"),
+        ),
+    )
+    monkeypatch.setattr(cli, "CambridgeClient", lambda *args, **kwargs: client)
+    assert cli.main(["hello", "--translation", "russian", "--output-dir", str(tmp_path)]) == 0
+    saved = read_recording(tmp_path / "hello.us.mp3")
+    assert cached_translation(saved, "russian").source == "WikDict"
+    assert {t.source for t in saved.translation_cache} == {"WikDict"}
+
+
+@pytest.mark.parametrize("value", ["russian", "ru", "русский", " RUSSIAN "])
+@pytest.mark.parametrize("interface_language", ["en", "ru"])
+def test_cli_accepts_only_russian_translation_aliases(
+    monkeypatch, client, html, mp3, tmp_path, value, interface_language
+):
+    client.translations = Mock(return_value=("привет",))
+    client.session.get.side_effect = [response(html), response(mp3)]
+    monkeypatch.setattr(cli, "CambridgeClient", lambda *args, **kwargs: client)
+    assert (
+        cli.main(
+            [
+                "hello",
+                "--lang",
+                interface_language,
+                "--translation",
+                value,
+                "--output-dir",
+                str(tmp_path),
+            ]
+        )
+        == 0
+    )
+    client.translations.assert_called_once_with("hello", "russian")
+
+
+@pytest.mark.parametrize("value", ["french", "english", "banana", "chinese-simplified"])
+@pytest.mark.parametrize("interface_language", ["en", "ru"])
+def test_cli_rejects_other_translation_languages_before_io(
+    monkeypatch, tmp_path, capsys, value, interface_language
+):
+    client = Mock(side_effect=AssertionError("reject before network"))
+    monkeypatch.setattr(cli, "CambridgeClient", client)
+    with pytest.raises(SystemExit) as error:
+        cli.main(
+            [
+                "hello",
+                "--lang",
+                interface_language,
+                "--translation",
+                value,
+                "--output-dir",
+                str(tmp_path / "audio"),
+            ]
+        )
+    assert error.value.code == 2
+    message = capsys.readouterr().err
+    assert (
+        "только перевод на русский" if interface_language == "ru" else "Only Russian translation"
+    ) in message
+    assert not (tmp_path / "audio").exists()
+    client.assert_not_called()

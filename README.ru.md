@@ -4,7 +4,7 @@
 
 # Cambridge Dictionary Audio
 
-[English documentation](README.md)
+[English documentation](README.md) · [История изменений](CHANGELOG.md)
 
 Скачивание MP3 с произношением английских слов и фраз из
 [Cambridge Dictionary](https://dictionary.cambridge.org/).
@@ -13,21 +13,34 @@
 
 ## Графическое приложение
 
-Скачайте установщик со страницы
-[Releases](https://github.com/0then0/cambridge-dictionary-audio/releases):
+<!-- downloads:start -->
+Прямые ссылки на опубликованную стабильную версию **v0.2.1**:
 
-- Windows x86-64: `*-setup.exe` с удалением приложения и необязательным ярлыком на рабочем столе.
-- macOS 14+: `.pkg` или `.dmg`, отдельно для Apple Silicon (`arm64`) и Intel (`x86_64`).
-- Linux x86-64 с glibc 2.34+: `.deb` для Debian/Ubuntu или `.rpm` для совместимых с Fedora систем.
-- Переносимые сборки: `.zip` для Windows, `.tar.gz` для macOS и Linux.
-
-Если релизов ещё нет, используйте запуск из исходников ниже.
+- Windows x86-64: [setup.exe](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-dictionary-audio-0.2.1-windows-x86_64-setup.exe), [portable.zip](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-dictionary-audio-0.2.1-windows-x86_64-portable.zip).
+- macOS 14+ Apple Silicon: [.pkg](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-dictionary-audio-0.2.1-macos-arm64.pkg), [.dmg](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-dictionary-audio-0.2.1-macos-arm64.dmg), [.tar.gz](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-dictionary-audio-0.2.1-macos-arm64.tar.gz).
+- macOS 14+ Intel: [.pkg](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-dictionary-audio-0.2.1-macos-x86_64.pkg), [.dmg](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-dictionary-audio-0.2.1-macos-x86_64.dmg), [.tar.gz](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-dictionary-audio-0.2.1-macos-x86_64.tar.gz).
+- Linux x86-64, glibc 2.34+: [.deb](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-dictionary-audio_0.2.1_amd64.deb), [.rpm](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-dictionary-audio-0.2.1-1.x86_64.rpm), [.tar.gz](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-dictionary-audio-0.2.1-linux-x86_64-portable.tar.gz).
+- Python CLI: [.whl](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge_dictionary_audio-0.2.1-py3-none-any.whl), [.tar.gz](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge_dictionary_audio-0.2.1.tar.gz).
+- Chrome / Firefox: [Chrome ZIP](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-audio-chrome-0.2.1.zip), [Firefox ZIP](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-audio-firefox-0.2.1.zip).
+- SHA-256: [SHA256SUMS.txt](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/SHA256SUMS.txt).
+<!-- downloads:end -->
 
 Установщики и переносимые сборки включают Python, Qt и минимальный аудио-FFmpeg
 с LAME под LGPL. Для склейки фраз не нужны отдельная установка и настройка `PATH`.
 Соответствующие исходники FFmpeg/LAME и параметры сборки входят в каждый релиз.
 В релизы также входят wheel и исходный архив CLI, а также `SHA256SUMS.txt`.
-Установщики пока не подписаны сертификатом издателя; сборки macOS не нотарифицированы.
+Для Windows нужна Windows 10 или новее. Установщики пока не подписаны сертификатом издателя; сборки macOS не нотарифицированы.
+
+CLI устанавливается отдельно из [PyPI](https://pypi.org/project/cambridge-dictionary-audio/):
+
+```sh
+uv tool install cambridge-dictionary-audio
+```
+
+Ссылки закреплены на опубликованном стабильном релизе. После следующего релиза
+команда `uv run --no-sync python scripts/download_links.py --refresh` обновит
+оба README через GitHub API. `--verify-network` дополнительно проверит прямые
+ссылки. Команда ничего не публикует.
 
 ### Запуск из исходников
 
@@ -50,10 +63,12 @@ uv run --group gui -m cambridge_audio.gui
   фона и акцента активной светлой или тёмной палитры. Изменения применяются сразу
   и запоминаются отдельно для каждой палитры; текст и иконки адаптируются для
   читаемости. **Вернуть стандартные цвета** сбрасывает активную палитру.
+  **О приложении** в настройках показывает версию, ссылку на репозиторий и сведения о лицензиях.
 - По умолчанию US; можно выбрать UK или оба и прослушивать их отдельно.
 - Необязательные русский перевод и склейка фраз через FFmpeg.
 - Скачивание выполняется в фоне. Ошибки показаны в окне; перезапись требует подтверждения.
 - Язык, тема, произношение, параметры и папка запоминаются через настройки Qt.
+  После перезапуска также восстанавливаются размер, положение и развёрнутое состояние окна.
   По умолчанию записи GUI сохраняются в `Cambridge Dictionary Audio` внутри
   пользовательской папки загрузок. Кнопка **Выбрать...** меняет каталог.
 - **Сохранённые записи** показывает файлы `word.us.mp3` и `word.uk.mp3` из выбранной
@@ -62,7 +77,7 @@ uv run --group gui -m cambridge_audio.gui
   вариантов скачивает только недостающий. **Скачать заново** запрашивает подтверждение замены.
 - Новые записи GUI сохраняют транскрипцию, определение и перевод в JSON рядом с MP3.
   Старые файлы можно слушать и без дополнительных сведений.
-  Чекбокс **Русский перевод** сразу показывает или скрывает сохранённый русский перевод.
+  Чекбокс **Показывать перевод** сразу показывает или скрывает сохранённый русский перевод.
   Если его нет, приложение загружает перевод в фоне без повторного скачивания аудио.
   В панели записи отображаются загрузка и ошибки; выключите и включите чекбокс для повтора.
 - Ползунок прокрутки имеет ширину 4 логических пикселя и расширяется до 8 при наведении.
@@ -78,6 +93,14 @@ GUI использует PySide6 6.12 Essentials и Addons без WebEngine и P
 Подробности: [релизы PySide6](https://pypi.org/project/PySide6/).
 
 `start-gui.bat` запускает GUI из исходников на Windows через uv.
+
+## Коллекция, переводы и Anki
+
+[Руководство по коллекции](docs/collection.md) описывает выбор произношения,
+переводы на русский, установку локального WikDict и экспорт в Anki из GUI, TUI
+и CLI, включая команды, горячие клавиши, совместимость записей и импорт медиа.
+[Источники и лицензии](docs/data-sources.md) содержат сведения об атрибуции
+словарных данных и их лицензировании отдельно от кода приложения.
 
 ## Расширение браузера
 
@@ -137,7 +160,8 @@ uv run -m cambridge_audio --lang ru --help
 - `--output-dir PATH`: каталог сохранения; по умолчанию `downloads/` в текущем рабочем
   каталоге. Создаётся при необходимости.
 - `--lang en|ru`: язык интерфейса, справки и сообщений приложения.
-- `--translation LANGUAGE`: язык двуязычного словаря Cambridge, например `russian`.
+- `--translation russian`: включить русский перевод; также принимаются `ru` и `русский`.
+  Другие языки перевода отклоняются.
   Перевод по умолчанию выключен и не зависит от языка интерфейса.
 - `--play` / `--no-play`: включить или выключить воспроизведение.
 - `--combine` / `--no-combine`: включить или выключить склейку отсутствующих фраз.
@@ -170,20 +194,31 @@ uv run -m cambridge_audio --lang ru --no-play --translation russian
 - **Enter** в поиске: скачать или открыть запись; в библиотеке: прослушать.
 - **Tab / Shift+Tab**: переход между элементами; **Вверх / Вниз**: выбор записи.
 - **Ctrl+L**: поиск; **Ctrl+P**: прослушать/остановить; **Ctrl+R**: обновить библиотеку.
-- **Ctrl+S**: настройки; **F1**: справка; **Ctrl+Q**: выход.
+- **Ctrl+S**: настройки; **F1**: справка; **F2**: о приложении; **Ctrl+Q**: выход.
 - **Ctrl+C**: отменить скачивание, остановить звук или выйти, если операций нет. Текущий запрос
   завершается перед отменой; уже скачанные файлы сохраняются.
 
+Все команды также доступны при любой раскладке: **F3** поиск, **F4** прослушать/остановить,
+**F5** обновить, **F6** настройки, **F7** экспорт, **F8** перевод, **F9** WikDict,
+**F10** произношение, **F11** отмена, **F12** выход. Ctrl-сочетания работают и с русскими
+и украинскими буквами на тех же клавишах. Если терминал не передаёт Ctrl с нелатинскими
+буквами, используйте функциональные клавиши.
+
+Значения перевода показаны отдельными пунктами без технических ID; Ctrl+T
+открывает выбор и редактирование. F2 или **О приложении** в справке показывает
+версию, ссылку на репозиторий и сведения о лицензиях.
+
 В настройках доступны язык интерфейса, светлая и тёмная темы, US/UK, папка,
-язык перевода, автовоспроизведение и склейка фраз. Изменения действуют в текущей
-сессии; для следующих запусков используйте параметры CLI. Перевод сохранённой
-записи можно сразу показать или скрыть. Если перевода нет, включение чекбокса
-загружает и сохраняет его без повторного скачивания MP3. По умолчанию перевод
-русский; язык можно изменить в настройках или через `--translation`.
-Загрузка и ошибки запроса отображаются в панели записи. Сведения хранятся в JSON рядом с MP3
-и совместимы с GUI. В кэше указан язык перевода; при смене языка перевод загружается
-заново. Старые JSON без языка считаются неизвестными и обновляются при включении перевода.
-MP3 без дополнительных сведений остаются доступными, пустые файлы не попадают в библиотеку.
+переключатель русского перевода, автовоспроизведение и склейка фраз. Изменения
+действуют в текущей сессии; для следующих запусков используйте параметры CLI.
+Чекбокс показывает и скрывает русский перевод сразу. Готовый кэш используется без
+повторных запросов; отсутствующий перевод загружается без скачивания MP3.
+Английское определение остаётся видимым при выключенном переводе. Язык интерфейса
+независим: русский или английский. Загрузка и ошибки показаны в панели записи.
+Метаданные хранятся в JSON рядом с MP3 и совместимы с GUI. Старые иноязычные кэши
+и пользовательские правки сохраняются с исходным языком, без удаления или подмены.
+Переводы без языка не считаются русскими автоматически. MP3 без дополнительных
+сведений остаются доступными, пустые файлы не попадают в библиотеку.
 Символьные ссылки сохраняют собственные имена, варианты произношения и JSON.
 
 Воспроизведение и склейка включены по умолчанию, произношение US, язык английский.

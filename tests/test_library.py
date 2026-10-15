@@ -161,7 +161,6 @@ def test_metadata_replace_waits_for_active_reader(tmp_path, monkeypatch):
         try:
             assert reading.wait(5)
             writer = pool.submit(library.save_metadata, Recording("hello", "us", path, "", "new"))
-            assert staged.wait(5)
             with pytest.raises(FutureTimeoutError):
                 writer.result(timeout=0.05)
         finally:
@@ -171,3 +170,30 @@ def test_metadata_replace_waits_for_active_reader(tmp_path, monkeypatch):
     assert library.read_recording(path).recording.definition == "new"
     assert path.read_bytes() == b"ID3saved"
     assert not list(tmp_path.glob("*.tmp"))
+
+
+@pytest.mark.parametrize("language", [None, "french"])
+def test_metadata_only_update_preserves_legacy_translation_and_original_language(
+    tmp_path, language
+):
+    import json
+
+    path = tmp_path / "hello.us.mp3"
+    path.write_bytes(b"ID3saved")
+    path.with_suffix(".json").write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "word": "hello",
+                "ipa": "",
+                "definition": "greeting",
+                "translations": ["bonjour"],
+                "translation_language": language,
+            }
+        )
+    )
+    record = library.read_recording(path).recording
+    library.save_metadata(record, translation_language="russian")
+    saved = library.read_recording(path)
+    assert saved.translations == ("bonjour",)
+    assert saved.translation_language == language

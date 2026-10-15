@@ -3,12 +3,24 @@
 import errno
 import sys
 from dataclasses import dataclass
+from html import escape
+from importlib.metadata import version
 from pathlib import Path
 
 import requests
 
 try:
-    from PySide6.QtCore import QSettings, QSize, QStandardPaths, Qt, QThread, QUrl, Signal, Slot
+    from PySide6.QtCore import (
+        QByteArray,
+        QSettings,
+        QSize,
+        QStandardPaths,
+        Qt,
+        QThread,
+        QUrl,
+        Signal,
+        Slot,
+    )
     from PySide6.QtGui import QDesktopServices, QIcon
     from PySide6.QtMultimedia import QAudioOutput, QMediaDevices, QMediaPlayer
     from PySide6.QtWidgets import (
@@ -19,8 +31,10 @@ try:
         QFrame,
         QGridLayout,
         QHBoxLayout,
+        QInputDialog,
         QLabel,
         QLineEdit,
+        QListView,
         QMainWindow,
         QMessageBox,
         QProgressBar,
@@ -36,14 +50,44 @@ except ModuleNotFoundError as exc:
         ) from None
     raise
 
+from .anki import export_anki
 from .audio import ffmpeg_executable
 from .desktop import APPLICATION_NAME, launch_macos_bundle
-from .dictionary import AudioNotFoundError, CambridgeClient, audio_filename, normalize_word
+from .dictionary import (
+    AudioNotFoundError,
+    CambridgeClient,
+    SelectionRequired,
+    audio_filename,
+    normalize_word,
+)
 from .i18n import translate
 from .library import SavedRecording, read_recording, save_metadata, scan_recordings
 from .preferences import PreferencesDialog
 from .service import DownloadCancelled, DownloadResult, Recording, download_recordings
-from .theme import apply_theme, stored_colors, theme_colors, themed_icon
+from .theme import (
+    ComboBox,
+    apply_theme,
+    install_scrollbars,
+    stored_colors,
+    theme_colors,
+    themed_icon,
+)
+from .translations import (
+    TranslationResult,
+    cached_translation,
+    edit_translation,
+    persist_translation,
+    resolve_translation,
+    select_translation,
+)
+from .wikdict import (
+    PACKAGE,
+    DictionaryCorrupt,
+    DictionaryMissing,
+    install_dictionary,
+    package_path,
+    validate_package,
+)
 
 
 @dataclass(frozen=True)
@@ -55,12 +99,18 @@ class DownloadRequest:
     translation: bool = False
     combine: bool = False
     overwrite: bool = False
+    variant_id: str | None = None
+    entries: tuple | None = None
+    target: Recording | None = None
+    translation_language: str = "russian"
+    dictionary_dir: Path | None = None
 
 
 class DownloadWorker(QThread):
     recording = Signal(object)
     completed = Signal(object)
     failed = Signal(str)
+    selection = Signal(object)
 
     def __init__(self, request: DownloadRequest, parent=None):
         super().__init__(parent)
@@ -69,7 +119,11 @@ class DownloadWorker(QThread):
 
     def _save_metadata(self, record, translations=()):
         try:
-            save_metadata(record, translations, "russian" if self.request.translation else None)
+            save_metadata(
+                record,
+                translations,
+                self.request.translation_language if self.request.translation else None,
+            )
         except OSError as exc:
             self.metadata_error = str(exc)
 
@@ -92,13 +146,25 @@ class DownloadWorker(QThread):
                     request.accent,
                     overwrite=request.overwrite,
                     combine=request.combine,
-                    translation="russian" if request.translation else None,
+                    translation=request.translation_language if request.translation else None,
+                    variant_id=request.variant_id,
+                    entries=request.entries,
+                    target=request.target,
+                    dictionary_dir=request.dictionary_dir,
                     on_recording=self._recording_saved,
                     check_cancelled=self._check_cancelled,
                 )
             for record in result.recordings:
-                self._save_metadata(record, result.translations)
+                self._save_metadata(
+                    record, () if result.translation_results else result.translations
+                )
+            for record, translation in zip(
+                result.recordings, result.translation_results, strict=False
+            ):
+                persist_translation(read_recording(record.path), translation)
             self.completed.emit(result)
+        except SelectionRequired as exc:
+            self.selection.emit(exc)
         except Exception as exc:
             # Keep the UI usable even when a dependency raises an unexpected error.
             self.failed.emit(self._error_message(exc))
@@ -141,14 +207,42 @@ class TranslationWorker(QThread):
         super().__init__(parent)
         self.saved = saved
         self.language = language
+        self.target_language = parent.translation_language if parent else "russian"
+        self.dictionary_dir = parent.dictionary_dir if parent else None
 
     def run(self):
         try:
             with CambridgeClient(language=self.language) as client:
-                translations = client.translations(self.saved.recording.word, "russian")
-            self.completed.emit(self.saved, translations, "")
+                result = resolve_translation(
+                    client, self.saved, self.target_language, directory=self.dictionary_dir
+                )
+            self.completed.emit(self.saved, result, "")
         except Exception as exc:
             self.completed.emit(self.saved, (), str(exc) or type(exc).__name__)
+
+
+class DictionaryWorker(QThread):
+    completed = Signal(str)
+    failed = Signal(str)
+    progress = Signal(int, int)
+
+    def __init__(self, directory, parent=None):
+        super().__init__(parent)
+        self.directory = directory
+
+    def run(self):
+        try:
+
+            def cancelled():
+                if self.isInterruptionRequested():
+                    raise DownloadCancelled("Dictionary installation cancelled.")
+
+            path = install_dictionary(
+                self.directory, progress=self.progress.emit, check_cancelled=cancelled
+            )
+            self.completed.emit(str(path))
+        except Exception as exc:
+            self.failed.emit(str(exc))
 
 
 def label(text="", *, name="", wrap=False):
@@ -194,8 +288,12 @@ class MainWindow(QMainWindow):
         self.translations: tuple[str, ...] = ()
         self._worker: DownloadWorker | None = None
         self._translation_worker: TranslationWorker | None = None
-        self._translation_errors: dict[Path, str] = {}
+        self._translation_errors: dict[tuple[Path, str], str] = {}
         self._closing = False
+        self._dictionary_worker = None
+        self._pending_selection = None
+        self.translation_language = "russian"
+        self.dictionary_dir = None
         self._status_message = "Ready to download."
         self._status_values = {}
         self._status_severity = ""
@@ -224,6 +322,10 @@ class MainWindow(QMainWindow):
         app.aboutToQuit.connect(self.shutdown)
         self._apply_theme()
         self._set_busy(False)
+        geometry = self.settings.value("window/geometry")
+        if isinstance(geometry, (QByteArray, bytes)):
+            # Qt also moves geometry from a disconnected display onto an available screen.
+            self.restoreGeometry(geometry)
         self.refresh_library()
         self.word_edit.setFocus()
 
@@ -236,6 +338,7 @@ class MainWindow(QMainWindow):
 
     def _build_ui(self):
         scroll = QScrollArea()
+        install_scrollbars(scroll)
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -291,20 +394,24 @@ class MainWindow(QMainWindow):
         entry_row.addWidget(self.download_button)
         grid.addLayout(entry_row, 1, 0, 1, 2)
         self.accent_label = label()
-        self.accent_combo = QComboBox()
+        self.accent_combo = ComboBox()
         self.accent_label.setBuddy(self.accent_combo)
-        self.translation_check = QCheckBox()
-        self.translation_check.setChecked(self.settings.value("translation", False, type=bool))
         self.combine_check = QCheckBox()
         ffmpeg_available = bool(ffmpeg_executable())
         self.combine_check.setChecked(
             ffmpeg_available and self.settings.value("combine", False, type=bool)
         )
         self.combine_check.setEnabled(ffmpeg_available)
+        self.translation_check = QCheckBox()
+        self.translation_check.setChecked(self.settings.value("translation", False, type=bool))
         grid.addWidget(self.accent_label, 2, 0)
-        grid.addWidget(self.accent_combo, 3, 0)
-        grid.addWidget(self.translation_check, 3, 1)
+        grid.addWidget(self.accent_combo, 3, 0, 1, 2)
         grid.addWidget(self.combine_check, 4, 0, 1, 2)
+        self.dictionary_button = QPushButton(self._t("Install WikDict"))
+        self.dictionary_status_label = label(name="muted", wrap=True)
+        grid.addWidget(self.translation_check, 5, 0)
+        grid.addWidget(self.dictionary_button, 5, 1)
+        grid.addWidget(self.dictionary_status_label, 6, 0, 1, 2)
         grid.setRowMinimumHeight(2, 28)
         grid.setColumnStretch(0, 1)
         grid.setColumnStretch(1, 1)
@@ -337,7 +444,7 @@ class MainWindow(QMainWindow):
 
         library_row = QHBoxLayout()
         self.library_label = label()
-        self.library_combo = QComboBox()
+        self.library_combo = ComboBox()
         self.library_combo.setSizeAdjustPolicy(
             QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon
         )
@@ -373,14 +480,31 @@ class MainWindow(QMainWindow):
         player_row.setSpacing(12)
         self.play_button = QPushButton()
         self.play_button.setMinimumWidth(100)
-        self.recording_combo = QComboBox()
+        self.recording_combo = ComboBox()
         player_row.addWidget(self.play_button)
         player_row.addWidget(self.recording_combo)
         player_row.addStretch()
         self.redownload_button = QPushButton()
         player_row.addWidget(self.redownload_button)
         result_layout.addLayout(player_row)
+        translation_actions = QHBoxLayout()
+        self.edit_translation_button = QPushButton(self._t("Edit translation"))
+        self.reset_translation_button = QPushButton(self._t("Reset translation"))
+        self.select_translation_button = QPushButton(self._t("Choose translation sense"))
+        for button in (
+            self.edit_translation_button,
+            self.reset_translation_button,
+            self.select_translation_button,
+        ):
+            translation_actions.addWidget(button)
+        result_layout.addLayout(translation_actions)
         layout.addWidget(result)
+        export_actions = QHBoxLayout()
+        self.variant_button = QPushButton(self._t("Choose another pronunciation"))
+        self.export_button = QPushButton(self._t("Export to Anki"))
+        export_actions.addWidget(self.variant_button)
+        export_actions.addWidget(self.export_button)
+        layout.addLayout(export_actions)
         layout.addStretch()
 
     def _connect_ui(self):
@@ -396,8 +520,15 @@ class MainWindow(QMainWindow):
         self.recording_combo.currentIndexChanged.connect(self._recording_selected)
         self.settings_button.clicked.connect(self.open_settings)
         self.preferences_dialog.changed.connect(self._preferences_changed)
+        self.preferences_dialog.about_requested.connect(self.show_about)
         self.accent_combo.currentIndexChanged.connect(self._accent_changed)
         self.translation_check.toggled.connect(self._translation_changed)
+        self.dictionary_button.clicked.connect(self.install_wikdict)
+        self.edit_translation_button.clicked.connect(self.edit_selected_translation)
+        self.reset_translation_button.clicked.connect(self.reset_selected_translation)
+        self.select_translation_button.clicked.connect(self.choose_translation_sense)
+        self.export_button.clicked.connect(self.export_collection)
+        self.variant_button.clicked.connect(lambda: self.start_download(choose_variant=True))
         self.combine_check.toggled.connect(lambda value: self.settings.setValue("combine", value))
 
     def _retranslate(self):
@@ -421,7 +552,24 @@ class MainWindow(QMainWindow):
         self.redownload_button.setText(self._t("Download again"))
         if self.library_combo.count() == 1 and self.library_combo.currentData() is None:
             self.library_combo.setItemText(0, self._t("No saved recordings"))
-        self.translation_check.setText(self._t("Russian translation"))
+        self.translation_check.setText(self._t("Show Russian translation"))
+        self.dictionary_button.setToolTip(
+            self._t(
+                "WikDict is a free English–Russian dictionary.\n"
+                "Install it for offline translations and as a fallback\n"
+                "when Cambridge has no translation or is unavailable."
+            )
+        )
+        self._update_dictionary_status()
+        for button, title in (
+            (self.dictionary_button, "Install WikDict"),
+            (self.edit_translation_button, "Edit translation"),
+            (self.reset_translation_button, "Reset translation"),
+            (self.select_translation_button, "Choose translation sense"),
+            (self.variant_button, "Choose another pronunciation"),
+            (self.export_button, "Export to Anki"),
+        ):
+            button.setText(self._t(title))
         self.combine_check.setText(self._t("Combine words if the phrase has no recording"))
         self.combine_check.setToolTip(
             self._t("Combining requires FFmpeg. The result is not a recording of the whole phrase.")
@@ -458,6 +606,24 @@ class MainWindow(QMainWindow):
         self.preferences_dialog.activateWindow()
 
     @Slot()
+    def show_about(self):
+        repository = "https://github.com/0then0/cambridge-dictionary-audio"
+        app_version = QApplication.instance().applicationVersion()
+        link_color = self.palette().windowText().color().name()
+        text = (
+            f"<h3>{APPLICATION_NAME}</h3>"
+            f"<p>{escape(self._t('Version {version}', version=app_version))}</p>"
+            f"<p>{escape(self._t('Download and listen to English pronunciation.'))}</p>"
+            f'<p><a href="{repository}" style="color: {link_color}">'
+            f"{escape(self._t('Source code on GitHub'))}</a></p>"
+            f"<p>{escape(self._t('Application code: Apache-2.0; inherited code: MIT.'))}</p>"
+            "<p>"
+            + escape(self._t("Dictionary content and recordings retain their own licenses."))
+            + "</p>"
+        )
+        QMessageBox.about(self.preferences_dialog, self._t("About"), text)
+
+    @Slot()
     def _accent_changed(self):
         self.accent = self.accent_combo.currentData()
         self.settings.setValue("accent", self.accent)
@@ -467,7 +633,7 @@ class MainWindow(QMainWindow):
     def _translation_changed(self, checked):
         self.settings.setValue("translation", checked)
         if checked and (record := self.selected_recording()):
-            self._translation_errors.pop(record.path, None)
+            self._translation_errors.pop((record.path, self.translation_language), None)
         self._update_translation()
 
     def _update_translation(self):
@@ -484,14 +650,19 @@ class MainWindow(QMainWindow):
                 self._t("The recording was moved or deleted. Download it again.")
             )
             return
-        self.translations = saved.translations if saved.translation_language == "russian" else ()
-        self.translation_label.setText("\n".join(self.translations))
+        result = cached_translation(saved, self.translation_language)
+        self.translations = result.texts if result else ()
+        self.translation_label.setText(
+            result.format(self.language, show_ids=False) if result else ""
+        )
         if not visible:
             return
-        if self.translations:
+        if result:
             return
-        elif record.path in self._translation_errors:
-            self.translation_label.setText(self._translation_errors[record.path])
+        elif (record.path, self.translation_language) in self._translation_errors:
+            self.translation_label.setText(
+                self._translation_errors[(record.path, self.translation_language)]
+            )
         else:
             self.translation_label.setText(self._t("Loading translation..."))
             if self._translation_worker is None and self._worker is None and not self._closing:
@@ -504,24 +675,195 @@ class MainWindow(QMainWindow):
 
     @Slot(object, object, str)
     def _translation_completed(self, saved, translations, error):
+        language = (
+            self._translation_worker.target_language
+            if self._translation_worker
+            else self.translation_language
+        )
         record = saved.recording
-        if error or not translations:
-            self._translation_errors[record.path] = (
-                self._t("Translation: {error}", error=error)
-                if error
+        result = translations if isinstance(translations, TranslationResult) else None
+        if error or result is None or not result.options:
+            self._translation_errors[(record.path, language)] = (
+                self._t("Translation: {error}", error=error or (result.error if result else ""))
+                if error or (result and result.error)
                 else self._t("No translation found. Toggle off and on to retry.")
             )
         else:
             try:
-                # Cache beside each logical accent, including symlink aliases.
                 for item in scan_recordings(record.path.parent):
-                    if item.recording.word == record.word:
-                        save_metadata(item.recording, translations, "russian")
+                    if (
+                        item.recording.word == record.word
+                        and item.recording.sense_id == record.sense_id
+                    ):
+                        persist_translation(item, result)
             except OSError as exc:
-                self._translation_errors[record.path] = self._t(
-                    "Audio saved. Details could not be saved: {error}", error=exc
-                )
+                self._translation_errors[(record.path, language)] = str(exc)
         self._update_translation()
+
+    def _selected_saved(self):
+        record = self.selected_recording()
+        return read_recording(record.path) if record else None
+
+    def edit_selected_translation(self):
+        saved = self._selected_saved()
+        if not saved:
+            return
+        result = cached_translation(saved, self.translation_language)
+        text, accepted = QInputDialog.getMultiLineText(
+            self,
+            self._t("Edit translation"),
+            self._t("Translation"),
+            "\n".join(result.texts) if result else "",
+        )
+        if accepted:
+            try:
+                edit_translation(saved, self.translation_language, text)
+                self._update_translation()
+            except (OSError, ValueError) as exc:
+                self._status("Error: {error}", severity="error", error=str(exc))
+
+    def reset_selected_translation(self):
+        saved = self._selected_saved()
+        if saved:
+            try:
+                edit_translation(saved, self.translation_language, None)
+                self._update_translation()
+            except OSError as exc:
+                self._status("Error: {error}", severity="error", error=str(exc))
+
+    def choose_translation_sense(self):
+        saved = self._selected_saved()
+        result = cached_translation(saved, self.translation_language) if saved else None
+        if not result or not result.options:
+            return
+        options = [o.label_for(self.language) for o in result.options]
+        text, accepted = QInputDialog.getItem(
+            self, self._t("Choose translation sense"), self._t("Source senses"), options, 0, False
+        )
+        if accepted:
+            try:
+                select_translation(
+                    saved, self.translation_language, result.options[options.index(text)].id
+                )
+                self._update_translation()
+            except (OSError, ValueError) as exc:
+                self._status("Error: {error}", severity="error", error=str(exc))
+
+    def _update_dictionary_status(self):
+        try:
+            validate_package(package_path(self.dictionary_dir, PACKAGE), PACKAGE)
+        except DictionaryMissing:
+            message = "Offline dictionary: not installed."
+        except DictionaryCorrupt:
+            message = "Offline dictionary: damaged."
+        except OSError:
+            message = "Offline dictionary: unavailable."
+        else:
+            message = "Offline dictionary: ready."
+        self.dictionary_status_label.setText(self._t(message))
+
+    def install_wikdict(self):
+        if self._dictionary_worker or self._closing:
+            return
+        title = self._t("Install WikDict")
+        try:
+            validate_package(package_path(self.dictionary_dir, PACKAGE), PACKAGE)
+        except DictionaryMissing:
+            self.dictionary_status_label.setText(self._t("Offline dictionary: not installed."))
+            message = self._t("Install the English–Russian WikDict package?")
+        except DictionaryCorrupt:
+            self.dictionary_status_label.setText(self._t("Offline dictionary: damaged."))
+            title = self._t("Reinstall WikDict")
+            message = self._t("The installed WikDict package is damaged. Download it again?")
+        except OSError as exc:
+            self.dictionary_status_label.setText(self._t("Offline dictionary: unavailable."))
+            self._status("Error: {error}", severity="error", error=str(exc))
+            return
+        else:
+            self.dictionary_status_label.setText(self._t("Offline dictionary: ready."))
+            title = self._t("Reinstall WikDict")
+            message = self._t("WikDict is already installed and verified. Download it again?")
+        if (
+            QMessageBox.question(
+                self,
+                title,
+                message + "\n\n" + PACKAGE.describe(self.language) + "\n" + PACKAGE.license_url,
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            != QMessageBox.StandardButton.Yes
+        ):
+            return
+        worker = DictionaryWorker(self.dictionary_dir, self)
+        self._dictionary_worker = worker
+        self.dictionary_button.setEnabled(False)
+        worker.progress.connect(
+            lambda done, total: self._status(
+                "WikDict: {done} / {total} bytes", done=done, total=total
+            )
+        )
+        worker.completed.connect(lambda path: self._status("WikDict installed: {path}", path=path))
+        worker.failed.connect(
+            lambda error: self._status("Error: {error}", severity="error", error=error)
+        )
+        worker.finished.connect(self._dictionary_finished)
+        worker.finished.connect(worker.deleteLater)
+        worker.start()
+
+    def _dictionary_finished(self):
+        if self._dictionary_worker:
+            self._dictionary_worker.wait()
+        self._dictionary_worker = None
+        self.dictionary_button.setEnabled(True)
+        self._update_dictionary_status()
+        self._translation_errors.clear()
+        if self._closing:
+            if self._worker is None and self._translation_worker is None:
+                self.close()
+                QApplication.instance().quit()
+        else:
+            self._update_translation()
+
+    def export_collection(self):
+        choices = [self._t("Selected recording"), self._t("Whole collection")]
+        dialog = QInputDialog(self)
+        dialog.setWindowTitle(self._t("Export to Anki"))
+        dialog.setLabelText(self._t("Export"))
+        dialog.setComboBoxItems(choices)
+        dialog.setComboBoxEditable(False)
+        dialog.setOption(QInputDialog.InputDialogOption.UseListViewForComboBoxItems)
+        list_view = dialog.findChild(QListView)
+        if list_view is not None:
+            install_scrollbars(list_view)
+            rows_height = sum(list_view.sizeHintForRow(row) for row in range(len(choices)))
+            list_view.setMinimumSize(420, max(160, rows_height + 2 * list_view.frameWidth()))
+        dialog.setOkButtonText(self._t("Export"))
+        dialog.setCancelButtonText(self._t("Cancel"))
+        if dialog.exec() != QInputDialog.DialogCode.Accepted:
+            return
+        scope = dialog.textValue()
+        parent = QFileDialog.getExistingDirectory(
+            self, self._t("Choose export parent folder"), str(self.output_dir)
+        )
+        if not parent:
+            return
+        try:
+            if scope == choices[0] and (selected := self.selected_recording()) is not None:
+                if self._selected_saved() is None:
+                    raise FileNotFoundError(f"Missing or unreadable MP3: {selected.path}")
+            records = (
+                [self._selected_saved()]
+                if scope == choices[0] and self._selected_saved()
+                else scan_recordings(self.output_dir)
+                if scope == choices[1]
+                else []
+            )
+            path = export_anki(
+                records, Path(parent) / "cambridge-anki", language=self.translation_language
+            )
+            self._status("Anki export saved: {path}", path=str(path))
+        except (OSError, ValueError) as exc:
+            self._status("Error: {error}", severity="error", error=str(exc))
 
     @Slot()
     def _translation_finished(self):
@@ -529,7 +871,7 @@ class MainWindow(QMainWindow):
             self._translation_worker.wait()
         self._translation_worker = None
         if self._closing:
-            if self._worker is None:
+            if self._worker is None and self._dictionary_worker is None:
                 self.close()
                 QApplication.instance().quit()
         else:
@@ -583,7 +925,6 @@ class MainWindow(QMainWindow):
         for widget in (
             self.word_edit,
             self.accent_combo,
-            self.translation_check,
             self.choose_button,
             self.preferences_dialog.language_combo,
             self.library_combo,
@@ -599,9 +940,11 @@ class MainWindow(QMainWindow):
         self.library_combo.setEnabled(not busy and bool(self.library_combo.currentData()))
 
     @Slot()
-    def start_download(self, *, force=False):
+    def start_download(self, *, force=False, choose_variant=False):
         if self._worker is not None:
             return
+        if choose_variant and not self.word_edit.text().strip() and self.selected_recording():
+            self.word_edit.setText(self.selected_recording().word)
         try:
             word = normalize_word(self.word_edit.text(), self.language)
         except ValueError as exc:
@@ -609,16 +952,26 @@ class MainWindow(QMainWindow):
             self.word_edit.setFocus()
             return
         accents = ("us", "uk") if self.accent == "both" else (self.accent,)
+        target = self.selected_recording() if force else None
         existing = [self.output_dir / audio_filename(word, accent) for accent in accents]
         existing = [path for path in existing if path.is_file()]
         saved = [item for path in existing if (item := read_recording(path))]
         # Empty files are not cache hits, but replacing them still requires consent.
         force = force or len(saved) != len(existing)
-        if saved and not force:
+        if not force and not choose_variant:
+            saved = [
+                item
+                for item in scan_recordings(self.output_dir)
+                if item.recording.word == word and item.recording.accent in accents
+            ]
+            existing = [item.recording.path for item in saved]
+        if saved and not force and not choose_variant:
             self._open_saved(saved)
-            if len(saved) == len(accents):
+            if all(a in {s.recording.accent for s in saved} for a in accents):
                 self._status("Opened saved recording.")
                 return
+        if target:
+            existing = [target.path]
         missing = [a for a in accents if a not in {s.recording.accent for s in saved}]
         overwrite = False
         if existing and force:
@@ -656,17 +1009,70 @@ class MainWindow(QMainWindow):
             self.translation_check.isChecked(),
             self.combine_check.isChecked(),
             overwrite,
+            target=target,
+            translation_language=self.translation_language,
+            dictionary_dir=self.dictionary_dir,
         )
+        self._launch_download(request)
+
+    def _launch_download(self, request):
         worker = DownloadWorker(request, self)
         self._worker = worker
+        self._selection_word = request.word
         worker.recording.connect(self._on_recording)
         worker.completed.connect(self._on_completed)
         worker.failed.connect(self._on_failed)
+        worker.selection.connect(self._selection_required)
         worker.finished.connect(self._finished)
         worker.finished.connect(worker.deleteLater)
         self._set_busy(True)
         self._status("Downloading...")
         worker.start()
+
+    def _selection_required(self, selection):
+        self._pending_selection = selection
+
+    def _choose_variant(self, selection):
+        labels = [v.label + f" [{v.id[:8]}]" for v in selection.choices]
+        text, accepted = QInputDialog.getItem(
+            self, self._t("Choose pronunciation"), self._t("Dictionary entry"), labels, 0, False
+        )
+        if not accepted:
+            self._status("Download cancelled.")
+            return
+        choice = selection.choices[labels.index(text)]
+        path = self.output_dir / audio_filename(
+            self._selection_word, choice.pronunciation.accent, choice.id
+        )
+        overwrite = False
+        if path.exists():
+            if (
+                QMessageBox.question(
+                    self,
+                    self._t("Replace recordings?"),
+                    str(path),
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.No,
+                )
+                != QMessageBox.StandardButton.Yes
+            ):
+                return
+            overwrite = True
+        self._launch_download(
+            DownloadRequest(
+                self._selection_word,
+                self.output_dir,
+                choice.pronunciation.accent,
+                self.language,
+                self.translation_check.isChecked(),
+                self.combine_check.isChecked(),
+                overwrite,
+                variant_id=choice.id,
+                entries=selection.entries,
+                translation_language=self.translation_language,
+                dictionary_dir=self.dictionary_dir,
+            )
+        )
 
     @Slot(object)
     def _on_recording(self, recording: Recording):
@@ -685,8 +1091,9 @@ class MainWindow(QMainWindow):
                 error=self._worker.metadata_error,
             )
         elif result.translation_error:
+            language = self._worker.request.translation_language
             for record in result.recordings:
-                self._translation_errors[record.path] = self._t(
+                self._translation_errors[(record.path, language)] = self._t(
                     "Translation: {error}", error=result.translation_error
                 )
             self._status(
@@ -710,8 +1117,12 @@ class MainWindow(QMainWindow):
             self._worker.wait()
         self._worker = None
         self._set_busy(False)
+        if self._pending_selection is not None and not self._closing:
+            selection, self._pending_selection = self._pending_selection, None
+            self._choose_variant(selection)
+            return
         if self._closing:
-            if self._translation_worker is None:
+            if self._translation_worker is None and self._dictionary_worker is None:
                 self.close()
                 QApplication.instance().quit()
         else:
@@ -723,7 +1134,13 @@ class MainWindow(QMainWindow):
         if selected is None:
             selected = max(0, self.recording_combo.currentIndex())
         choices = [
-            (self._t("American (US)" if record.accent == "us" else "British (UK)"), str(i))
+            (
+                record.label
+                if record.part_of_speech
+                or sum(r.accent == record.accent for r in self.recordings) > 1
+                else self._t("American (US)" if record.accent == "us" else "British (UK)"),
+                str(i),
+            )
             for i, record in enumerate(self.recordings)
         ]
         set_choices(self.recording_combo, choices, str(selected))
@@ -747,7 +1164,8 @@ class MainWindow(QMainWindow):
         )
         self.ipa_label.setVisible(record is not None)
         self.definition_label.setText(
-            record.definition or self._t("Details are unavailable for this saved recording.")
+            (f"{record.part_of_speech} · " if record.part_of_speech else "") + record.definition
+            or self._t("Details are unavailable for this saved recording.")
             if record
             else self._t("Download a word or phrase to listen to it here.")
         )
@@ -770,7 +1188,7 @@ class MainWindow(QMainWindow):
             (
                 item.translations
                 for item in saved
-                if item.translations and item.translation_language == "russian"
+                if item.translations and item.translation_language == self.translation_language
             ),
             (),
         )
@@ -791,7 +1209,7 @@ class MainWindow(QMainWindow):
         self.library_combo.clear()
         for item in self._library:
             record = item.recording
-            self.library_combo.addItem(f"{record.word} · {record.accent.upper()}", str(record.path))
+            self.library_combo.addItem(record.label, str(record.path))
         if not self._library:
             self.library_combo.addItem(self._t("No saved recordings"), None)
         index = self.library_combo.findData(previous) if previous else 0
@@ -884,9 +1302,10 @@ class MainWindow(QMainWindow):
         """Also protect active workers when the OS menu quits the whole application."""
         self.preferences_dialog.hide()
         self.player.stop()
+        self.settings.setValue("window/geometry", self.saveGeometry())
         self.settings.sync()
         self.hide()
-        for worker in (self._worker, self._translation_worker):
+        for worker in (self._worker, self._translation_worker, self._dictionary_worker):
             if worker is not None and worker.isRunning():
                 worker.requestInterruption()
                 worker.wait()
@@ -894,9 +1313,12 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event):
         self.preferences_dialog.hide()
         self.player.stop()
+        self.settings.setValue("window/geometry", self.saveGeometry())
         self.settings.sync()
         workers = [
-            w for w in (self._worker, self._translation_worker) if w is not None and w.isRunning()
+            w
+            for w in (self._worker, self._translation_worker, self._dictionary_worker)
+            if w is not None and w.isRunning()
         ]
         if workers:
             QApplication.instance().setQuitOnLastWindowClosed(False)
@@ -914,6 +1336,7 @@ def create_application(argv: list[str] | None = None) -> QApplication:
     QApplication.setOrganizationName("CambridgeDictionaryAudio")
     app = QApplication(sys.argv if argv is None else argv)
     app.setApplicationDisplayName(APPLICATION_NAME)
+    app.setApplicationVersion(version("cambridge-dictionary-audio"))
     app.setDesktopFileName("cambridge-dictionary-audio")
     app.setWindowIcon(QIcon(str(Path(__file__).resolve().parents[1] / "assets" / "icon.svg")))
     app.setStyle("Fusion")

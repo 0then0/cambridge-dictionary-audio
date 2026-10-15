@@ -11,6 +11,16 @@ from cambridge_audio.dictionary import BASE_URL, CambridgeClient
 _executor_type = concurrent.futures.ThreadPoolExecutor
 
 MP3 = b"ID3\x04\x00\x00\x00\x00\x00\x00audio data"
+
+
+@pytest.fixture(autouse=True)
+def isolated_dictionary_directory(tmp_path, monkeypatch):
+    # Tests must not depend on a dictionary installed in the user's profile.
+    monkeypatch.setattr(
+        "cambridge_audio.wikdict.default_dictionary_dir", lambda: tmp_path / "dictionaries"
+    )
+
+
 HTML = """
 <div class="entry-body__el">
   <div class="pos-header dpos-h">
@@ -55,3 +65,36 @@ def html():
 @pytest.fixture
 def mp3():
     return MP3
+
+
+@pytest.fixture
+def wikdict_package(tmp_path):
+    import hashlib
+    import sqlite3
+    from dataclasses import replace
+
+    from cambridge_audio import wikdict
+
+    source = tmp_path / "source.sqlite3"
+    with sqlite3.connect(source) as connection:
+        connection.execute(
+            "CREATE TABLE translation (lexentry, sense_num, sense, written_rep, trans_list, score)"
+        )
+        connection.executemany(
+            "INSERT INTO translation VALUES (?, NULL, ?, ?, ?, ?)",
+            [
+                ("eng/bank__Noun__1", "financial institution", "bank", "[[банк]] | банк", 100),
+                (
+                    "eng/bank__Noun__2",
+                    "edge of a river",
+                    "bank",
+                    "[[берег|бе́рег]] | {{l|ru|берег}}",
+                    90,
+                ),
+                ("eng/hello__Interjection__1", "greeting", "hello", "[[привет]]", 100),
+            ],
+        )
+    content = source.read_bytes()
+    return replace(
+        wikdict.PACKAGE, size=len(content), sha256=hashlib.sha256(content).hexdigest()
+    ), content

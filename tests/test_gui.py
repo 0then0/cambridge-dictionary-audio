@@ -1,6 +1,9 @@
 """Exercise desktop behavior offscreen with isolated settings and mocked HTTP."""
 
 import os
+import subprocess
+import sys
+import textwrap
 import time
 from pathlib import Path
 from unittest.mock import Mock
@@ -261,6 +264,97 @@ def test_application_quit_joins_active_worker(window, app, monkeypatch, client, 
     assert client.session.get.call_count == 1
 
 
+@pytest.mark.parametrize("order", ["dictionary-only", "dictionary-first", "download-first"])
+def test_close_during_dictionary_installation_exits_event_loop(tmp_path, order):
+    # A real event loop in a fresh process catches an application that stays
+    # alive after hiding its window, unlike the processEvents-only GUI fixture.
+    script = textwrap.dedent("""
+        import sys
+        from pathlib import Path
+        from threading import Event
+        from unittest.mock import patch
+
+        from PySide6.QtCore import QSettings, QTimer
+        from PySide6.QtWidgets import QMessageBox
+        from cambridge_audio import gui, wikdict
+
+        root, order = Path(sys.argv[1]), sys.argv[2]
+        app = gui.create_application([])
+        dictionary_entered, dictionary_release = Event(), Event()
+        download_entered, download_release = Event(), Event()
+        state = {"closed": False, "watchdog": False}
+
+        def installer(*args, check_cancelled, **kwargs):
+            dictionary_entered.set()
+            assert dictionary_release.wait(5)
+            check_cancelled()
+            raise AssertionError("Closing must cancel installation")
+
+        def download(*args, check_cancelled, **kwargs):
+            download_entered.set()
+            assert download_release.wait(5)
+            check_cancelled()
+            raise AssertionError("Closing must cancel download")
+
+        def watchdog():
+            state["watchdog"] = True
+            dictionary_release.set()
+            download_release.set()
+            app.quit()
+
+        def close_when_started():
+            if not dictionary_entered.is_set() or (
+                order != "dictionary-only" and not download_entered.is_set()
+            ):
+                QTimer.singleShot(10, close_when_started)
+                return
+            state["closed"] = True
+            if order == "dictionary-first":
+                window._dictionary_worker.finished.connect(download_release.set)
+            elif order == "download-first":
+                window._worker.finished.connect(dictionary_release.set)
+            window.close()
+            assert not window.isVisible()
+            if order == "download-first":
+                download_release.set()
+            else:
+                dictionary_release.set()
+
+        settings = QSettings(str(root / "settings.ini"), QSettings.Format.IniFormat)
+        settings.setValue("output_dir", str(root / "audio"))
+        with (
+            patch.object(wikdict, "default_dictionary_dir", return_value=root / "dict"),
+            patch.object(gui, "install_dictionary", installer),
+            patch.object(gui, "download_recordings", download),
+            patch.object(QMessageBox, "question", return_value=QMessageBox.StandardButton.Yes),
+        ):
+            window = gui.MainWindow(settings)
+            window.show()
+            window.install_wikdict()
+            if order != "dictionary-only":
+                window.word_edit.setText("hello")
+                window.start_download()
+            QTimer.singleShot(0, close_when_started)
+            QTimer.singleShot(4000, watchdog)
+            app.exec()
+            assert state["closed"], "The close scenario did not run"
+            assert not state["watchdog"], "Hidden application did not quit after workers finished"
+            assert window._worker is None
+            assert window._dictionary_worker is None
+            assert not (root / "audio").exists()
+            assert not (root / "dict").exists()
+    """)
+    result = subprocess.run(
+        [sys.executable, "-c", script, str(tmp_path), order],
+        cwd=Path(__file__).resolve().parents[1],
+        env={**os.environ, "QT_QPA_PLATFORM": "offscreen"},
+        capture_output=True,
+        text=True,
+        timeout=15,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
 def test_missing_recording_reports_error_instead_of_launching_player(window, monkeypatch):
     record = Recording("hello", "us", window.output_dir / "missing.mp3", "", "")
     window._on_recording(record)
@@ -299,7 +393,7 @@ def test_restart_restores_recording_and_details_without_network(window, app, mon
         assert restored.selected_recording().path == path
         assert restored.ipa_label.text() == "US /heˈloʊ/"
         assert restored.definition_label.text() == "a greeting"
-        assert restored.translation_label.text() == "привет"
+        assert "Cambridge\nпривет" in restored.translation_label.text()
         assert restored.play_button.isEnabled()
         device = Mock()
         device.isNull.return_value = False
@@ -363,7 +457,7 @@ def test_new_download_details_survive_restart(window, app, monkeypatch, client, 
     try:
         assert restored.selected_recording().ipa == "heˈloʊ"
         assert restored.definition_label.text() == "used when meeting someone"
-        assert restored.translation_label.text() == "привет"
+        assert "Cambridge\nпривет" in restored.translation_label.text()
         restored.word_edit.setText("hello")
         assert restored.download_button.text() == "Open saved"
         worker = Mock()
@@ -419,7 +513,7 @@ def test_translation_checkbox_toggles_saved_translation_without_network(window, 
     assert window.translation_label.isHidden()
     window.translation_check.click()
     assert window.translation_label.isVisible()
-    assert window.translation_label.text() == "привет"
+    assert "Cambridge\nпривет" in window.translation_label.text()
     assert window.settings.value("translation", type=bool)
     window.translation_check.click()
     assert window.translation_label.isHidden()
@@ -431,7 +525,7 @@ def test_translation_checkbox_toggles_saved_translation_without_network(window, 
     assert window.translation_label.isHidden()
     window.translation_check.click()
     assert window.translation_label.isVisible()
-    assert window.translation_label.text() == "привет"
+    assert "Cambridge\nпривет" in window.translation_label.text()
     assert path.with_suffix(".json").read_bytes() == metadata
     client.assert_not_called()
 
@@ -451,13 +545,13 @@ def test_translation_checkbox_fetches_empty_cache_without_redownloading(
     window.translation_check.click()
     assert window.translation_label.isVisible()
     wait_until(app, lambda: window._translation_worker is None)
-    assert window.translation_label.text() == "привет"
+    assert "Cambridge\nпривет" in window.translation_label.text()
     assert read_recording(path).translation_language == "russian"
     assert path.read_bytes() == mp3
     window.translation_check.click()
     assert window.translation_label.isHidden()
     window.translation_check.click()
-    assert window.translation_label.text() == "привет"
+    assert "Cambridge\nпривет" in window.translation_label.text()
     client.translations.assert_called_once_with("hello", "russian")
     client.download.assert_not_called()
 
@@ -573,7 +667,7 @@ def test_gui_refetches_foreign_or_unknown_translation(
     window.translation_check.click()
     assert window.translation_label.text() != "bonjour"
     wait_until(app, lambda: window._translation_worker is None)
-    assert window.translation_label.text() == "привет"
+    assert "Cambridge\nпривет" in window.translation_label.text()
     assert read_recording(path).translation_language == "russian"
     client.translations.assert_called_once_with("hello", "russian")
 
@@ -591,13 +685,14 @@ def test_gui_translation_failure_can_be_retried_without_audio_download(
     window.refresh_library()
     window.translation_check.click()
     wait_until(app, lambda: window._translation_worker is None)
-    assert window.translation_label.text() == "Translation: offline"
+    assert window.translation_label.text().startswith("Translation: offline")
+    assert "not installed" in window.translation_label.text()
     app.processEvents()
     assert client.translations.call_count == 1
     window.translation_check.click()
     window.translation_check.click()
     wait_until(app, lambda: window._translation_worker is None)
-    assert window.translation_label.text() == "привет"
+    assert "Cambridge\nпривет" in window.translation_label.text()
     assert path.read_bytes() == mp3
 
 
@@ -652,7 +747,7 @@ def test_gui_translation_finishes_safely_after_context_change(
     assert first.read_bytes() == mp3
     if change == "selection":
         assert window.selected_recording().word == "world"
-        assert window.translation_label.text() == "мир"
+        assert "Cambridge\nмир" in window.translation_label.text()
     elif change in ("folder", "hide"):
         assert window.translation_label.isHidden()
     else:
@@ -748,3 +843,634 @@ def test_gui_empty_recording_can_be_replaced_with_confirmation(
     else:
         assert path.read_bytes() == b""
         client.session.get.assert_not_called()
+
+
+def test_gui_variant_selection_and_redownload_preserve_other_variants(
+    window, app, monkeypatch, client, html
+):
+    from cambridge_audio.library import read_recording
+
+    second = (
+        html.replace("used when meeting someone", "a second meaning")
+        .replace("hello-us.mp3", "hello-second.mp3")
+        .replace("heˈloʊ", "different")
+    )
+    choices_html = html + second
+    client.session.get.side_effect = [
+        response(choices_html),
+        response(b"ID3first"),
+        response(choices_html),
+        response(b"ID3second"),
+        response(choices_html),
+        response(b"ID3replaced"),
+    ]
+    monkeypatch.setattr(gui, "CambridgeClient", lambda **kwargs: client)
+    selected_index = [0]
+    monkeypatch.setattr(
+        gui.QInputDialog, "getItem", lambda *args: (args[3][selected_index[0]], True)
+    )
+    window.word_edit.setText("hello")
+    window.start_download()
+    wait_until(app, lambda: window._worker is None)
+    first = window.selected_recording()
+    assert first.definition == "used when meeting someone"
+    assert first.path.read_bytes() == b"ID3first"
+    selected_index[0] = 1
+    window.word_edit.clear()
+    window.start_download(choose_variant=True)
+    wait_until(app, lambda: window._worker is None)
+    second_record = window.selected_recording()
+    assert second_record.definition == "a second meaning"
+    assert second_record.ipa == "different"
+    assert second_record.path != first.path
+    assert second_record.path.read_bytes() == b"ID3second"
+    assert read_recording(second_record.path).recording == second_record
+    monkeypatch.setattr(QMessageBox, "exec", lambda self: QMessageBox.StandardButton.Yes)
+    window.redownload()
+    wait_until(app, lambda: window._worker is None)
+    assert second_record.path.read_bytes() == b"ID3replaced"
+    assert first.path.read_bytes() == b"ID3first"
+    assert window.library_combo.count() == 2
+
+
+def test_gui_edit_while_translation_pending_survives_late_response(
+    window, app, monkeypatch, client, mp3
+):
+    from threading import Event
+
+    from cambridge_audio.library import read_recording, save_metadata
+    from cambridge_audio.translations import cached_translation
+
+    window.output_dir.mkdir()
+    path = window.output_dir / "hello.us.mp3"
+    path.write_bytes(mp3)
+    save_metadata(Recording("hello", "us", path, "", "greeting", sense_id="greeting"))
+    entered, release = Event(), Event()
+
+    def translate(word, language):
+        entered.set()
+        assert release.wait(5)
+        return ("automatic",)
+
+    client.translations = Mock(side_effect=translate)
+    monkeypatch.setattr(gui, "CambridgeClient", lambda **kwargs: client)
+    monkeypatch.setattr(gui.QInputDialog, "getMultiLineText", lambda *args: ("personal", True))
+    window.refresh_library()
+    window.translation_check.setChecked(True)
+    wait_until(app, entered.is_set)
+    try:
+        window.edit_selected_translation()
+        window.translation_check.setChecked(False)
+    finally:
+        release.set()
+    wait_until(app, lambda: window._translation_worker is None)
+    result = cached_translation(read_recording(path), "russian")
+    assert result.source == "User" and result.texts == ("personal",)
+    assert window.translation_label.isHidden()
+    window.translation_check.setChecked(True)
+    assert "User\npersonal" in window.translation_label.text()
+    client.translations.assert_called_once()
+
+
+def test_gui_interface_language_change_keeps_foreign_edit_and_russian_response(
+    window, app, monkeypatch, client, mp3
+):
+    from threading import Event
+
+    from cambridge_audio.library import read_recording, save_metadata
+    from cambridge_audio.translations import cached_translation, edit_translation
+
+    window.output_dir.mkdir()
+    path = window.output_dir / "hello.us.mp3"
+    path.write_bytes(mp3)
+    save_metadata(Recording("hello", "us", path, "", "greeting"))
+    edit_translation(read_recording(path), "french", "bonjour personnel")
+    entered, release = Event(), Event()
+
+    def translate(word, language):
+        assert language == "russian"
+        entered.set()
+        assert release.wait(5)
+        return ("привет",)
+
+    client.translations = Mock(side_effect=translate)
+    monkeypatch.setattr(gui, "CambridgeClient", lambda **kwargs: client)
+    window.refresh_library()
+    window.translation_check.setChecked(True)
+    wait_until(app, entered.is_set)
+    try:
+        window.preferences_dialog.language_combo.setCurrentIndex(
+            window.preferences_dialog.language_combo.findData("ru")
+        )
+    finally:
+        release.set()
+    wait_until(app, lambda: window._translation_worker is None)
+    saved = read_recording(path)
+    assert window.language == "ru" and window.translation_language == "russian"
+    assert window.translation_check.text() == "Показывать перевод на русский"
+    assert "привет" in window.translation_label.text()
+    assert "bonjour" not in window.translation_label.text()
+    assert cached_translation(saved, "russian").texts == ("привет",)
+    assert cached_translation(saved, "french").texts == ("bonjour personnel",)
+    client.translations.assert_called_once_with("hello", "russian")
+
+
+def test_gui_export_selected_and_all_and_reports_missing_mp3(window, monkeypatch, mp3, tmp_path):
+    from cambridge_audio.library import save_metadata
+
+    window.output_dir.mkdir()
+    for accent in ("us", "uk"):
+        path = window.output_dir / f"hello.{accent}.mp3"
+        path.write_bytes(mp3)
+        save_metadata(Recording("hello", accent, path, "", "greeting"))
+    window.refresh_library()
+    parent = tmp_path / "exports"
+    parent.mkdir()
+    monkeypatch.setattr(gui.QFileDialog, "getExistingDirectory", lambda *args: str(parent))
+    scope = [0]
+
+    def accept_export(dialog):
+        dialog.setTextValue(dialog.comboBoxItems()[scope[0]])
+        return gui.QInputDialog.DialogCode.Accepted
+
+    monkeypatch.setattr(gui.QInputDialog, "exec", accept_export)
+    window.export_collection()
+    output = parent / "cambridge-anki"
+    assert len(list((output / "media").iterdir())) == 1
+    scope[0] = 1
+    window.export_collection()
+    assert len(list((output / "media").iterdir())) == 2
+    original = (output / "collection.tsv").read_bytes()
+    window.selected_recording().path.unlink()
+    scope[0] = 0
+    window.export_collection()
+    assert window.status_label.property("severity") == "error"
+    assert (output / "collection.tsv").read_bytes() == original
+
+
+@pytest.mark.parametrize("language, theme, font_size", [("en", "light", 14), ("ru", "dark", 21)])
+def test_short_combo_popups_show_every_row_without_scrolling(
+    window, app, language, theme, font_size
+):
+    window.settings.setValue("language", language)
+    window.settings.setValue("theme", theme)
+    window._preferences_changed()
+    window.preferences_dialog.show()
+    for combo in (
+        window.preferences_dialog.language_combo,
+        window.preferences_dialog.theme_combo,
+        window.accent_combo,
+    ):
+        font = combo.font()
+        font.setPixelSize(font_size)
+        combo.setFont(font)
+        try:
+            combo.showPopup()
+            app.processEvents()
+            view = combo.view()
+            assert view.verticalScrollBar().maximum() == 0
+            for row in range(combo.count()):
+                rectangle = view.visualRect(view.model().index(row, 0))
+                assert rectangle.top() >= 0
+                assert rectangle.bottom() < view.viewport().height()
+        finally:
+            combo.hidePopup()
+
+
+def test_long_combo_popup_keeps_scrolling_available(window, app):
+    combo = gui.ComboBox(window)
+    combo.addItems([f"Recording {index}" for index in range(100)])
+    try:
+        combo.showPopup()
+        app.processEvents()
+        assert combo.view().verticalScrollBar().maximum() > 0
+        assert combo.view().height() < sum(combo.view().sizeHintForRow(i) for i in range(100))
+    finally:
+        combo.hidePopup()
+        combo.close()
+
+
+@pytest.mark.parametrize("language, title", [("en", "About"), ("ru", "О приложении")])
+def test_settings_about_shows_installed_version_repository_and_licenses(
+    window, app, monkeypatch, language, title
+):
+    from importlib.metadata import version
+
+    window.settings.setValue("language", language)
+    window._preferences_changed()
+    about = Mock()
+    monkeypatch.setattr(QMessageBox, "about", about)
+    window.preferences_dialog.about_button.click()
+    parent, actual_title, text = about.call_args.args
+    assert parent is window.preferences_dialog
+    assert actual_title == title
+    assert window.preferences_dialog.about_button.text() == title
+    assert app.applicationVersion() == version("cambridge-dictionary-audio")
+    assert app.applicationVersion() in text
+    assert "Cambridge Dictionary Audio" in text
+    assert 'href="https://github.com/0then0/cambridge-dictionary-audio"' in text
+    assert "Apache-2.0" in text and "MIT" in text
+    assert ("own licenses" if language == "en" else "собственные лицензии") in text
+
+
+@pytest.mark.parametrize("language,size", [("en", "20.9 MB"), ("ru", "20,9 МБ")])
+def test_wikdict_install_confirmation_shows_megabytes(window, monkeypatch, language, size):
+    window.language = language
+    question = Mock(return_value=QMessageBox.StandardButton.No)
+    monkeypatch.setattr(gui.QMessageBox, "question", question)
+    window.install_wikdict()
+    text = question.call_args.args[2]
+    assert size in text
+    assert gui.PACKAGE.version in text
+    assert gui.PACKAGE.license_url in text
+    assert window._dictionary_worker is None
+
+
+@pytest.mark.parametrize("answer", [QMessageBox.StandardButton.No, QMessageBox.StandardButton.Yes])
+def test_empty_new_word_does_not_replace_selected_library_record(
+    window, app, monkeypatch, client, html, mp3, answer
+):
+    from cambridge_audio.library import read_recording, save_metadata
+
+    window.output_dir.mkdir()
+    original = window.output_dir / "hello.us.mp3"
+    original.write_bytes(b"ID3original")
+    save_metadata(Recording("hello", "us", original, "", "a greeting"))
+    sidecar = original.with_suffix(".json").read_bytes()
+    destination = window.output_dir / "world.us.mp3"
+    destination.write_bytes(b"")
+    window.refresh_library()
+    assert window.selected_recording().word == "hello"
+    window.word_edit.setText("world")
+    client.session.get.side_effect = [response(html.replace("hello", "world")), response(mp3)]
+    monkeypatch.setattr(gui, "CambridgeClient", lambda **kwargs: client)
+    monkeypatch.setattr(QMessageBox, "exec", lambda self: answer)
+    window.start_download()
+    wait_until(app, lambda: window._worker is None)
+    assert original.read_bytes() == b"ID3original"
+    assert original.with_suffix(".json").read_bytes() == sidecar
+    if answer == QMessageBox.StandardButton.Yes:
+        assert destination.read_bytes() == mp3
+        assert read_recording(destination).recording.word == "world"
+    else:
+        assert destination.read_bytes() == b""
+        client.session.get.assert_not_called()
+
+
+@pytest.mark.parametrize("language", ["en", "ru"])
+def test_new_translation_displays_readable_senses_without_ids(
+    window, app, monkeypatch, client, html, mp3, language
+):
+    from cambridge_audio.library import read_recording
+    from cambridge_audio.translations import cached_translation
+
+    bilingual = """<div class="entry-body__el"><span class="pos">exclamation</span>
+    <div class="def-block"><div class="def ddef_d">a greeting</div>
+    <div class="def-body"><span class="trans">привет</span></div></div>
+    <div class="def-block"><div class="def ddef_d">answering the phone</div>
+    <div class="def-body"><span class="trans">алло</span></div></div></div>"""
+    client.session.get.side_effect = [response(html), response(mp3), response(bilingual)]
+    monkeypatch.setattr(gui, "CambridgeClient", lambda **kwargs: client)
+    window.language = language
+    window._retranslate()
+    window.translation_check.setChecked(True)
+    window.word_edit.setText("hello")
+    window.start_download()
+    wait_until(app, lambda: window._worker is None and window._translation_worker is None)
+    text = window.translation_label.text()
+    assert "• привет" in text and "• алло" in text
+    assert "a greeting" in text and "answering the phone" in text
+    assert ("междометие" if language == "ru" else "exclamation") in text
+    assert "unspecified sense" not in text
+    result = cached_translation(read_recording(window.selected_recording().path), "russian")
+    assert all(option.id not in text for option in result.options)
+    monkeypatch.setattr(gui.QInputDialog, "getItem", lambda *args: (args[3][1], True))
+    window.choose_translation_sense()
+    assert "алло" in window.translation_label.text()
+    assert "привет" not in window.translation_label.text()
+    assert client.session.get.call_count == 3
+
+
+@pytest.mark.parametrize("mode", ["light", "dark"])
+@pytest.mark.parametrize("orientation", [Qt.Orientation.Vertical, Qt.Orientation.Horizontal])
+def test_adaptive_scrollbar_animates_hover_and_keeps_drag_target(app, mode, orientation):
+    from PySide6.QtCore import QAbstractAnimation, QEvent, QPoint
+    from PySide6.QtWidgets import QWidget
+
+    from cambridge_audio.theme import ScrollBar, apply_theme, theme_colors
+
+    apply_theme(app, mode)
+    parent = QWidget()
+    parent.resize(400, 400)
+    bar = ScrollBar(orientation, parent)
+    bar.setRange(0, 100)
+    bar.setPageStep(25)
+    vertical = orientation == Qt.Orientation.Vertical
+    bar.setGeometry(20, 20, 12 if vertical else 300, 300 if vertical else 12)
+    parent.show()
+    QTest.mouseMove(parent, QPoint(350, 350))
+    app.processEvents()
+    dimensions = bar.size()
+
+    def thickness(color):
+        image = bar.grab().toImage()
+        return (
+            sum(image.pixelColor(x, 20).name() == color for x in range(image.width()))
+            if vertical
+            else sum(image.pixelColor(20, y).name() == color for y in range(image.height()))
+        )
+
+    assert thickness(theme_colors(mode)["scrollbar"]) == 4
+    point = QPoint(6, 20) if vertical else QPoint(20, 6)
+    QTest.mouseMove(bar, point)
+    wait_until(app, lambda: bar._hover_animation.state() == QAbstractAnimation.State.Stopped)
+    assert thickness(theme_colors(mode)["scrollbar_hover"]) == 8
+    assert bar.size() == dimensions
+    QTest.mousePress(bar, Qt.MouseButton.LeftButton, pos=point)
+    assert bar.isSliderDown()
+    app.sendEvent(bar, QEvent(QEvent.Type.Leave))
+    assert bar._expansion == 1.0
+    end = QPoint(6, 150) if vertical else QPoint(150, 6)
+    QTest.mouseMove(bar, end)
+    QTest.mouseRelease(bar, Qt.MouseButton.LeftButton, pos=end)
+    assert bar.value() > 0
+    assert bar.size() == dimensions
+    parent.close()
+
+
+def test_scroll_area_smooth_wheel_matches_qt_bounds_and_preserves_precise_input(app):
+    from PySide6.QtCore import QAbstractAnimation, QPoint, QPointF
+    from PySide6.QtGui import QWheelEvent
+    from PySide6.QtWidgets import QScrollArea, QWidget
+
+    from cambridge_audio.theme import install_scrollbars
+
+    def area(adaptive):
+        widget = QScrollArea()
+        widget.resize(400, 300)
+        content = QWidget()
+        content.setMinimumSize(800, 2000)
+        widget.setWidget(content)
+        if adaptive:
+            install_scrollbars(widget)
+        widget.show()
+        return widget
+
+    reference, animated = area(False), area(True)
+    app.processEvents()
+    native = reference.verticalScrollBar()
+    bar = animated.verticalScrollBar()
+
+    def wheel(widget, *, pixels=0, accepted=True):
+        event = QWheelEvent(
+            QPointF(100, 100),
+            QPointF(widget.mapToGlobal(QPoint(100, 100))),
+            QPoint(0, pixels),
+            QPoint(0, -120),
+            Qt.MouseButton.NoButton,
+            Qt.KeyboardModifier.NoModifier,
+            Qt.ScrollPhase.ScrollUpdate if pixels else Qt.ScrollPhase.NoScrollPhase,
+            False,
+        )
+        app.sendEvent(widget.viewport(), event)
+        assert event.isAccepted() == accepted
+
+    try:
+        for _ in range(2):
+            wheel(reference)
+            wheel(animated)
+        assert bar._scroll_animation.state() == QAbstractAnimation.State.Running
+        assert bar.value() < native.value()
+        wait_until(app, lambda: bar._scroll_animation.state() == QAbstractAnimation.State.Stopped)
+        assert bar.value() == native.value() > 0
+        wheel(reference, pixels=-15)
+        wheel(animated, pixels=-15)
+        assert bar._scroll_animation.state() == QAbstractAnimation.State.Stopped
+        assert bar.value() == native.value()
+        wheel(animated)
+        QTest.keyClick(animated, Qt.Key.Key_PageDown)
+        assert bar._scroll_animation.state() == QAbstractAnimation.State.Stopped
+        bar.setValue(bar.maximum())
+        wheel(animated, accepted=False)
+        assert bar.value() == bar.maximum()
+        assert bar._scroll_animation.state() == QAbstractAnimation.State.Stopped
+    finally:
+        reference.close()
+        animated.close()
+
+
+@pytest.mark.parametrize("exit_method", ["close", "shutdown"])
+def test_window_geometry_survives_restart(window, app, exit_method):
+    window.setGeometry(45, 50, 680, 560)
+    app.processEvents()
+    expected = window.geometry()
+    settings_file = window.settings.fileName()
+    getattr(window, exit_method)()
+    settings = QSettings(settings_file, QSettings.Format.IniFormat)
+    restored = gui.MainWindow(settings)
+    try:
+        restored.show()
+        app.processEvents()
+        assert restored.geometry() == expected
+    finally:
+        restored.close()
+
+
+def test_maximized_window_restores_normal_size_after_restart(window, app):
+    window.setGeometry(45, 50, 680, 560)
+    app.processEvents()
+    normal_size = window.size()
+    window.showMaximized()
+    app.processEvents()
+    window.close()
+    restored = gui.MainWindow(window.settings)
+    try:
+        restored.show()
+        app.processEvents()
+        assert restored.isMaximized()
+        restored.showNormal()
+        app.processEvents()
+        assert restored.size() == normal_size
+    finally:
+        restored.close()
+
+
+def test_offscreen_window_geometry_is_recovered_on_available_display(window, app):
+    window.resize(680, 560)
+    window.move(100000, 100000)
+    app.processEvents()
+    window.close()
+    restored = gui.MainWindow(window.settings)
+    try:
+        restored.show()
+        app.processEvents()
+        assert any(
+            screen.availableGeometry().contains(restored.geometry()) for screen in app.screens()
+        )
+    finally:
+        restored.close()
+
+
+@pytest.mark.parametrize("geometry", ["invalid setting", b"not a Qt geometry"])
+def test_invalid_window_geometry_keeps_default_size(window, app, geometry):
+    expected = window.size()
+    window.close()
+    window.settings.setValue("window/geometry", geometry)
+    restored = gui.MainWindow(window.settings)
+    try:
+        restored.show()
+        app.processEvents()
+        assert restored.size() == expected
+    finally:
+        restored.close()
+
+
+@pytest.mark.parametrize("state", ["missing", "installed", "damaged"])
+@pytest.mark.parametrize("language", ["en", "ru"])
+@pytest.mark.parametrize("accepted", [False, True])
+def test_wikdict_checks_installed_package_and_downloads_only_after_confirmation(
+    window, app, monkeypatch, wikdict_package, state, language, accepted
+):
+    from functools import partial
+
+    from test_wikdict import download_session
+
+    from cambridge_audio import wikdict
+
+    spec, content = wikdict_package
+    directory = window.output_dir.parent / "dictionary"
+    directory.mkdir()
+    window.dictionary_dir = directory
+    window.language = language
+    path = wikdict.package_path(directory, spec)
+    if state != "missing":
+        path.write_bytes(content if state == "installed" else b"damaged")
+    before = path.read_bytes() if path.exists() else None
+    monkeypatch.setattr(gui, "PACKAGE", spec)
+    installer = Mock(
+        wraps=partial(wikdict.install_dictionary, package=spec, session=download_session(content))
+    )
+    monkeypatch.setattr(gui, "install_dictionary", installer)
+    question = Mock(
+        return_value=QMessageBox.StandardButton.Yes if accepted else QMessageBox.StandardButton.No
+    )
+    monkeypatch.setattr(gui.QMessageBox, "question", question)
+    window.install_wikdict()
+    wait_until(app, lambda: window._dictionary_worker is None)
+    text = question.call_args.args[2]
+    expected = {
+        ("missing", "en"): "Install the English–Russian",
+        ("missing", "ru"): "Установить англо-русский",
+        ("installed", "en"): "already installed and verified",
+        ("installed", "ru"): "уже установлен и прошёл проверку",
+        ("damaged", "en"): "is damaged",
+        ("damaged", "ru"): "повреждён",
+    }
+    assert expected[state, language] in text
+    assert spec.describe(language) in text
+    assert spec.license_url in text
+    assert question.call_args.args[-1] == QMessageBox.StandardButton.No
+    if accepted:
+        installer.assert_called_once()
+        assert path.read_bytes() == content
+    else:
+        installer.assert_not_called()
+        assert (path.read_bytes() if path.exists() else None) == before
+    assert window.dictionary_button.isEnabled()
+
+
+def test_repeated_wikdict_click_rechecks_disk_and_does_not_download_implicitly(
+    window, app, monkeypatch, wikdict_package
+):
+    from functools import partial
+
+    from test_wikdict import download_session
+
+    from cambridge_audio import wikdict
+
+    spec, content = wikdict_package
+    window.dictionary_dir = window.output_dir.parent / "dictionary"
+    monkeypatch.setattr(gui, "PACKAGE", spec)
+    installer = Mock(
+        wraps=partial(wikdict.install_dictionary, package=spec, session=download_session(content))
+    )
+    monkeypatch.setattr(gui, "install_dictionary", installer)
+    question = Mock(return_value=QMessageBox.StandardButton.Yes)
+    monkeypatch.setattr(gui.QMessageBox, "question", question)
+    window.install_wikdict()
+    wait_until(app, lambda: window._dictionary_worker is None)
+    installer.assert_called_once()
+    question.return_value = QMessageBox.StandardButton.No
+    window.install_wikdict()
+    assert "already installed and verified" in question.call_args.args[2]
+    assert installer.call_count == 1
+    wikdict.package_path(window.dictionary_dir, spec).write_bytes(b"damaged externally")
+    window.install_wikdict()
+    assert "is damaged" in question.call_args.args[2]
+    assert installer.call_count == 1
+    assert window._dictionary_worker is None
+
+
+def test_wikdict_read_error_does_not_offer_or_start_download(window, monkeypatch):
+    question, installer = Mock(), Mock()
+    monkeypatch.setattr(gui.QMessageBox, "question", question)
+    monkeypatch.setattr(gui, "install_dictionary", installer)
+    monkeypatch.setattr(gui, "validate_package", Mock(side_effect=PermissionError("read denied")))
+    window.install_wikdict()
+    assert "read denied" in window.status_label.text()
+    question.assert_not_called()
+    installer.assert_not_called()
+    assert window.dictionary_button.isEnabled()
+
+
+@pytest.mark.parametrize("language", ["en", "ru"])
+def test_russian_translation_block_ignores_old_language_setting_and_preserves_cache(
+    window, app, monkeypatch, client, mp3, language
+):
+    from cambridge_audio.library import read_recording, save_metadata
+    from cambridge_audio.translations import cached_translation, edit_translation
+
+    window.output_dir.mkdir()
+    path = window.output_dir / "hello.us.mp3"
+    path.write_bytes(mp3)
+    save_metadata(Recording("hello", "us", path, "", "English definition"), ("bonjour",), "french")
+    edit_translation(read_recording(path), "french", "mon texte")
+    french_cache = read_recording(path).translation_cache
+    window.settings.setValue("language", language)
+    window.settings.setValue("translation_language", "french")
+    client.translations = Mock(return_value=("привет",))
+    monkeypatch.setattr(gui, "CambridgeClient", lambda **kwargs: client)
+    restarted = gui.MainWindow(window.settings)
+    try:
+        restarted.show()
+        app.processEvents()
+        assert restarted.translation_language == "russian"
+        assert not hasattr(restarted, "translation_language_edit")
+        assert restarted.definition_label.text() == "English definition"
+        assert (
+            "не установлен" if language == "ru" else "not installed"
+        ) in restarted.dictionary_status_label.text()
+        assert read_recording(path).translation_cache == french_cache
+        restarted.translation_check.setChecked(True)
+        wait_until(app, lambda: restarted._translation_worker is None)
+        assert "привет" in restarted.translation_label.text()
+        saved = read_recording(path)
+        assert cached_translation(saved, "french").texts == ("mon texte",)
+        assert all(result in saved.translation_cache for result in french_cache)
+        restarted.translation_check.setChecked(False)
+        assert restarted.translation_label.isHidden()
+        assert restarted.definition_label.text() == "English definition"
+        client.translations.assert_called_once_with("hello", "russian")
+    finally:
+        restarted.close()
+
+
+def test_russian_translation_block_keyboard_focus_follows_layout(window, app):
+    window.accent_combo.setFocus()
+    QTest.keyClick(window.accent_combo, Qt.Key.Key_Tab)
+    if window.combine_check.isEnabled():
+        assert window.combine_check.hasFocus()
+        QTest.keyClick(window.combine_check, Qt.Key.Key_Tab)
+    assert window.translation_check.hasFocus()
+    QTest.keyClick(window.translation_check, Qt.Key.Key_Tab)
+    assert window.dictionary_button.hasFocus()

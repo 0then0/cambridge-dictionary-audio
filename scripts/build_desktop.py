@@ -121,9 +121,12 @@ def main():
         icon = ROOT / "build/icon.png"
     numeric = ".".join(str(value) for value in (*version.release, 0, 0)[:3])
     spec = f"""
+from PyInstaller.utils.hooks import copy_metadata
+
 a = Analysis([{str(ROOT / "scripts/desktop_entry.py")!r}],
     pathex=[{str(ROOT)!r}],
-    datas=[({str(ROOT / "assets")!r}, 'assets'),
+    datas=[*copy_metadata('cambridge-dictionary-audio'),
+           ({str(ROOT / "assets")!r}, 'assets'),
            ({str(licenses)!r}, 'licenses/third-party'),
            *[({str(ROOT)!r} + '/' + name, 'licenses')
              for name in ('LICENSE', 'LICENSE-MIT', 'NOTICE')]],

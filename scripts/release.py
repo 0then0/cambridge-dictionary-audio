@@ -27,6 +27,9 @@ CLI_MODULES = {
     "library.py",
     "terminal.py",
     "console.py",
+    "translations.py",
+    "wikdict.py",
+    "anki.py",
 }
 
 

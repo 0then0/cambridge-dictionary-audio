@@ -1,6 +1,6 @@
 [project]
 name = "cambridge-dictionary-audio"
-version = "0.2.1"
+version = "0.3.0"
 description = "Download UK and US pronunciations from Cambridge Dictionary"
 readme = "docs/cli.md"
 requires-python = ">=3.10,<3.16"
@@ -51,12 +51,14 @@ packages = ["cambridge_audio"]
 
 [tool.hatch.build.targets.sdist]
 only-include = [
-    "cambridge_audio", "pyproject.toml", "docs/cli.md",
+    "cambridge_audio", "pyproject.toml", "docs/cli.md", "docs/collection.md", "docs/data-sources.md",
     "LICENSE", "LICENSE-MIT", "NOTICE", "main.py",
     "tests/conftest.py", "tests/test_audio.py", "tests/test_cli.py",
     "tests/test_dictionary.py", "tests/test_entrypoints.py",
     "tests/test_ffmpeg.py", "tests/test_service.py",
     "tests/test_library.py", "tests/test_terminal.py",
+    "tests/test_translations.py", "tests/test_wikdict.py", "tests/test_anki.py",
+    "tests/test_variants.py",
 ]
 
 [dependency-groups]

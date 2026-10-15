@@ -24,6 +24,17 @@ RUSSIAN = {
     "Apply": "Применить",
     "Cancel": "Отмена",
     "Show translation": "Показывать перевод",
+    "Show Russian translation": "Показывать перевод на русский",
+    "Offline dictionary: not installed.": "Офлайн-словарь: не установлен.",
+    "Offline dictionary: damaged.": "Офлайн-словарь: повреждён.",
+    "Offline dictionary: unavailable.": "Офлайн-словарь: недоступен.",
+    "Offline dictionary: ready.": "Офлайн-словарь: установлен и готов к работе.",
+    "Only Russian translation is supported. Use russian or ru.": (
+        "Поддерживается только перевод на русский. Укажите russian или ru."
+    ),
+    "Show Russian translations (russian, ru or русский); disabled by default.": (
+        "Показывать русский перевод (russian, ru или русский); по умолчанию выключен."
+    ),
     "Translation language (Russian if empty)": "Язык перевода (русский, если поле пустое)",
     "Settings apply to this session. Use CLI flags for future launches.": (
         "Настройки действуют в текущей сессии. Для следующих запусков используйте параметры CLI."
@@ -45,6 +56,8 @@ RUSSIAN = {
     "Up / Down: navigate saved recordings\n"
     "Ctrl+L: focus search\nCtrl+P: play / stop selected recording\n"
     "Ctrl+R: refresh library\nCtrl+S: settings\n"
+    "Ctrl+O: choose pronunciation\nCtrl+T: edit / choose / reset translation\n"
+    "Ctrl+D: install WikDict\nCtrl+E: export to Anki\n"
     "Ctrl+C: cancel download / stop playback, or quit when idle\nCtrl+Q: quit\n"
     "F1: this help\nEsc: close a dialog": (
         "Enter в поиске: скачать или открыть сохранённое аудио\n"
@@ -53,6 +66,8 @@ RUSSIAN = {
         "Вверх / Вниз: выбор сохранённых записей\n"
         "Ctrl+L: перейти к поиску\nCtrl+P: прослушать / остановить запись\n"
         "Ctrl+R: обновить библиотеку\nCtrl+S: настройки\n"
+        "Ctrl+O: выбрать произношение\nCtrl+T: изменить / выбрать / сбросить перевод\n"
+        "Ctrl+D: установить WikDict\nCtrl+E: экспорт в Anki\n"
         "Ctrl+C: отменить загрузку / остановить звук или выйти, если операций нет\nCtrl+Q: выйти\n"
         "F1: эта справка\nEsc: закрыть диалог"
     ),
@@ -231,6 +246,129 @@ RUSSIAN = {
         "В выбранной папке недостаточно свободного места."
     ),
 }
+
+
+RUSSIAN.update(
+    {
+        "F2: About": "F2: О приложении",
+        "Ctrl+T: choose a meaning or edit the translation.": (
+            "Ctrl+T: выберите значение или измените перевод."
+        ),
+        "Sense match with Cambridge is unverified.": (
+            "Соответствие значению Cambridge не подтверждено."
+        ),
+        "noun": "существительное",
+        "verb": "глагол",
+        "adjective": "прилагательное",
+        "adverb": "наречие",
+        "pronoun": "местоимение",
+        "preposition": "предлог",
+        "conjunction": "союз",
+        "determiner": "определитель",
+        "interjection": "междометие",
+        "exclamation": "междометие",
+        "number": "числительное",
+        "phrasal verb": "фразовый глагол",
+        "About": "О приложении",
+        "Version {version}": "Версия {version}",
+        "Source code on GitHub": "Исходный код на GitHub",
+        "Application code: Apache-2.0; inherited code: MIT.": (
+            "Код приложения: Apache-2.0; унаследованный код: MIT."
+        ),
+        "Dictionary content and recordings retain their own licenses.": (
+            "Словарные данные и аудиозаписи сохраняют собственные лицензии."
+        ),
+        "Install WikDict": ("Установить WikDict"),
+        "Reinstall WikDict": "Переустановить WikDict",
+        "Install the English–Russian WikDict package?": "Установить англо-русский словарь WikDict?",
+        "WikDict is already installed and verified. Download it again?": (
+            "WikDict уже установлен и прошёл проверку. Скачать его заново?"
+        ),
+        "The installed WikDict package is damaged. Download it again?": (
+            "Установленный WikDict повреждён. Скачать его заново?"
+        ),
+        "WikDict is a free English–Russian dictionary.\n"
+        "Install it for offline translations and as a fallback\n"
+        "when Cambridge has no translation or is unavailable.": (
+            "WikDict: бесплатный англо-русский словарь.\n"
+            "Установите его для переводов без интернета\n"
+            "и на случай, если в Cambridge нет перевода или он недоступен."
+        ),
+        "Translation": ("Перевод"),
+        "Translation language": ("Язык перевода"),
+        "Edit translation": ("Изменить перевод"),
+        "Reset translation": ("Сбросить перевод"),
+        "Choose translation sense": ("Выбрать значение перевода"),
+        "Source senses": ("Значения источника"),
+        "Choose another pronunciation": ("Выбрать другое произношение"),
+        "Choose pronunciation": ("Выбор произношения"),
+        "Export to Anki": ("Экспорт в Anki"),
+        "Export": ("Экспорт"),
+        "Selected recording": ("Текущая запись"),
+        "Whole collection": ("Вся коллекция"),
+        "Choose export parent folder": ("Выберите родительскую папку экспорта"),
+        "Dictionary entry": ("Словарная запись"),
+        "User": ("Пользовательский перевод"),
+        "Source senses; Cambridge match unverified.": (
+            "Значения источника; соответствие значению Cambridge не подтверждено."
+        ),
+        "No translation found.": ("Перевод не найден."),
+        "Local WikDict en → ru is not installed. Use Install WikDict.": (
+            "Локальный WikDict en → ru не установлен. Используйте «Установить WikDict»."
+        ),
+        "Local WikDict failed size / SHA-256 verification. Reinstall it.": (
+            "Размер или SHA-256 WikDict не совпадает. Переустановите словарь."
+        ),
+        "WikDict installed.": ("WikDict установлен."),
+        "WikDict installed: {path}": ("WikDict установлен: {path}"),
+        "WikDict: {done} / {total} bytes": ("WikDict: {done} / {total} байт"),
+        "Anki export saved: {path}": ("Экспорт Anki сохранён: {path}"),
+        "Pronunciation ID (empty cancels): ": ("ID произношения (пустая строка отменяет):"),
+        "List pronunciation IDs without downloading.": ("Показать ID произношений без скачивания."),
+        "Download the listed pronunciation ID.": ("Скачать произношение с указанным ID."),
+        "Show the verified WikDict package, size and license.": (
+            "Показать проверенный пакет WikDict, размер и лицензию."
+        ),
+        "Install the displayed WikDict en → ru package.": (
+            "Установить показанный пакет WikDict en → ru."
+        ),
+        "Local WikDict package directory.": ("Папка локального пакета WikDict."),
+        "Export the collection to an Anki TSV folder.": (
+            "Экспортировать коллекцию в папку Anki TSV."
+        ),
+        "Select a saved MP3 for translation or export; repeatable.": (
+            "Выбрать сохранённый MP3 для перевода или экспорта; можно повторять."
+        ),
+        "Translate selected saved recordings without downloading audio.": (
+            "Перевести выбранные записи без скачивания аудио."
+        ),
+        "Use only cached translations and installed WikDict.": (
+            "Использовать только кэш переводов и установленный WikDict."
+        ),
+        "Set a personal translation for the selected sense and language.": (
+            "Сохранить свой перевод выбранного значения на указанном языке."
+        ),
+        "Remove the personal translation for the selected sense and language.": (
+            "Удалить свой перевод выбранного значения на указанном языке."
+        ),
+        "Select a source sense by its displayed translation ID.": (
+            "Выбрать значение источника по показанному ID перевода."
+        ),
+    }
+)
+
+
+RUSSIAN[
+    "Any keyboard layout: F3 search; F4 play / stop; F5 refresh; "
+    "F6 settings; F7 export; F8 translation; F9 WikDict; "
+    "F10 pronunciation; F11 cancel; F12 quit. "
+    "Ctrl shortcuts also accept Russian and Ukrainian key positions."
+] = (
+    "При любой раскладке: F3 поиск; F4 прослушать / остановить; F5 обновить; "
+    "F6 настройки; F7 экспорт; F8 перевод; F9 WikDict; "
+    "F10 произношение; F11 отмена; F12 выход. "
+    "Ctrl-сочетания также работают с русскими и украинскими буквами на тех же клавишах."
+)
 
 
 def translate(message: str, language: str = "en", **values) -> str:
