@@ -55,6 +55,8 @@ release dates are included only where a published release can be verified.
 
 ### Fixed
 
+- TUI resizing updates the main layout even while Settings, Help or About is open,
+  keeping recording controls visible after the dialog closes.
 - Core/terminal and Qt CI suites run in separate environments, preserving test
   coverage while avoiding the combined-process shutdown crash on Linux/Python 3.10.
 - README download-link updates explicitly use UTF-8 on Windows and other

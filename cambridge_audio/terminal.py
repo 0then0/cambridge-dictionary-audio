@@ -558,8 +558,9 @@ class CambridgeApp(App[None]):
         self.action_search()
 
     def on_resize(self, event) -> None:
-        self.screen.set_class(event.size.width < 76, "narrow")
-        self.screen.set_class(event.size.height < 28, "short")
+        root = self.screen_stack[0]
+        root.set_class(event.size.width < 76, "narrow")
+        root.set_class(event.size.height < 28, "short")
 
     def _set_button_label(self, key: str, message: str) -> None:
         button = self.screen_stack[0].query_one(f"#{key}", Button)

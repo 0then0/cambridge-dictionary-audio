@@ -36,6 +36,49 @@ async def wait_for_ui(pilot, predicate, timeout=5):
     assert predicate(), "Terminal UI did not reach the expected state"
 
 
+@pytest.mark.parametrize("dialog_key", ["ctrl+s", "f1", "f2"])
+def test_resize_with_modal_updates_main_layout_and_keeps_buttons_visible(
+    tmp_path, monkeypatch, dialog_key
+):
+    record = saved(tmp_path)
+    monkeypatch.setattr(
+        terminal, "CambridgeClient", Mock(side_effect=AssertionError("Saved audio is offline"))
+    )
+
+    async def scenario():
+        app = CambridgeApp(Options(tmp_path, language="ru", play=False))
+        async with app.run_test(size=(110, 34)) as pilot:
+            await wait_for_ui(pilot, lambda: app.selected is not None)
+            root = app.screen_stack[0]
+            for size in ((60, 24), (110, 34)):
+                await pilot.press(dialog_key)
+                await wait_for_ui(pilot, lambda: isinstance(app.screen, terminal.Dialog))
+                dialog = app.screen
+                await pilot.resize_terminal(*size)
+                assert app.screen is dialog
+                await pilot.press("escape")
+                await wait_for_ui(pilot, lambda: app.screen is root)
+                await pilot.pause()
+                assert root.has_class("narrow") == (size[0] < 76)
+                assert root.has_class("short") == (size[1] < 28)
+                library = root.query_one("#library-pane").region
+                detail = root.query_one("#detail-pane").region
+                if size[0] < 76:
+                    assert detail.y > library.y
+                else:
+                    assert detail.x > library.x
+                actions = root.query_one("#detail-actions").content_region
+                for key in ("play", "again"):
+                    button = root.query_one(f"#{key}", Button)
+                    assert button.region.intersection(actions) == button.region
+                    assert button.label.plain in "\n".join(
+                        strip.text for strip in button.render_lines(button.region.reset_offset)
+                    )
+                assert app.selected.recording.path == record.path
+
+    asyncio.run(scenario())
+
+
 @pytest.mark.parametrize("size", [(110, 34), (80, 24), (60, 30)])
 def test_button_labels_fit_after_language_and_playback_changes(tmp_path, monkeypatch, size):
     saved(tmp_path)
