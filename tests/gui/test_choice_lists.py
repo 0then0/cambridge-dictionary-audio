@@ -4,6 +4,8 @@ import pytest
 
 pytest.importorskip("PySide6")
 
+from PySide6.QtWidgets import QAbstractItemView, QProxyStyle, QStyle  # noqa: E402
+
 from cambridge_audio.gui.dialogs import ChoiceDialog  # noqa: E402
 from cambridge_audio.gui.theme import ComboBox, ContentList  # noqa: E402
 
@@ -17,7 +19,14 @@ def test_two_dialog_choices_fit_without_scrolling(window, app, long):
     app.processEvents()
     try:
         view = dialog.list_view
-        assert view.verticalScrollBar().maximum() == 0
+        assert view.verticalScrollBar().maximum() == 0, {
+            "view": view.size(),
+            "viewport": view.viewport().size(),
+            "scroll_mode": view.verticalScrollMode(),
+            "rows": [
+                view.visualRect(view.model().index(i, 0)) for i in range(view.model().rowCount())
+            ],
+        }
         assert view.horizontalScrollBar().maximum() == 0
         for row in range(2):
             rect = view.visualRect(view.model().index(row, 0))
@@ -86,6 +95,30 @@ def test_choice_list_includes_viewport_margins_in_its_height(window, app):
     app.processEvents()
     try:
         view = dialog.list_view
+        assert view.verticalScrollBar().maximum() == 0
+        assert view.viewport().rect().contains(view.visualRect(view.model().index(1, 0)))
+    finally:
+        dialog.close()
+
+
+class ItemScrollStyle(QProxyStyle):
+    def styleHint(self, hint, option=None, widget=None, returnData=None):
+        if hint == QStyle.StyleHint.SH_ItemView_ScrollMode:
+            return QAbstractItemView.ScrollMode.ScrollPerItem.value
+        return super().styleHint(hint, option, widget, returnData)
+
+
+def test_short_wrapped_list_fits_with_native_item_scroll_default(window, app):
+    dialog = ChoiceDialog(window, "Choose", "Meaning", ["long definition " * 18, "short meaning"])
+    style = ItemScrollStyle("Windows")
+    style.setParent(dialog)
+    view = dialog.list_view
+    view.setStyle(style)
+    view.resetVerticalScrollMode()
+    assert view.verticalScrollMode() == QAbstractItemView.ScrollMode.ScrollPerItem
+    dialog.show()
+    app.processEvents()
+    try:
         assert view.verticalScrollBar().maximum() == 0
         assert view.viewport().rect().contains(view.visualRect(view.model().index(1, 0)))
     finally:

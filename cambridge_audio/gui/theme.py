@@ -17,6 +17,7 @@ from PySide6.QtCore import (
 )
 from PySide6.QtGui import QColor, QIcon, QPainter, QPalette
 from PySide6.QtWidgets import (
+    QAbstractItemView,
     QApplication,
     QComboBox,
     QListWidget,
@@ -133,6 +134,9 @@ def install_scrollbars(area):
 
 
 def fit_list_height(view, limit):
+    # Wrapped rows have different heights. Native per-item page calculations can
+    # request a scrollbar even when all their pixel bounds fit in the viewport.
+    view.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
     view.doItemsLayout()
     offset = view.spacing() - view.visualRect(view.model().index(0, 0)).top()
     height = max(
