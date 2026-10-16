@@ -55,6 +55,8 @@ release dates are included only where a published release can be verified.
 
 ### Fixed
 
+- Core/terminal and Qt CI suites run in separate environments, preserving test
+  coverage while avoiding the combined-process shutdown crash on Linux/Python 3.10.
 - README download-link updates explicitly use UTF-8 on Windows and other
   platforms, preserving Russian documentation regardless of the system locale.
 - TUI button widths are recalculated after language changes and playback state

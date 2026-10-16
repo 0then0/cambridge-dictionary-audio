@@ -274,7 +274,7 @@ uv sync --locked
 uv lock --check
 uv run ruff check .
 uv run ruff format --check .
-uv run pytest
+uv run --isolated --locked pytest
 ```
 
 Тесты работают без сети и проверяют скачивание, отмену, восстановление кэша,
@@ -286,7 +286,12 @@ uv run pytest
 Обновление зависимостей: `uv lock --upgrade`, затем проверки выше.
 Запуск без инструментов разработки: `uv run --no-dev -m cambridge_audio hello`.
 
-Тесты GUI: `uv run --group gui pytest`. Они используют Qt без видимого окна,
+Тесты GUI запускаются отдельно:
+`uv run --locked --group gui pytest tests/test_gui.py tests/test_theme.py tests/test_library.py`.
+Как и в CI, основной/TUI-набор и Qt-набор используют разные процессы и окружения.
+На Linux с Python 3.10 объединённый прогон может аварийно завершиться при остановке
+интерпретатора после успешных проверок. Раздельные запуски сохраняют все тесты
+и проверяют код завершения каждого процесса. Тесты GUI используют Qt без видимого окна,
 временные настройки и подменённые HTTP-ответы.
 [Дизайн-система](docs/design.md) описывает оформление и поведение приложения.
 

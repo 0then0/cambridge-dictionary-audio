@@ -297,7 +297,7 @@ uv sync --locked
 uv lock --check
 uv run ruff check .
 uv run ruff format --check .
-uv run pytest
+uv run --isolated --locked pytest
 ```
 
 Automated tests use local HTML fragments and mocked HTTP responses, without network
@@ -308,7 +308,12 @@ available and otherwise report a skip. Update dependencies explicitly with
 
 To run without development tools, use `uv run --no-dev -m cambridge_audio hello`.
 
-To include the desktop tests, use `uv run --group gui pytest`.
+Run the desktop suite separately with
+`uv run --locked --group gui pytest tests/test_gui.py tests/test_theme.py tests/test_library.py`.
+The core/terminal and Qt suites use separate processes and environments, as in CI.
+The combined suite can abort during interpreter teardown on Linux/Python 3.10
+even after all assertions pass; the separate runs retain all test coverage and
+check each process's exit status.
 GUI tests use an offscreen Qt platform, temporary settings and mocked HTTP responses.
 The [desktop design system](docs/design.md) documents layout, appearance and behavior.
 
