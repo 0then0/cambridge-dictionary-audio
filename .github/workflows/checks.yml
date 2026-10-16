@@ -53,54 +53,28 @@ jobs:
           PYTHONFAULTHANDLER: "1"
         run: |
           uv run --locked --group gui python - <<'PYTHON'
-          import os
-          import re
           import subprocess
           import sys
-          import textwrap
+          import pytest
 
-          bootstrap = """
-          import os, sys
-          executable = os.path.realpath(sys.executable)
-          for line in open('/proc/self/maps'):
-              fields = line.split()
-              if len(fields) >= 6 and fields[-1] == executable and fields[2] == '00000000':
-                  print('PYTHON_IMAGE_BASE', fields[0].split('-')[0], flush=True)
-          """
-          bootstrap = textwrap.dedent(bootstrap)
-          cases = {
-              'application-before-terminal': 'from cambridge_audio.gui import create_application; app=create_application([]); from cambridge_audio import terminal; app.shutdown()',
-              'terminal-before-application': 'from cambridge_audio import terminal; from cambridge_audio.gui import create_application; app=create_application([]); app.shutdown()',
-              'bare-application': 'from PySide6.QtWidgets import QApplication; app=QApplication([]); from cambridge_audio import terminal; app.shutdown()',
-              'bare-terminal-first': 'from cambridge_audio import terminal; from PySide6.QtWidgets import QApplication; app=QApplication([]); app.shutdown()',
-              'icon-and-cli': "import pytest; raise SystemExit(pytest.main(['tests/test_gui.py::test_application_has_a_renderable_icon_and_display_name', 'tests/test_cli.py', '-q']))",
-              'gui-and-cli': "import pytest; raise SystemExit(pytest.main(['tests/test_gui.py', 'tests/test_cli.py', '-q']))",
-          }
-          failed = []
-          symbols = subprocess.check_output(['nm', '-an', os.path.realpath(sys.executable)], text=True)
-          for name, code in cases.items():
-              print('MINIMAL_CASE', name, flush=True)
-              result = subprocess.run([sys.executable, '-c', bootstrap + code],
-                                      stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                      text=True, errors='replace')
-              print(result.stdout, flush=True)
-              print('MINIMAL_RESULT', name, result.returncode, flush=True)
-              if result.returncode:
-                  failed.append(name)
-                  base = re.search(r'PYTHON_IMAGE_BASE ([0-9a-f]+)', result.stdout)
-                  pointer = re.search(r'Debug memory block at address p=(0x[0-9a-f]+)', result.stdout)
-                  if base and pointer:
-                      offset = int(pointer[1], 16) - int(base[1], 16)
-                      candidates = []
-                      for line in symbols.splitlines():
-                          fields = line.split()
-                          if len(fields) >= 3 and re.fullmatch('[0-9a-f]+', fields[0]):
-                              address = int(fields[0], 16)
-                              if address <= offset:
-                                  candidates.append((address, fields[-1]))
-                      print('BAD_POINTER_OFFSET', hex(offset), 'NEAREST_SYMBOLS', sorted(candidates)[-5:], flush=True)
-          print('FAILED_CASES', failed, flush=True)
-          raise SystemExit(bool(failed))
+          class Collector:
+              def pytest_collection_finish(self, session):
+                  self.nodes = [item.nodeid for item in session.items]
+          collector = Collector()
+          pytest.main(['tests/test_gui.py', '--collect-only', '-q'], plugins=[collector])
+          nodes = collector.nodes
+          class Refs:
+              @pytest.hookimpl(hookwrapper=True)
+              def pytest_runtest_protocol(self, item, nextitem):
+                  before = sys.getrefcount(True)
+                  yield
+                  print('REFCOUNT', item.nodeid, sys.getrefcount(True) - before, sys.getrefcount(True), flush=True)
+          code = "import sys, pytest; "
+          for name, selected in [('first-half', nodes[:len(nodes)//2]), ('second-half', nodes[len(nodes)//2:])]:
+              print('CASE', name, flush=True)
+              result = subprocess.run([sys.executable, '-c', code + 'raise SystemExit(pytest.main(' + repr(selected + ['tests/test_cli.py', '-q']) + '))'])
+              print('RESULT', name, result.returncode, flush=True)
+          raise SystemExit(pytest.main(['tests/test_gui.py', 'tests/test_cli.py', '-q', '-s'], plugins=[Refs()]))
           PYTHON
 
   extension:
