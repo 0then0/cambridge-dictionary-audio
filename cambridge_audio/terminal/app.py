@@ -3,6 +3,7 @@
 from dataclasses import replace
 from importlib.metadata import version
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from threading import Event
 
 from rich.text import Text
@@ -12,10 +13,11 @@ from textual.binding import Binding
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import ModalScreen
 from textual.theme import Theme
-from textual.widgets import Button, Checkbox, DataTable, Footer, Input, Static
+from textual.widgets import Button, Checkbox, DataTable, Footer, Input, OptionList, Select, Static
+from textual.widgets.option_list import Option
 from textual.worker import Worker, WorkerState
 
-from ..anki import export_anki
+from ..anki import export_anki, export_apkg
 from ..audio import play_audio
 from ..dictionary import (
     CambridgeClient,
@@ -23,10 +25,12 @@ from ..dictionary import (
     SelectionRequired,
     audio_filename,
     normalize_word,
+    variants,
 )
+from ..errors import diagnostic_details, friendly_error
 from ..i18n import translate
 from ..library import SavedRecording, read_recording, save_metadata, scan_recordings
-from ..service import DownloadCancelled, download_recordings
+from ..service import DownloadCancelled, Recording, download_recordings, preview_recording
 from ..translations import (
     cached_translation,
     edit_translation,
@@ -35,7 +39,7 @@ from ..translations import (
     select_translation,
 )
 from ..wikdict import PACKAGE, install_dictionary
-from .dialogs import About, ChooseOption, ConfirmReplace, Help, Settings
+from .dialogs import About, ChooseOption, ConfirmReplace, ErrorDetails, Help, Settings
 from .messages import (
     DictionaryFinished,
     DownloadFinished,
@@ -59,7 +63,7 @@ class CambridgeApp(App[None]):
         Binding("ctrl+e", "export", "Export to Anki", priority=True),
         Binding("ctrl+t", "edit_translation", "Edit translation", priority=True),
         Binding("ctrl+d", "dictionary", "Install WikDict", priority=True),
-        Binding("ctrl+o", "variants", "Choose pronunciation", priority=True),
+        Binding("ctrl+o", "variants", "Choose meaning", priority=True),
         Binding("f1", "help", "Help", priority=True),
         Binding("f2", "about", "About", priority=True),
         Binding("ctrl+c", "cancel", "Cancel", priority=True, show=False),
@@ -77,7 +81,7 @@ class CambridgeApp(App[None]):
             ("ctrl+у,f7", "export", "Export to Anki"),
             ("ctrl+е,f8", "edit_translation", "Edit translation"),
             ("ctrl+в,f9", "dictionary", "Install WikDict"),
-            ("ctrl+щ,f10", "variants", "Choose pronunciation"),
+            ("ctrl+щ,f10", "variants", "Choose meaning"),
             ("ctrl+с,f11", "cancel", "Cancel"),
             ("ctrl+й,f12", "quit", "Quit"),
         )
@@ -118,6 +122,11 @@ class CambridgeApp(App[None]):
             directory=options.directory.expanduser().resolve(),
             translation="russian" if options.translation else None,
         )
+        self._lookup_entries = ()
+        self._lookup_word = ""
+        self._audio_choices = ()
+        self._preview_cache = TemporaryDirectory(prefix="cambridge-preview-")
+        self._preview_translations = {}
         self.saved: list[SavedRecording] = []
         self.selected: SavedRecording | None = None
         self.busy = False
@@ -126,6 +135,7 @@ class CambridgeApp(App[None]):
         self.stop_playback = Event()
         self.quit_pending = False
         self.warning = ""
+        self._error_details = {}
         self.dictionary_busy = False
         self.translation_pending: SavedRecording | None = None
         self.translation_errors: dict[tuple[Path, str], str] = {}
@@ -140,7 +150,7 @@ class CambridgeApp(App[None]):
         yield Static("", id="context")
         with Horizontal(id="search-bar"):
             yield Input(placeholder=self.t("For example: hello or good morning"), id="query")
-            yield Button(self.t("Download"), variant="primary", id="download")
+            yield Button(self.t("Find"), variant="primary", id="download")
         with Horizontal(id="workspace"):
             with Vertical(id="library-pane"):
                 yield DataTable(id="recordings", cursor_type="row", show_row_labels=False)
@@ -149,6 +159,14 @@ class CambridgeApp(App[None]):
                 with VerticalScroll(id="detail-scroll"):
                     yield Static("", id="word")
                     yield Static("", id="pronunciation")
+                    yield Select(
+                        [("US", "us"), ("UK", "uk")],
+                        value="us" if self.options.accent == "both" else self.options.accent,
+                        allow_blank=False,
+                        id="result-accent",
+                    )
+                    yield OptionList(id="meanings")
+                    yield Select([], allow_blank=True, id="other-audio")
                     yield Static("", id="definition")
                     yield Static("", id="translation")
                     yield Static("", id="file")
@@ -160,11 +178,18 @@ class CambridgeApp(App[None]):
                 )
                 with Horizontal(id="detail-actions"):
                     yield Button(self.t("Play"), id="play", disabled=True)
+                    yield Button(self.t("Save meaning"), id="save-meaning")
                     yield Button(self.t("Download again"), id="again", disabled=True)
         yield Static("", id="status")
+        yield Static("", id="error-summary")
+        yield Button(self.t("Technical details"), id="error-details")
         yield Footer()
 
     def on_mount(self) -> None:
+        for key in ("meanings", "other-audio", "result-accent", "save-meaning"):
+            self.query_one(f"#{key}").display = False
+        self.query_one("#error-details").display = False
+        self.query_one("#error-summary").display = False
         self.localize()
         self.action_refresh()
         self.action_search()
@@ -183,7 +208,8 @@ class CambridgeApp(App[None]):
             button.refresh(layout=True)
 
     def localize(self) -> None:
-        for key, label in (("download", "Download"), ("play", "Play"), ("again", "Download again")):
+        self._set_button_label("error-details", "Technical details")
+        for key, label in (("download", "Find"), ("play", "Play"), ("again", "Download again")):
             self._set_button_label(key, label)
         self.screen_stack[0].query_one("#query", Input).placeholder = self.t(
             "For example: hello or good morning"
@@ -212,11 +238,47 @@ class CambridgeApp(App[None]):
         self.render_library()
         self.show_recording(self.selected)
 
-    def status(self, message: str, *, error: bool = False, warning: bool = False) -> None:
+    def status(
+        self, message: str, *, error: bool = False, warning: bool = False, context="operation"
+    ) -> None:
         widget = self.screen_stack[0].query_one("#status", Static)
         widget.set_class(error, "error")
         widget.set_class(warning, "warning")
+        if error or warning:
+            self._set_error_details("Operation", message)
+            if "Details could not" in str(message) or "сведения" in str(message):
+                context = "metadata"
+            message = friendly_error(message, self.options.language, context=context)
+        else:
+            self._set_error_details("Operation", "")
         widget.update(Text(message))
+
+    def _set_error_details(self, section, error):
+        if error:
+            self._error_details[section] = diagnostic_details(error)
+        else:
+            self._error_details.pop(section, None)
+        summaries = [
+            self.t(key) + ": " + friendly_error(value, self.options.language, context="translation")
+            for key, value in self._error_details.items()
+            if key != "Operation"
+        ]
+        summary = self.screen_stack[0].query_one("#error-summary", Static)
+        summary.update(Text("\n".join(summaries)))
+        summary.display = bool(summaries)
+        self.screen_stack[0].query_one("#error-details").display = bool(self._error_details)
+
+    @on(Button.Pressed, "#error-details")
+    def show_error_details(self):
+        if self._error_details and not isinstance(self.screen, ModalScreen):
+            self.push_screen(
+                ErrorDetails(
+                    self.options.language,
+                    "\n\n".join(
+                        self.t(key) + "\n" + value for key, value in self._error_details.items()
+                    ),
+                )
+            )
 
     def action_search(self) -> None:
         self.screen_stack[0].query_one("#query", Input).focus()
@@ -225,12 +287,17 @@ class CambridgeApp(App[None]):
         try:
             self.saved = scan_recordings(self.options.directory)
         except OSError as exc:
-            self.status(self.t("Could not read saved recordings: {error}", error=exc), error=True)
+            self.status(exc, error=True, context="library")
             return
         self.render_library()
         if self.selected:
             current = next(
-                (s for s in self.saved if s.recording.path == self.selected.recording.path), None
+                (
+                    s
+                    for s in self.saved
+                    if s.recording.reference == self.selected.recording.reference
+                ),
+                None,
             )
             self.show_recording(current)
         if not self.busy:
@@ -239,7 +306,7 @@ class CambridgeApp(App[None]):
     def render_library(self) -> None:
         query = self.screen_stack[0].query_one("#query", Input).value.strip().casefold()
         table = self.screen_stack[0].query_one("#recordings", DataTable)
-        selected_path = str(self.selected.recording.path) if self.selected else None
+        selected_path = str(self.selected.recording.reference) if self.selected else None
         table.clear()
         matches = [s for s in self.saved if query in s.recording.word.casefold()]
         preferred = "us" if self.options.accent == "both" else self.options.accent
@@ -252,9 +319,9 @@ class CambridgeApp(App[None]):
                 Text(record.word),
                 record.accent.upper(),
                 Text(f"{record.part_of_speech} · {record.definition[:50]} · /{record.ipa}/"),
-                key=str(record.path),
+                key=str(record.reference),
             )
-            if str(record.path) == selected_path:
+            if str(record.reference) == selected_path:
                 selected_row = index
         if matches:
             table.move_cursor(row=selected_row)
@@ -269,18 +336,28 @@ class CambridgeApp(App[None]):
 
     @on(DataTable.RowHighlighted)
     def highlight(self, event: DataTable.RowHighlighted) -> None:
+        if event.data_table.id != "recordings":
+            return
         if not self.screen_stack or not self.screen_stack[0].query("#word"):
             return
-        saved = next((s for s in self.saved if str(s.recording.path) == event.row_key.value), None)
-        if saved:
+        saved = next(
+            (s for s in self.saved if str(s.recording.reference) == event.row_key.value), None
+        )
+        if saved and not self._lookup_entries:
             self.show_recording(saved)
 
     @on(DataTable.RowSelected)
     def select_recording(self, event: DataTable.RowSelected) -> None:
         if not self.screen_stack or not self.screen_stack[0].query("#word"):
             return
-        saved = next((s for s in self.saved if str(s.recording.path) == event.row_key.value), None)
+        saved = next(
+            (s for s in self.saved if str(s.recording.reference) == event.row_key.value), None
+        )
         if saved:
+            self._lookup_entries = ()
+            self._audio_choices = ()
+            for key in ("meanings", "other-audio", "result-accent", "save-meaning"):
+                self.query_one(f"#{key}").display = False
             self.show_recording(saved)
             self.action_play()
 
@@ -309,7 +386,7 @@ class CambridgeApp(App[None]):
                 + record.definition
                 or self.t("Details are unavailable for this saved recording."),
                 "translation": "\n".join(saved.translations),
-                "file": display_path(record.path),
+                "file": self.t("Already saved"),
             }
         for key, value in values.items():
             self.screen_stack[0].query_one(f"#{key}", Static).update(Text(value))
@@ -325,33 +402,41 @@ class CambridgeApp(App[None]):
         self.options = replace(self.options, translation="russian" if enabled else None)
         if self.selected and enabled:
             self.translation_errors.pop(
-                (self.selected.recording.path, self.options.translation or "russian"), None
+                (self.selected.recording.reference, self.options.translation or "russian"), None
             )
         self.update_translation()
         if changed:
             self.save_preferences()
 
     def update_translation(self) -> None:
+        if self._lookup_entries:
+            self.show_choice()
+            return
         widget = self.screen_stack[0].query_one("#translation", Static)
         widget.display = (
             self.selected is not None
             and self.screen_stack[0].query_one("#show-translation", Checkbox).value
         )
         if not widget.display:
+            self._set_error_details("Translation", "")
             return
         saved = self.selected
         if not saved.recording.path.is_file():
             widget.update(Text(self.t("The recording was moved or deleted. Download it again.")))
             return
         language = self.options.translation or "russian"
-        key = (saved.recording.path, language)
-        saved = read_recording(saved.recording.path) or saved
+        key = (saved.recording.reference, language)
+        saved = read_recording(saved.recording.reference) or saved
         result = cached_translation(saved, language)
         if result:
+            self._set_error_details("Translation", result.error)
             widget.update(render_translation(result, self.options.language))
         elif key in self.translation_errors:
-            widget.update(Text(self.translation_errors[key]))
+            raw = self.translation_errors[key]
+            self._set_error_details("Translation", raw)
+            widget.update(Text(friendly_error(raw, self.options.language, context="translation")))
         else:
+            self._set_error_details("Translation", "")
             widget.update(Text(self.t("Loading translation...")))
             if not self.busy and self.translation_pending is None and not self.quit_pending:
                 self.translation_pending = saved
@@ -382,15 +467,31 @@ class CambridgeApp(App[None]):
         except (CambridgeError, OSError, ValueError) as exc:
             self.post_message(
                 TranslationFinished(
-                    saved, error=str(exc), language=options.translation or "russian"
+                    saved, error=diagnostic_details(exc), language=options.translation or "russian"
                 )
             )
 
     def on_translation_finished(self, message: TranslationFinished) -> None:
         self.translation_pending = None
         record = message.saved.recording
+        if record.path.parent == Path(self._preview_cache.name):
+            if message.error and not message.result:
+                from ..translations import TranslationResult
+
+                message.result = TranslationResult(
+                    message.language,
+                    record.sense_id,
+                    "Cambridge",
+                    error=message.error,
+                    status="error",
+                )
+            if message.result:
+                self._preview_translations[record.sense_id] = message.result
+            if self._lookup_entries:
+                self.show_choice()
+            return
         if message.error or not message.result or not message.result.options:
-            self.translation_errors[(record.path, message.language)] = (
+            self.translation_errors[(record.reference, message.language)] = (
                 self.t(
                     "Translation: {error}",
                     error=message.error or (message.result.error if message.result else ""),
@@ -401,13 +502,13 @@ class CambridgeApp(App[None]):
         else:
             # Update both accents without changing the selected row or touching MP3s.
             paths = {
-                s.recording.path
+                s.recording.reference
                 for s in self.saved
                 if s.recording.word == record.word
                 and s.recording.sense_id == record.sense_id
                 and s.recording.path.parent == record.path.parent
             }
-            paths.add(record.path)
+            paths.add(record.reference)
             for path in paths:
                 current = read_recording(path)
                 if current is None:
@@ -420,8 +521,8 @@ class CambridgeApp(App[None]):
                         self.t("Audio saved. Details could not be saved: {error}", error=exc),
                         warning=True,
                     )
-                self.saved = [updated if s.recording.path == path else s for s in self.saved]
-                if self.selected and self.selected.recording.path == path:
+                self.saved = [updated if s.recording.reference == path else s for s in self.saved]
+                if self.selected and self.selected.recording.reference == path:
                     self.selected = updated
         self.update_translation()
         if self.quit_pending and not self.busy and not self.playing and not self.dictionary_busy:
@@ -435,7 +536,7 @@ class CambridgeApp(App[None]):
             self.busy or self.selected is None
         )
         self.screen_stack[0].query_one("#play", Button).disabled = (
-            self.selected is None and not self.playing
+            self.selected is None and not self.playing and not self._audio_choices
         )
         self._set_button_label("play", "Stop" if self.playing else "Play")
 
@@ -465,7 +566,7 @@ class CambridgeApp(App[None]):
                             for item in self.saved
                             if item.recording.word == word
                             and item.recording.accent == region
-                            and (current := read_recording(item.recording.path)) is not None
+                            and (current := read_recording(item.recording.reference)) is not None
                         ),
                         None,
                     )
@@ -474,7 +575,7 @@ class CambridgeApp(App[None]):
             saved = next(saved for saved in reversed(existing) if saved is not None)
             self.show_recording(saved)
             table = self.screen_stack[0].query_one("#recordings", DataTable)
-            key = str(saved.recording.path)
+            key = str(saved.recording.reference)
             if key in table.rows:
                 table.move_cursor(row=table.get_row_index(key))
             self.status(self.t("Opened saved recording."))
@@ -488,7 +589,7 @@ class CambridgeApp(App[None]):
             self.confirm_replace(word, self.options.accent)
         else:
             accent = "both" if len(missing) == 2 else missing[0]
-            self.start_download(word, accent)
+            self.start_download(word, accent, select_only=True)
 
     @on(Button.Pressed, "#again")
     def download_again(self) -> None:
@@ -524,13 +625,16 @@ class CambridgeApp(App[None]):
         variant_id=None,
         entries=None,
         target=None,
+        select_only=False,
     ) -> None:
         self.busy = True
         self.warning = ""
         self.cancel_download.clear()
         self.update_controls()
         self.status(self.t("Downloading '{word}' · Ctrl+C to cancel", word=word))
-        self.download(word, accent, self.options, overwrite, variant_id, entries, target)
+        self.download(
+            word, accent, self.options, overwrite, variant_id, entries, target, select_only
+        )
 
     @work(thread=True, group="download", exit_on_error=False)
     def download(
@@ -542,6 +646,7 @@ class CambridgeApp(App[None]):
         variant_id=None,
         entries=None,
         target=None,
+        select_only=False,
     ) -> None:
         warnings = []
 
@@ -583,11 +688,13 @@ class CambridgeApp(App[None]):
                     dictionary_dir=options.dictionary_dir,
                     offline_translation=options.offline,
                     check_cancelled=cancelled,
+                    select_only=select_only,
+                    audio_cache_dir=Path(self._preview_cache.name),
                 )
             for i, record in enumerate(result.recordings):
                 store(record, () if result.translation_results else result.translations)
                 if result.translation_results:
-                    current = read_recording(record.path)
+                    current = read_recording(record.reference)
                     if current:
                         updated = persist_translation(current, result.translation_results[i])
                         if updated:
@@ -607,7 +714,9 @@ class CambridgeApp(App[None]):
         except SelectionRequired as exc:
             self.post_message(VariantSelection(word, exc))
         except (CambridgeError, OSError, ValueError) as exc:
-            self.post_message(DownloadFinished(str(exc), "\n".join(dict.fromkeys(warnings))))
+            self.post_message(
+                DownloadFinished(diagnostic_details(exc), "\n".join(dict.fromkeys(warnings)))
+            )
 
     def on_variant_selection(self, message: VariantSelection):
         self.busy = False
@@ -616,39 +725,136 @@ class CambridgeApp(App[None]):
             if self.translation_pending is None and not self.playing and not self.dictionary_busy:
                 self.exit()
             return
-        selection = message.selection
-
-        def choose(answer):
-            if answer is None:
-                self.status(self.t("Download cancelled."))
-                return
-            choice = next(v for v in selection.choices if v.id == answer[0])
-            path = self.options.directory / audio_filename(
-                message.word, choice.pronunciation.accent, choice.id
+        self._lookup_target = getattr(message.selection, "target", None)
+        self._lookup_entries = message.selection.entries
+        self._lookup_word = message.word
+        accents = {v.pronunciation.accent for v in message.selection.choices}
+        if len(accents) == 1:
+            self.query_one("#result-accent", Select).value = next(iter(accents))
+        listing = self.query_one("#meanings", OptionList)
+        listing.clear_options()
+        seen, first = set(), None
+        for entry in sorted(self._lookup_entries, key=lambda e: e.part_of_speech):
+            if entry.sense_id in seen or not entry.pronunciations:
+                continue
+            seen.add(entry.sense_id)
+            listing.add_option(
+                Option(
+                    Text(f"{self.t(entry.part_of_speech)} · {entry.definition}"), id=entry.sense_id
+                )
             )
-            if path.exists():
-                self.confirm_replace(
-                    message.word,
-                    choice.pronunciation.accent,
-                    variant_id=choice.id,
-                    entries=selection.entries,
-                )
-            else:
-                self.start_download(
-                    message.word,
-                    choice.pronunciation.accent,
-                    variant_id=choice.id,
-                    entries=selection.entries,
-                )
+            if first is None:
+                first = entry.sense_id
+        for key in ("meanings", "result-accent", "save-meaning"):
+            self.query_one(f"#{key}").display = True
+        if first:
+            listing.highlighted = 0
+            self._show_meaning(first)
+        self.status(self.t("Choose a meaning, listen, then save."))
+        listing.focus()
 
-        self.push_screen(
-            ChooseOption(
-                self.options.language,
-                "Choose pronunciation",
-                [(v.label, v.id) for v in selection.choices],
-            ),
-            choose,
+    @on(OptionList.OptionHighlighted, "#meanings")
+    def highlight_meaning(self, event):
+        self._show_meaning(event.option.id)
+
+    @on(Select.Changed, "#result-accent")
+    def result_accent_changed(self):
+        listing = self.query_one("#meanings", OptionList)
+        if self._lookup_entries and listing.highlighted is not None:
+            self._show_meaning(listing.get_option_at_index(listing.highlighted).id)
+
+    def _show_meaning(self, sense_id):
+        entry = next((e for e in self._lookup_entries if e.sense_id == sense_id), None)
+        if not entry:
+            return
+        self._audio_choices = variants((entry,), self.query_one("#result-accent", Select).value)
+        selector = self.query_one("#other-audio", Select)
+        selector.set_options(
+            [
+                (f"{self.t('Other pronunciation')} {i + 1} · /{v.pronunciation.ipa}/", v.id)
+                for i, v in enumerate(self._audio_choices)
+            ]
         )
+        selector.display = len(self._audio_choices) > 1
+        selector.value = self._audio_choices[0].id if self._audio_choices else Select.NULL
+        self.show_choice()
+
+    def current_choice(self):
+        identity = self.query_one("#other-audio", Select).value
+        return next((v for v in self._audio_choices if v.id == identity), None)
+
+    @on(Select.Changed, "#other-audio")
+    def show_choice(self):
+        choice = self.current_choice()
+        if not choice:
+            self._set_error_details("Translation", "")
+            self.query_one("#save-meaning", Button).disabled = True
+            self.query_one("#play", Button).disabled = True
+            return
+        if getattr(self, "_displayed_choice", None) != choice.id and self.playing:
+            self.stop_playback.set()
+        self._displayed_choice = choice.id
+        entry, audio = choice.entry, choice.pronunciation
+        for key, value in (
+            ("word", entry.word),
+            ("pronunciation", f"{audio.accent.upper()} /{audio.ipa}/"),
+            ("definition", entry.definition),
+            ("file", ""),
+        ):
+            self.query_one(f"#{key}", Static).update(Text(value))
+        existing = next(
+            (
+                s
+                for s in self.saved
+                if (
+                    s.recording.source_sense_id == entry.sense_id
+                    or s.recording.variant_id in entry.legacy_ids
+                )
+                and s.recording.audio_url == audio.url
+            ),
+            None,
+        )
+        self._set_button_label("save-meaning", "Already saved" if existing else "Save meaning")
+        self.query_one("#save-meaning", Button).disabled = self.busy
+        self.query_one("#play", Button).disabled = self.busy
+        widget = self.query_one("#translation", Static)
+        widget.display = bool(self.options.translation)
+        result = (
+            cached_translation(existing, self.options.translation or "russian")
+            if existing
+            else None
+        )
+        result = result or self._preview_translations.get(entry.sense_id)
+        self._set_error_details(
+            "Translation", result.error if result and self.options.translation else ""
+        )
+        widget.update(render_translation(result, self.options.language) if result else "")
+        if self.options.translation and not result and self.translation_pending is None:
+            preview = Recording(
+                entry.word,
+                audio.accent,
+                Path(self._preview_cache.name) / "preview.us.mp3",
+                audio.ipa,
+                entry.definition,
+                part_of_speech=entry.part_of_speech,
+                sense_id=entry.sense_id,
+                source_url=entry.source_url,
+                lemma=entry.lemma,
+            )
+            self.translation_pending = SavedRecording(preview)
+            self.fetch_translation(self.translation_pending, self.options)
+
+    @on(Button.Pressed, "#save-meaning")
+    def save_meaning(self):
+        choice = self.current_choice()
+        if choice and not self.busy:
+            self.start_download(
+                self._lookup_word,
+                choice.pronunciation.accent,
+                variant_id=choice.id,
+                entries=self._lookup_entries,
+                target=getattr(self, "_lookup_target", None),
+            )
 
     def action_variants(self):
         if self.busy or self.quit_pending or isinstance(self.screen, ModalScreen):
@@ -658,16 +864,28 @@ class CambridgeApp(App[None]):
                 self.screen_stack[0].query_one("#query", Input).value
                 or (self.selected.recording.word if self.selected else "")
             )
-            self.start_download(word, self.options.accent)
+            self.start_download(word, self.options.accent, select_only=True)
         except ValueError as exc:
-            self.status(str(exc), error=True)
+            self.status(exc, error=True)
 
     def action_edit_translation(self):
         if not self.selected or self.quit_pending or isinstance(self.screen, ModalScreen):
             return
         saved = self.selected
+        if self._lookup_entries and (choice := self.current_choice()):
+            saved = next(
+                (
+                    s
+                    for s in self.saved
+                    if s.recording.source_sense_id == choice.entry.sense_id
+                    and s.recording.audio_url == choice.pronunciation.url
+                ),
+                None,
+            )
+            if saved is None:
+                return
         language = self.options.translation or "russian"
-        result = cached_translation(read_recording(saved.recording.path) or saved, language)
+        result = cached_translation(read_recording(saved.recording.reference) or saved, language)
         choices = [(self.t("Edit translation"), "edit"), (self.t("Reset translation"), "reset")]
         if result:
             choices += [
@@ -692,15 +910,16 @@ class CambridgeApp(App[None]):
                     updated = edit_translation(saved, language, text if mode == "edit" else None)
                 else:
                     updated = select_translation(
-                        read_recording(saved.recording.path), language, mode
+                        read_recording(saved.recording.reference), language, mode
                     )
                 self.saved = [
-                    updated if s.recording.path == saved.recording.path else s for s in self.saved
+                    updated if s.recording.reference == saved.recording.reference else s
+                    for s in self.saved
                 ]
-                if self.selected and self.selected.recording.path == saved.recording.path:
+                if self.selected and self.selected.recording.reference == saved.recording.reference:
                     self.show_recording(updated)
             except (OSError, ValueError) as exc:
-                self.status(str(exc), error=True)
+                self.status(exc, error=True)
 
         self.push_screen(
             ChooseOption(
@@ -716,6 +935,16 @@ class CambridgeApp(App[None]):
         if self.quit_pending or isinstance(self.screen, ModalScreen):
             return
         saved = self.selected
+        if self._lookup_entries and (choice := self.current_choice()):
+            saved = next(
+                (
+                    s
+                    for s in self.saved
+                    if s.recording.source_sense_id == choice.entry.sense_id
+                    and s.recording.audio_url == choice.pronunciation.url
+                ),
+                None,
+            )
 
         def apply(answer):
             if answer is None:
@@ -723,7 +952,7 @@ class CambridgeApp(App[None]):
             try:
                 scope, path = answer
                 records = (
-                    [read_recording(saved.recording.path)]
+                    [read_recording(saved.recording.reference)]
                     if scope == "selected" and saved
                     else scan_recordings(self.options.directory)
                     if scope == "all"
@@ -731,19 +960,24 @@ class CambridgeApp(App[None]):
                 )
                 if not all(records):
                     raise ValueError("Selected MP3 is missing or unreadable.")
-                output = export_anki(
-                    records, Path(path).expanduser(), language=self.options.translation or "russian"
+                destination = Path(path).expanduser()
+                exporter = export_anki if destination.suffix.lower() == ".tsv" else export_apkg
+                if exporter is export_anki:
+                    destination = destination.with_suffix("")
+                output = exporter(
+                    records, destination, language=self.options.translation or "russian"
                 )
                 self.status(self.t("Anki export saved: {path}", path=output))
             except (OSError, ValueError) as exc:
-                self.status(str(exc), error=True)
+                self.status(exc, error=True, context="export")
 
         self.push_screen(
             ChooseOption(
                 self.options.language,
                 "Export to Anki",
                 [(self.t("Selected recording"), "selected"), (self.t("Whole collection"), "all")],
-                text=str(self.options.directory / "cambridge-anki"),
+                text=str(self.options.directory / "cambridge-anki.apkg"),
+                note=self.t("Use .apkg for a ready deck, or .tsv for a text export folder."),
             ),
             apply,
         )
@@ -779,7 +1013,7 @@ class CambridgeApp(App[None]):
             install_dictionary(self.options.dictionary_dir, check_cancelled=cancelled)
             self.post_message(DictionaryFinished())
         except Exception as exc:
-            self.post_message(DictionaryFinished(str(exc)))
+            self.post_message(DictionaryFinished(diagnostic_details(exc)))
 
     def on_dictionary_finished(self, message):
         self.dictionary_busy = False
@@ -795,11 +1029,15 @@ class CambridgeApp(App[None]):
             self.exit()
 
     def on_download_update(self, message: DownloadUpdate) -> None:
-        self.saved = [s for s in self.saved if s.recording.path != message.saved.recording.path]
+        self.saved = [
+            s for s in self.saved if s.recording.reference != message.saved.recording.reference
+        ]
         self.saved.append(message.saved)
         self.saved.sort(key=lambda s: (s.recording.word.casefold(), s.recording.accent))
         self.show_recording(message.saved)
         self.render_library()
+        if self._lookup_entries:
+            self.show_choice()
 
     def on_download_finished(self, message: DownloadFinished) -> None:
         self.busy = False
@@ -808,7 +1046,7 @@ class CambridgeApp(App[None]):
         self.warning = message.warning
         if message.translation_error and self.selected:
             self.translation_errors[
-                (self.selected.recording.path, self.options.translation or "russian")
+                (self.selected.recording.reference, self.options.translation or "russian")
             ] = self.t("Translation: {error}", error=message.translation_error)
         self.update_translation()
         if (
@@ -830,7 +1068,7 @@ class CambridgeApp(App[None]):
 
     def on_worker_state_changed(self, event: Worker.StateChanged) -> None:
         if event.state == WorkerState.ERROR:
-            error = self.t("Unexpected error: {error}", error=event.worker.error)
+            error = diagnostic_details(event.worker.error)
             if event.worker.group == "download":
                 self.on_download_finished(DownloadFinished(error))
             elif event.worker.group == "playback":
@@ -844,6 +1082,12 @@ class CambridgeApp(App[None]):
     def action_play(self) -> None:
         if self.playing:
             self.stop_playback.set()
+            return
+        if self._lookup_entries and self.current_choice() and not self.quit_pending:
+            self.playing = True
+            self.stop_playback.clear()
+            self.update_controls()
+            self.play_preview(self.current_choice(), self.options)
             return
         if not self.selected or self.quit_pending:
             return
@@ -859,12 +1103,25 @@ class CambridgeApp(App[None]):
         self.play(self.selected.recording.path, self.options.language)
 
     @work(thread=True, group="playback", exit_on_error=False)
+    def play_preview(self, choice, options):
+        try:
+            with CambridgeClient(options.timeout, language=options.language) as client:
+                path = preview_recording(
+                    client, choice, Path(self._preview_cache.name), collection_dir=options.directory
+                )
+            if not self.stop_playback.is_set():
+                play_audio(path, options.language, stop=self.stop_playback)
+            self.post_message(PlaybackFinished())
+        except (CambridgeError, OSError) as exc:
+            self.post_message(PlaybackFinished(diagnostic_details(exc)))
+
+    @work(thread=True, group="playback", exit_on_error=False)
     def play(self, path: Path, language: str) -> None:
         try:
             play_audio(path, language, stop=self.stop_playback)
             self.post_message(PlaybackFinished())
         except (CambridgeError, OSError) as exc:
-            self.post_message(PlaybackFinished(str(exc)))
+            self.post_message(PlaybackFinished(diagnostic_details(exc)))
 
     def on_playback_finished(self, message: PlaybackFinished) -> None:
         self.playing = False
@@ -877,7 +1134,7 @@ class CambridgeApp(App[None]):
         ):
             self.exit()
         elif message.error:
-            self.status(self.t("Playback: {error}", error=message.error), error=True)
+            self.status(message.error, error=True, context="playback")
         elif not self.busy:
             self.status(
                 self.warning or self.t("Opened saved recording."), warning=bool(self.warning)
@@ -887,9 +1144,7 @@ class CambridgeApp(App[None]):
         try:
             save_settings(self.options, self.theme)
         except OSError as exc:
-            self.status(
-                self.t("Could not save terminal settings: {error}", error=str(exc)), error=True
-            )
+            self.status(exc, error=True, context="settings")
 
     def action_settings(self) -> None:
         if self.busy or self.quit_pending or isinstance(self.screen, ModalScreen):

@@ -5,6 +5,30 @@ current source tree and may not be available in published downloads. Historical
 entries were reconstructed from Git history and project development discussions;
 release dates are included only where a published release can be verified.
 
+## Unreleased
+
+- Keep GUI meaning selection tied to its search, restore saved accents after failed
+  downloads, and refresh translation edits for the currently displayed meaning.
+- Retain legacy collection metadata paths when replacing audio; old media stays on
+  disk without adding duplicate collection entries. Audio downloads no longer hold
+  the metadata lock, so collection reads remain available during network requests.
+
+- GUI and TUI errors use localized, actionable summaries. Original diagnostics,
+  including cached translation failures and exception causes, are available only
+  through Technical details. CLI diagnostic output is unchanged.
+
+- Separate collection meanings from shared audio, with permanent local identities,
+  source IDs, checksum verification and repair of missing or damaged MP3s.
+  Existing IDs, translations and files remain compatible; legacy metadata upgrades
+  atomically on save without removing old duplicate media.
+- Select meanings inline in GUI/TUI, preview before saving, and choose another
+  pronunciation only when audio alternatives exist for the selected accent.
+  CLI supports separate meaning/audio selection and disposable preview.
+- Export ready Anki `.apkg` packages with stable GUIDs, a single light/dark template,
+  shared media and source/license attribution. TSV remains available. Explicit TSV
+  transition reads original GUIDs and note types from an Anki-exported package;
+  real Anki import and review-history retention have not been tested here.
+
 ## 0.3.0 (2026-10-16)
 
 ### Added

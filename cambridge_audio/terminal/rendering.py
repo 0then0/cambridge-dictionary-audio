@@ -1,9 +1,11 @@
 """Readable terminal translations and recording paths."""
 
+from dataclasses import replace
 from pathlib import Path
 
 from rich.text import Text
 
+from ..errors import friendly_error
 from ..i18n import translate
 from ..translations import (
     TranslationResult,
@@ -17,6 +19,10 @@ def translation_context(option, language: str) -> str:
 def render_translation(result: TranslationResult, language: str) -> Text:
     """Present source senses without exposing storage IDs or empty gloss placeholders."""
     t = lambda message: translate(message, language)  # noqa: E731
+    if result.error:
+        result = replace(
+            result, error=friendly_error(result.error, language, context="translation")
+        )
     if not result.options:
         return Text(result.format(language))
     text = Text()

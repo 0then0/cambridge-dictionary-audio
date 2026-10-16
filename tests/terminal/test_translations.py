@@ -121,9 +121,9 @@ def test_translation_failure_is_visible_and_toggle_retries(tmp_path, monkeypatch
             widget = app.query_one("#translation", Static)
             assert widget.display
             assert (
-                "429" in widget.render().plain
+                "слишком много запросов" in widget.render().plain
                 if isinstance(result, Exception)
-                else ("not installed" in widget.render().plain)
+                else ("не установлен" in widget.render().plain)
             )
             app.show_recording(app.selected)
             await pilot.pause()

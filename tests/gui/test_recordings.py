@@ -32,6 +32,10 @@ def test_enter_downloads_us_without_blocking_ui(window, app, monkeypatch, client
     assert not window.download_button.isEnabled()
     assert window.preferences_dialog.theme_combo.isEnabled()
     wait_until(app, lambda: window._worker is None)
+    assert not list(window.output_dir.glob("*.mp3"))
+    assert window.meaning_list.isVisible()
+    window.save_button.click()
+    wait_until(app, lambda: window._worker is None)
     assert (window.output_dir / "hello.us.mp3").read_bytes() == mp3
     assert window.result_title.text() == "hello"
     assert window.ipa_label.text() == "US /heˈloʊ/"
@@ -45,7 +49,8 @@ def test_network_error_keeps_ui_usable(window, app, monkeypatch, client):
     window.word_edit.setText("hello")
     window.start_download()
     wait_until(app, lambda: window._worker is None)
-    assert "403" in window.status_label.text()
+    assert "refused access" in window.status_label.text()
+    assert "403" in window.error_details_text.toPlainText()
     assert window.status_label.property("severity") == "error"
     assert window.download_button.isEnabled()
     assert not window.play_button.isEnabled()
@@ -75,7 +80,8 @@ def test_partial_success_remains_playable(window, app, monkeypatch, client, html
     assert len(window.recordings) == 1
     assert window.recordings[0].path.read_bytes() == mp3
     assert window.play_button.isEnabled()
-    assert "500" in window.status_label.text()
+    assert "temporarily unavailable" in window.status_label.text()
+    assert "500" in window.error_details_text.toPlainText()
 
 
 def test_both_accents_remain_selectable_after_language_change(
@@ -91,7 +97,8 @@ def test_both_accents_remain_selectable_after_language_change(
     assert window.recording_combo.isVisible()
     window.recording_combo.setCurrentIndex(0)
     assert window.ipa_label.text() == "UK /heˈləʊ/"
-    assert window.file_label.text() == "hello.uk.mp3"
+    assert window.file_label.text() == "Already saved"
+    assert window.file_label.toolTip().endswith("hello.uk.mp3")
     window.preferences_dialog.language_combo.setCurrentIndex(
         window.preferences_dialog.language_combo.findData("ru")
     )
@@ -216,6 +223,9 @@ def test_both_accents_downloads_only_missing_recording(window, app, monkeypatch,
     window.word_edit.setText("hello")
     window.download_button.click()
     wait_until(app, lambda: window._worker is None)
+    window.accent_combo.setCurrentIndex(window.accent_combo.findData("uk"))
+    window.save_button.click()
+    wait_until(app, lambda: window._worker is None)
     assert existing.read_bytes() == b"original audio"
     assert (window.output_dir / "hello.uk.mp3").read_bytes() == mp3
     assert len(window.recordings) == 2
@@ -273,7 +283,9 @@ def test_metadata_failure_does_not_lose_downloaded_audio(
     assert window.selected_recording().path.read_bytes() == mp3
     assert window.play_button.isEnabled()
     assert window.library_combo.count() == 1
-    assert window.status_label.text() == "Audio saved. Details could not be saved: disk full"
+    assert "Audio is saved" in window.status_label.text()
+    assert "disk full" not in window.status_label.text()
+    assert "disk full" in window.error_details_text.toPlainText()
 
 
 def test_gui_opens_aliases_and_recovers_reserved_names(window, mp3):
@@ -344,6 +356,8 @@ def test_gui_variant_selection_and_redownload_preserve_other_variants(
     window.word_edit.setText("hello")
     window.start_download()
     wait_until(app, lambda: window._worker is None)
+    window.save_button.click()
+    wait_until(app, lambda: window._worker is None)
     first = window.selected_recording()
     assert first.definition == "used when meeting someone"
     assert first.path.read_bytes() == b"ID3first"
@@ -351,12 +365,15 @@ def test_gui_variant_selection_and_redownload_preserve_other_variants(
     window.word_edit.clear()
     window.start_download(choose_variant=True)
     wait_until(app, lambda: window._worker is None)
+    window.meaning_list.setCurrentRow(2)
+    window.save_button.click()
+    wait_until(app, lambda: window._worker is None)
     second_record = window.selected_recording()
     assert second_record.definition == "a second meaning"
     assert second_record.ipa == "different"
     assert second_record.path != first.path
     assert second_record.path.read_bytes() == b"ID3second"
-    assert read_recording(second_record.path).recording == second_record
+    assert read_recording(second_record.reference).recording == second_record
     monkeypatch.setattr(QMessageBox, "exec", lambda self: QMessageBox.StandardButton.Yes)
     window.redownload()
     wait_until(app, lambda: window._worker is None)
@@ -437,3 +454,77 @@ def test_empty_new_word_does_not_replace_selected_library_record(
     else:
         assert destination.read_bytes() == b""
         client.session.get.assert_not_called()
+
+
+def test_switch_saved_accent_downloads_missing_audio_for_same_meaning(
+    window, app, monkeypatch, client, html, mp3
+):
+    from cambridge_audio.dictionary import dictionary_url, parse_entries
+    from cambridge_audio.library import save_metadata
+
+    entry = parse_entries(html, dictionary_url("hello"))[0]
+    window.output_dir.mkdir()
+    original = window.output_dir / "hello.us.mp3"
+    original.write_bytes(b"ID3original-us")
+    save_metadata(
+        Recording(
+            "hello",
+            "us",
+            original,
+            "heˈloʊ",
+            entry.definition,
+            part_of_speech=entry.part_of_speech,
+            source_sense_id=entry.sense_id,
+        )
+    )
+    window.refresh_library()
+    client.session.get.side_effect = [response(html), response(mp3)]
+    monkeypatch.setattr(workers, "CambridgeClient", lambda **kwargs: client)
+    window.accent_combo.setCurrentIndex(window.accent_combo.findData("uk"))
+    assert window.selected_recording() is None
+    assert not window.play_button.isEnabled()
+    wait_until(app, lambda: window._worker is None)
+    selected = window.selected_recording()
+    assert selected.accent == "uk"
+    assert selected.source_sense_id == entry.sense_id
+    assert selected.path.read_bytes() == mp3
+    assert window.ipa_label.text().startswith("UK")
+    assert original.read_bytes() == b"ID3original-us"
+    assert window.play_button.isEnabled()
+    window.accent_combo.setCurrentIndex(window.accent_combo.findData("us"))
+    assert window.selected_recording().path == original
+    assert window.ipa_label.text().startswith("US")
+    assert client.session.get.call_count == 2
+
+
+def test_failed_accent_switch_does_not_play_previous_accent(window, app, monkeypatch, client, mp3):
+    window.output_dir.mkdir()
+    path = window.output_dir / "hello.us.mp3"
+    path.write_bytes(mp3)
+    window.refresh_library()
+    client.session.get.side_effect = requests.Timeout("timeout")
+    monkeypatch.setattr(workers, "CambridgeClient", lambda **kwargs: client)
+    window.accent_combo.setCurrentIndex(window.accent_combo.findData("uk"))
+    wait_until(app, lambda: window._worker is None)
+    assert window.accent_combo.currentData() == "uk"
+    assert window.selected_recording() is None
+    assert not window.play_button.isEnabled()
+    assert path.read_bytes() == mp3
+
+
+def test_saved_accent_can_be_reopened_after_failed_switch(window, app, monkeypatch, client, mp3):
+    window.output_dir.mkdir()
+    path = window.output_dir / "hello.us.mp3"
+    path.write_bytes(mp3)
+    window.refresh_library()
+    client.session.get.side_effect = requests.Timeout("timeout")
+    monkeypatch.setattr(workers, "CambridgeClient", lambda **kwargs: client)
+    window.accent_combo.setCurrentIndex(window.accent_combo.findData("uk"))
+    wait_until(app, lambda: window._worker is None)
+    assert window.selected_recording() is None
+    window.accent_combo.setCurrentIndex(window.accent_combo.findData("us"))
+    assert window.selected_recording().path == path
+    assert window.ipa_label.text().startswith("US")
+    assert window.play_button.isEnabled()
+    assert client.session.get.call_count == 1
+    assert path.read_bytes() == mp3

@@ -47,19 +47,21 @@ targets Russian in 0.3.0. A Russian translation toggle and the local dictionary
 status replace the former free-form language field. Historical foreign-language
 caches and edits remain intact.
 
-Download is the primary action; Enter submits the word field. Network requests
-and phrase synthesis run in worker threads. Status messages report progress and
-errors in the window. Existing recordings open without network access, and only
-missing accents are downloaded. Download again requires overwrite confirmation.
-Successfully saved audio remains available if another accent or translation fails.
+Find displays meanings inline, grouped by part of speech. Selecting a meaning shows
+its complete definition and the audio owned by its source block. US/UK and preview
+playback precede the explicit Save meaning action. Other pronunciation is visible
+only for distinct audio alternatives of the selected accent. Saved entries remain
+available offline; Choose meaning performs a fresh search. Saving a meaning closes
+its selection list in the GUI. A new search clears the previous choices, including
+when the request fails. Failed accent downloads preserve enough context to return
+to the saved accent without another network request.
 
-The library scans the selected folder on startup and folder changes. Refresh
-picks up external changes. Legacy MP3s and new variant filenames share JSON v2
-sidecars with entry/sense identity, part of speech, definition, IPA and audio
-provenance. Files without sidecars remain playable; empty MP3s are ignored.
-Ambiguous downloads ask for a sense/pronunciation choice labeled with part of
-speech, short definition and IPA. A single available choice downloads immediately.
-Choose another pronunciation searches even when another variant is already saved.
+JSON v3 separates permanent collection identity from source identity and media.
+Several collection JSON files may reference one MP3 identified by accent and URL.
+Checksums verify managed media before reuse. Legacy v1/v2 metadata upgrades only
+on save; IDs, metadata paths and translations remain intact, including when audio
+is replaced. Existing duplicate files are retained. Network audio downloads do not
+hold the metadata lock, so collection reads can continue while a download waits.
 
 Enabling translation displays its cached result or fetches it in the background
 without replacing audio. Cache entries coexist by language, source and sense.
@@ -71,7 +73,8 @@ translation. Toggling off and on retries a failed request. Closing waits for
 active downloads, translations and dictionary installation.
 
 Install WikDict shows version, size in MB and license before explicit confirmation.
-Anki export chooses the selected recording or whole collection and a destination;
+Anki export uses genanki to package the selected entry or whole collection into one
+.apkg with a stable model, template and note GUIDs. TSV is an additional format;
 missing media or unresolved source-sense choices produce a visible failure.
 See [collection guide](collection.md) for storage, export and license details.
 

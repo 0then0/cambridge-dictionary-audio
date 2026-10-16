@@ -158,7 +158,7 @@ def test_cli_variants_list_and_explicit_selection(monkeypatch, client, html, tmp
     assert selected.id in capsys.readouterr().out
     assert not list(tmp_path.iterdir())
     assert cli.main(["hello", "--output-dir", str(tmp_path)]) == 1
-    assert "Choose a dictionary entry" in capsys.readouterr().err
+    assert "Choose a meaning" in capsys.readouterr().err
     client.session.get.side_effect = [response(html + other), response(b"ID3selected")]
     assert cli.main(["hello", "--variant", selected.id, "--output-dir", str(tmp_path)]) == 0
     path = next(tmp_path.glob("*.mp3"))
@@ -314,3 +314,78 @@ def test_saved_tui_preferences_do_not_change_other_cli_modes(tmp_path, monkeypat
     assert args.lang == "en" and args.accent == "us"
     assert args.output_dir == Path.cwd() / "downloads"
     assert args.play is plain and args.combine is plain
+
+
+def test_default_cli_apkg_export_is_offline_and_keeps_shared_media(tmp_path, monkeypatch):
+    import json
+    from zipfile import ZipFile
+
+    from cambridge_audio.library import save_metadata
+    from cambridge_audio.service import Recording
+
+    audio = tmp_path / "bank.us.mp3"
+    audio.write_bytes(b"ID3shared")
+    for index, meaning in enumerate(("money", "river")):
+        save_metadata(
+            Recording(
+                "bank",
+                "us",
+                audio,
+                "bæŋk",
+                meaning,
+                sense_id=str(index),
+                variant_id=str(index + 1) * 24,
+                metadata_path=tmp_path / f"bank--{index}.us.json",
+            )
+        )
+    monkeypatch.setattr(cli, "CambridgeClient", Mock(side_effect=AssertionError("offline export")))
+    output = tmp_path / "collection.apkg"
+    assert cli.main(["--output-dir", str(tmp_path), "--export-anki", str(output)]) == 0
+    with ZipFile(output) as archive:
+        assert len(json.loads(archive.read("media"))) == 1
+
+
+def test_cli_sense_and_audio_preview_does_not_save_collection(tmp_path, monkeypatch, client):
+    from cambridge_audio.dictionary import dictionary_url, variants
+    from tests.core.test_shared_audio import AUDIO, BANK, bank
+
+    choice = variants(bank())[1]
+    client.session.get.side_effect = [response(BANK, url=dictionary_url("bank")), response(AUDIO)]
+    monkeypatch.setattr(cli, "CambridgeClient", lambda *args, **kwargs: client)
+    heard = []
+    monkeypatch.setattr(cli, "play_audio", lambda path, lang: heard.append(path.read_bytes()))
+    assert (
+        cli.main(
+            [
+                "bank",
+                "--sense",
+                choice.entry.sense_id,
+                "--audio",
+                choice.pronunciation.id,
+                "--preview",
+                "--output-dir",
+                str(tmp_path),
+            ]
+        )
+        == 0
+    )
+    assert heard == [AUDIO]
+    assert not list(tmp_path.iterdir())
+
+
+def test_interactive_session_delete_preserves_preexisting_reused_record(
+    tmp_path, monkeypatch, client
+):
+    from cambridge_audio.dictionary import dictionary_url, variants
+    from cambridge_audio.library import scan_recordings
+    from tests.core.test_shared_audio import AUDIO, BANK, bank, save
+
+    client.session.get.return_value = response(AUDIO)
+    original = save(client, tmp_path, variants(bank())[0])
+    client.session.get.return_value = response(BANK, url=dictionary_url("bank"))
+    monkeypatch.setattr(cli, "CambridgeClient", lambda *args, **kwargs: client)
+    answers = iter(["bank", "1", "/r", "/q"])
+    monkeypatch.setattr("builtins.input", lambda prompt: next(answers))
+    assert cli.main(["--plain", "--no-play", "--output-dir", str(tmp_path)]) == 0
+    assert original.path.read_bytes() == AUDIO
+    assert [s.recording.id for s in scan_recordings(tmp_path)] == [original.id]

@@ -68,8 +68,10 @@ uv sync --locked --group gui
 uv run --group gui -m cambridge_audio.gui
 ```
 
-Enter a word or phrase and click **Download** (or press Enter). The recording,
-transcription and definition appear below. Click **Play** to listen in the window,
+Enter a word or phrase and click **Find** (or press Enter). Choose a meaning below
+the result, switch US/UK, and use **Play** before **Save meaning**. Definitions are
+shown in full; **Other pronunciation** appears only for multiple recordings of
+the selected accent. Click **Play** to listen in the window,
 or **Open folder** to find the MP3. No external player is needed for GUI playback.
 
 - English and Russian interfaces; English is the default.
@@ -92,12 +94,15 @@ or **Open folder** to find the MP3. No external player is needed for GUI playbac
   selected folder. Listen offline after restarting; **Refresh** picks up external
   changes. Entering a saved word opens it, and selecting both accents downloads
   only the missing variant. **Download again** asks before replacing a recording.
-- New GUI downloads save pronunciation details and translations in a matching
-  JSON file beside the MP3. Older recordings remain playable without that file.
+- New collection entries save details and translations in separate JSON files
+  that can reference a shared MP3. Older recordings remain playable without that file.
   **Show Russian translation** shows or hides a cached translation immediately.
   When it is missing, the app fetches it in the background without downloading
   audio again. Loading and errors appear in the recording panel; toggle the
   checkbox off and on to retry a failed request.
+- Errors show a short explanation. **Technical details** expands the original
+  diagnostic next to the error message; it is hidden by default. The TUI offers the same
+  details in a dialog.
 - Scrollbar handles are 4 logical pixels wide and expand to 8 on hover. Their
   wider hit area stays fixed, so the surrounding layout does not shift.
 
@@ -114,10 +119,28 @@ On Windows, `start-gui.bat` runs the desktop app from source through uv.
 
 ## Collection, translations and Anki
 
-See the [collection guide](docs/collection.md) for pronunciation selection,
+See the [collection guide](docs/collection.md) for meaning and pronunciation selection,
 Russian translations, local WikDict installation and Anki export in the GUI, TUI
 and CLI. [Data sources and licenses](docs/data-sources.md) covers dictionary
 attribution and licensing separately from the application code.
+
+Meanings remain separate collection entries and Anki notes, while meanings sharing
+the same source recording reuse one verified MP3. Old local/export IDs and personal
+translations are retained; old duplicate media are not removed automatically.
+
+**Export to Anki** saves one ready `.apkg` with a template, audio and sources.
+TSV remains available as an additional format:
+
+```sh
+cambridge-audio --output-dir downloads --export-anki my-deck.apkg
+cambridge-audio --output-dir downloads --export-anki tsv-export --export-format tsv
+```
+
+Existing TSV imports need explicit GUID mapping before switching to packages;
+otherwise duplicate notes are possible. The [transition instructions](docs/collection.md#existing-notes-imported-from-tsv)
+use a copy exported by Anki and preserve original identities. Users with modified
+note schemas can continue TSV updates. Actual Anki import and review-history
+retention have not been tested in this environment.
 
 ## Browser extension
 
@@ -212,7 +235,7 @@ Search filters the saved library as you type. Enter downloads the word or opens
 existing audio offline; with both accents selected, only missing recordings are
 downloaded. **Download again** asks before replacing an existing recording.
 
-- **Enter** in search: download or open saved audio; in the library: play the selected recording.
+- **Enter** in search: find meanings or open saved audio; in the library: play the selected recording.
 - **Tab / Shift+Tab**: move between controls; **Up / Down**: navigate the library.
 - **Ctrl+L**: search; **Ctrl+P**: play/stop; **Ctrl+R**: refresh the library.
 - **Ctrl+S**: settings; **F1**: help; **F2**: About; **Ctrl+Q**: quit.
@@ -221,7 +244,7 @@ downloaded. **Download again** asks before replacing an existing recording.
 
 All commands also have shortcuts independent of the keyboard layout: **F3** search,
 **F4** play/stop, **F5** refresh, **F6** settings, **F7** export, **F8** translation,
-**F9** WikDict, **F10** pronunciation, **F11** cancel, **F12** quit.
+**F9** WikDict, **F10** meanings, **F11** cancel, **F12** quit.
 Ctrl shortcuts accept Russian and Ukrainian letters at the same key positions.
 If the terminal does not report Ctrl with non-Latin letters, use the function keys.
 

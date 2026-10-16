@@ -42,9 +42,7 @@ def test_button_labels_fit_after_language_and_playback_changes(tmp_path, monkeyp
             app.screen.query_one("#language", Select).value = "ru"
             app.screen.query_one("#apply", Button).press()
             await wait_for_ui(pilot, lambda: not isinstance(app.screen, Settings))
-            await check_labels(
-                {"download": "Скачать", "play": "Слушать", "again": "Скачать заново"}
-            )
+            await check_labels({"download": "Найти", "play": "Слушать", "again": "Скачать заново"})
             await pilot.press("ctrl+p")
             await wait_for_ui(pilot, lambda: app.playing)
             await check_labels({"play": "Стоп"})
@@ -55,7 +53,7 @@ def test_button_labels_fit_after_language_and_playback_changes(tmp_path, monkeyp
             app.screen.query_one("#language", Select).value = "en"
             app.screen.query_one("#apply", Button).press()
             await wait_for_ui(pilot, lambda: not isinstance(app.screen, Settings))
-            await check_labels({"download": "Download", "play": "Play", "again": "Download again"})
+            await check_labels({"download": "Find", "play": "Play", "again": "Download again"})
 
     asyncio.run(scenario())
 
@@ -86,7 +84,7 @@ def test_settings_switch_language_theme_and_folder_and_escape_discards(tmp_path)
             assert app.options.translation == "russian"
             assert app.theme == "cambridge-light"
             assert app.options.directory == other
-            assert app.query_one("#download", Button).label.plain == "Скачать"
+            assert app.query_one("#download", Button).label.plain == "Найти"
             assert app.selected.recording.word == "world"
             await pilot.press("ctrl+s")
             await pilot.pause()
@@ -186,7 +184,7 @@ def test_settings_apply_is_saved_and_cancel_preserves_previous_file(
             assert second.options.language == "ru"
             assert second.options.accent == "both"
             assert second.theme == "cambridge-light"
-            assert second.query_one("#download", Button).label.plain == "Скачать"
+            assert second.query_one("#download", Button).label.plain == "Найти"
 
     asyncio.run(scenario())
 
@@ -237,7 +235,7 @@ def test_settings_save_error_is_visible_without_closing_app(tmp_path, monkeypatc
             app.screen.query_one("#apply", Button).press()
             await wait_for_ui(
                 pilot,
-                lambda: "Не удалось сохранить" in app.query_one("#status", Static).render().plain,
+                lambda: app.query_one("#status", Static).has_class("error"),
             )
             assert app.options.accent == "both"
             assert app.query_one("#status", Static).has_class("error")

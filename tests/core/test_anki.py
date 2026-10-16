@@ -101,7 +101,14 @@ def test_cli_selected_export_does_not_create_network_client(tmp_path, monkeypatc
     records = collection(tmp_path)
     selected = records[0]
     monkeypatch.setattr(cli, "CambridgeClient", Mock(side_effect=AssertionError("offline export")))
-    args = ["--recording", str(selected.recording.path), "--export-anki", str(tmp_path / "export")]
+    args = [
+        "--recording",
+        str(selected.recording.path),
+        "--export-anki",
+        str(tmp_path / "export"),
+        "--export-format",
+        "tsv",
+    ]
     assert cli.main(args) == 0
     assert len(rows(tmp_path / "export/collection.tsv")) == 1
     selected = edit_translation(selected, "russian", "пользовательский")

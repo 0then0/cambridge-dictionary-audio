@@ -1,6 +1,113 @@
 """English application messages and their Russian translations."""
 
 RUSSIAN = {
+    "Refine translation": "Уточнить перевод",
+    "Choose the English meaning of the word in Cambridge.": (
+        "Выберите английское значение слова в Cambridge."
+    ),
+    "Choose which translation matches the selected English meaning.": (
+        "Выберите перевод, подходящий к выбранному английскому значению."
+    ),
+    "Offline dictionary": "Офлайн-словарь",
+    "Technical details": "Технические подробности",
+    "Operation": "Операция",
+    "The service took too long to respond. Please try again.": (
+        "Сервис не ответил вовремя. Попробуйте ещё раз."
+    ),
+    "The service is receiving too many requests. Please try again later.": (
+        "Сервис получил слишком много запросов. Попробуйте позже."
+    ),
+    "The dictionary temporarily refused access. Please try again later.": (
+        "Словарь временно ограничил доступ. Попробуйте позже."
+    ),
+    "Could not connect to the service. Check your internet connection and try again.": (
+        "Не удалось подключиться к сервису. Проверьте интернет и попробуйте ещё раз."
+    ),
+    "Not enough free space. Free some space and try again.": (
+        "Недостаточно свободного места. Освободите место и повторите попытку."
+    ),
+    "Cannot access the file or folder. Check permissions or choose another folder.": (
+        "Нет доступа к файлу или папке. Проверьте права доступа или выберите другую папку."
+    ),
+    "The audio file is unavailable. Save the recording again.": (
+        "Аудиофайл недоступен. Сохраните запись ещё раз."
+    ),
+    "The requested item could not be found. Check your selection and try again.": (
+        "Не удалось найти выбранную запись. Проверьте выбор и повторите попытку."
+    ),
+    "The service is temporarily unavailable. Please try again later.": (
+        "Сервис временно недоступен. Попробуйте позже."
+    ),
+    "The file is damaged or incomplete. Download it again.": (
+        "Файл повреждён или загружен не полностью. Скачайте его заново."
+    ),
+    "The destination is already in use. Choose another file or folder.": (
+        "Этот файл или папка уже используется. Выберите другое место сохранения."
+    ),
+    "Choose a translation sense before exporting.": "Перед экспортом выберите значение перевода.",
+    "The offline dictionary is not installed. Install WikDict or try again online.": (
+        "Офлайн-словарь не установлен. Установите WikDict или повторите попытку с интернетом."
+    ),
+    "Could not load the translation. Please try again.": (
+        "Не удалось загрузить перевод. Попробуйте ещё раз."
+    ),
+    "Audio is saved, but its details could not be saved. Please try again.": (
+        "Аудио сохранено, но сохранить сведения о записи не удалось. Попробуйте ещё раз."
+    ),
+    "Could not export the collection. Check the selected recordings and destination.": (
+        "Не удалось экспортировать коллекцию. Проверьте выбранные записи и место сохранения."
+    ),
+    "Could not read the collection. Check the folder and try again.": (
+        "Не удалось прочитать коллекцию. Проверьте папку и повторите попытку."
+    ),
+    "Could not play the recording. Check your audio settings and try again.": (
+        "Не удалось воспроизвести запись. Проверьте настройки звука и повторите попытку."
+    ),
+    "Could not save settings. Check the settings folder permissions.": (
+        "Не удалось сохранить настройки. Проверьте доступ к папке настроек."
+    ),
+    "Could not complete the operation. Please try again.": (
+        "Не удалось выполнить действие. Попробуйте ещё раз."
+    ),
+    "Reassociate this saved entry with the explicitly selected meaning/audio.": (
+        "Связать сохранённую запись с явно выбранным значением и аудио."
+    ),
+    "Choose a meaning and its audio:": "Выберите значение и его аудио:",
+    "Meaning number (empty cancels): ": "Номер значения (пусто для отмены): ",
+    "Choose a number from the list.": "Выберите номер из списка.",
+    "The selected meaning/audio is no longer available. Choose again.": (
+        "Выбранное значение или аудио больше недоступно. Выберите снова."
+    ),
+    "Find": "Найти",
+    "Choose meaning": "Выбрать значение",
+    "Meaning": "Значение",
+    "Save meaning": "Сохранить значение",
+    "Already saved": "Уже сохранено",
+    "Other pronunciation": "Другое произношение",
+    "Choose a meaning, listen, then save.": "Выберите значение, прослушайте и сохраните.",
+    "Meaning/audio ID (empty cancels): ": "ID значения и аудио (пусто для отмены): ",
+    "Select the meaning ID from --list-variants.": "Выбрать ID значения из --list-variants.",
+    "Select the audio ID from --list-variants.": "Выбрать ID аудио из --list-variants.",
+    "Listen without saving to the collection.": "Прослушать без сохранения в коллекцию.",
+    "Anki export format (default: apkg).": "Формат экспорта Anki (по умолчанию apkg).",
+    "List meaning/audio IDs without downloading.": "Показать ID значений и аудио без скачивания.",
+    "Save the listed meaning/audio ID (legacy option).": (
+        "Сохранить значение и аудио по ID из списка (прежний параметр)."
+    ),
+    "Export the collection to an Anki .apkg file (default) or TSV folder.": (
+        "Экспортировать коллекцию в файл Anki .apkg (по умолчанию) или папку TSV."
+    ),
+    "Select a collection JSON or an unambiguous MP3; repeatable.": (
+        "Выбрать JSON записи или MP3 с единственным значением; можно повторять."
+    ),
+    "Adopt TSV GUIDs from an Anki export made with older-version support.": (
+        "Сопоставить GUID записей TSV по экспорту Anki с поддержкой старых версий."
+    ),
+    "Mapped {count} existing Anki notes.": "Сопоставлено существующих записей Anki: {count}.",
+    "Use .apkg for a ready deck, or .tsv for a text export folder.": (
+        "Укажите .apkg для готовой колоды или .tsv для папки текстового экспорта."
+    ),
+    "No recordings selected for export.": "Не выбраны записи для экспорта.",
     "Loading translation...": "Загрузка перевода...",
     "No translation found. Toggle off and on to retry.": (
         "Перевод не найден. Выключите и включите чекбокс, чтобы повторить запрос."
@@ -57,7 +164,7 @@ RUSSIAN = {
     "Up / Down: navigate saved recordings\n"
     "Ctrl+L: focus search\nCtrl+P: play / stop selected recording\n"
     "Ctrl+R: refresh library\nCtrl+S: settings\n"
-    "Ctrl+O: choose pronunciation\nCtrl+T: edit / choose / reset translation\n"
+    "Ctrl+O: choose meaning\nCtrl+T: edit / choose / reset translation\n"
     "Ctrl+D: install WikDict\nCtrl+E: export to Anki\n"
     "Ctrl+C: cancel download / stop playback, or quit when idle\nCtrl+Q: quit\n"
     "F1: this help\nEsc: close a dialog": (
@@ -67,7 +174,7 @@ RUSSIAN = {
         "Вверх / Вниз: выбор сохранённых записей\n"
         "Ctrl+L: перейти к поиску\nCtrl+P: прослушать / остановить запись\n"
         "Ctrl+R: обновить библиотеку\nCtrl+S: настройки\n"
-        "Ctrl+O: выбрать произношение\nCtrl+T: изменить / выбрать / сбросить перевод\n"
+        "Ctrl+O: выбрать значение\nCtrl+T: изменить / выбрать / сбросить перевод\n"
         "Ctrl+D: установить WikDict\nCtrl+E: экспорт в Anki\n"
         "Ctrl+C: отменить загрузку / остановить звук или выйти, если операций нет\nCtrl+Q: выйти\n"
         "F1: эта справка\nEsc: закрыть диалог"
@@ -368,12 +475,12 @@ RUSSIAN.update(
 RUSSIAN[
     "Any keyboard layout: F3 search; F4 play / stop; F5 refresh; "
     "F6 settings; F7 export; F8 translation; F9 WikDict; "
-    "F10 pronunciation; F11 cancel; F12 quit. "
+    "F10 meaning; F11 cancel; F12 quit. "
     "Ctrl shortcuts also accept Russian and Ukrainian key positions."
 ] = (
     "При любой раскладке: F3 поиск; F4 прослушать / остановить; F5 обновить; "
     "F6 настройки; F7 экспорт; F8 перевод; F9 WikDict; "
-    "F10 произношение; F11 отмена; F12 выход. "
+    "F10 значение; F11 отмена; F12 выход. "
     "Ctrl-сочетания также работают с русскими и украинскими буквами на тех же клавишах."
 )
 

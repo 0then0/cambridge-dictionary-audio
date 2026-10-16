@@ -8,6 +8,7 @@ license = "Apache-2.0"
 license-files = ["LICENSE", "LICENSE-MIT", "NOTICE"]
 dependencies = [
     "beautifulsoup4>=4.15.0,<5",
+    "genanki>=0.13.1,<0.14",
     "requests>=2.34.2,<3",
     "rich>=15.0.0,<16",
     "textual>=8.2.8,<9",

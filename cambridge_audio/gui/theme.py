@@ -16,7 +16,14 @@ from PySide6.QtCore import (
     QVariantAnimation,
 )
 from PySide6.QtGui import QColor, QIcon, QPainter, QPalette
-from PySide6.QtWidgets import QApplication, QComboBox, QScrollBar, QStyle, QStyleOptionSlider
+from PySide6.QtWidgets import (
+    QApplication,
+    QComboBox,
+    QListWidget,
+    QScrollBar,
+    QStyle,
+    QStyleOptionSlider,
+)
 
 
 class ScrollBar(QScrollBar):
@@ -123,6 +130,43 @@ class ScrollBar(QScrollBar):
 def install_scrollbars(area):
     area.setVerticalScrollBar(ScrollBar(Qt.Orientation.Vertical, area))
     area.setHorizontalScrollBar(ScrollBar(Qt.Orientation.Horizontal, area))
+
+
+def fit_list_height(view, limit):
+    view.doItemsLayout()
+    offset = view.spacing() - view.visualRect(view.model().index(0, 0)).top()
+    height = (
+        max(
+            (
+                view.visualRect(view.model().index(row, 0)).bottom() + 1 + view.spacing() + offset
+                for row in range(view.model().rowCount())
+            ),
+            default=0,
+        )
+        + 2 * view.frameWidth()
+    )
+    view.setFixedHeight(min(max(height, 40), limit))
+
+
+class ContentList(QListWidget):
+    """Fit short lists, including wrapped rows; cap long lists on small screens."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWordWrap(True)
+        self.setTextElideMode(Qt.TextElideMode.ElideNone)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        install_scrollbars(self)
+        self.model().dataChanged.connect(self._fit)
+        self.model().rowsInserted.connect(self._fit)
+        self.model().rowsRemoved.connect(self._fit)
+
+    def _fit(self, *args):
+        fit_list_height(self, min(360, self.screen().availableGeometry().height() // 2))
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._fit()
 
 
 class ComboBox(QComboBox):
@@ -323,6 +367,11 @@ def apply_theme(
         QLabel#status[severity="error"] {{ color: {c["error"]}; }}
         QFrame#panel {{
             background: {c["surface"]}; border: 1px solid {c["border"]}; border-radius: 8px;
+        }}
+        QLabel#meaning-category {{
+            color: {c["text"]}; background: {c["hover"]};
+            font-weight: bold; padding: 6px 10px;
+            border-bottom: 1px solid {c["border"]};
         }}
         QLineEdit, QComboBox {{
             background: {c["surface"]}; color: {c["text"]}; border: 1px solid {c["border"]};

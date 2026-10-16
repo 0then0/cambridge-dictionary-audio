@@ -6,7 +6,7 @@ import sys
 from importlib.metadata import version
 from pathlib import Path
 
-from .anki import export_anki
+from .anki import adopt_anki_identities, export_anki, export_apkg
 from .audio import play_audio
 from .console import Output, is_terminal
 from .dictionary import (
@@ -16,8 +16,8 @@ from .dictionary import (
     variants,
 )
 from .i18n import translate
-from .library import read_recording, save_metadata, scan_recordings
-from .service import Recording, download_recordings
+from .library import delete_recording, read_recording, save_metadata, scan_recordings
+from .service import Recording, download_recordings, preview_recording
 from .translations import (
     cached_translation,
     edit_translation,
@@ -81,9 +81,11 @@ def russian_translation(value: str, language: str = "en") -> str | None:
 
 def download_word(client: CambridgeClient, word: str, args, downloaded: set[Path]) -> None:
     output = Output(args.lang, plain=args.plain)
+    known_ids = {s.recording.id for s in scan_recordings(args.output_dir)}
 
     def saved(recording: Recording) -> None:
-        downloaded.add(recording.path)
+        if recording.id not in known_ids:
+            downloaded.add(recording.reference)
         if recording.combined:
             output.message(
                 translate(
@@ -112,6 +114,9 @@ def download_word(client: CambridgeClient, word: str, args, downloaded: set[Path
             )
 
     def perform(variant_id=args.variant, entries=None):
+        target = read_recording(args.update_recording) if args.update_recording else None
+        if args.update_recording and target is None:
+            raise ValueError(f"Missing or ambiguous collection entry: {args.update_recording}")
         return download_recordings(
             client,
             word,
@@ -125,6 +130,9 @@ def download_word(client: CambridgeClient, word: str, args, downloaded: set[Path
             entries=entries,
             dictionary_dir=args.dictionary_dir,
             offline_translation=args.offline,
+            sense_id=args.sense,
+            audio_id=args.audio,
+            target=target.recording if target else None,
         )
 
     try:
@@ -133,16 +141,20 @@ def download_word(client: CambridgeClient, word: str, args, downloaded: set[Path
     except SelectionRequired as exc:
         if args.word:
             raise
-        print(str(exc))
-        selected = input(translate("Pronunciation ID (empty cancels): ", args.lang)).strip()
+        print(translate("Choose a meaning and its audio:", args.lang))
+        for index, choice in enumerate(exc.choices, 1):
+            print(f"{index}. {choice.label}")
+        selected = input(translate("Meaning number (empty cancels): ", args.lang)).strip()
         if not selected:
             return
+        if not selected.isdecimal() or not 1 <= int(selected) <= len(exc.choices):
+            raise ValueError(translate("Choose a number from the list.", args.lang)) from None
         with output.working():
-            result = perform(selected, exc.entries)
+            result = perform(exc.choices[int(selected) - 1].id, exc.entries)
     for i, recording in enumerate(result.recordings):
         store_details(recording, () if result.translation_results else result.translations)
         if result.translation_results:
-            persist_translation(read_recording(recording.path), result.translation_results[i])
+            persist_translation(read_recording(recording.reference), result.translation_results[i])
             output.message(result.translation_results[i].format(args.lang))
     output.details(result.recordings[0].word, result.recordings[0].definition, result.translations)
     if result.translation_error:
@@ -175,8 +187,9 @@ def interactive(client: CambridgeClient, args) -> int:
                 continue
             if word == "/r":
                 for path in tuple(downloaded):
-                    path.unlink(missing_ok=True)
-                    path.with_suffix(".json").unlink(missing_ok=True)
+                    record = read_recording(path)
+                    if record:
+                        delete_recording(record.recording)
                     downloaded.remove(path)
                 print(translate("Files downloaded in this session have been deleted.", args.lang))
                 continue
@@ -286,10 +299,41 @@ def main(argv: list[str] | None = None) -> int:
     options.add_argument(
         "--list-variants",
         action="store_true",
-        help=translate("List pronunciation IDs without downloading.", language),
+        help=translate("List meaning/audio IDs without downloading.", language),
     )
     options.add_argument(
-        "--variant", help=translate("Download the listed pronunciation ID.", language)
+        "--variant", help=translate("Save the listed meaning/audio ID (legacy option).", language)
+    )
+    options.add_argument(
+        "--sense", help=translate("Select the meaning ID from --list-variants.", language)
+    )
+    options.add_argument(
+        "--audio", help=translate("Select the audio ID from --list-variants.", language)
+    )
+    options.add_argument(
+        "--update-recording",
+        type=Path,
+        help=translate(
+            "Reassociate this saved entry with the explicitly selected meaning/audio.", language
+        ),
+    )
+    options.add_argument(
+        "--preview",
+        action="store_true",
+        help=translate("Listen without saving to the collection.", language),
+    )
+    options.add_argument(
+        "--export-format",
+        choices=("apkg", "tsv"),
+        default="apkg",
+        help=translate("Anki export format (default: apkg).", language),
+    )
+    options.add_argument(
+        "--anki-reference",
+        type=Path,
+        help=translate(
+            "Adopt TSV GUIDs from an Anki export made with older-version support.", language
+        ),
     )
     options.add_argument(
         "--dictionary-info",
@@ -307,13 +351,15 @@ def main(argv: list[str] | None = None) -> int:
     options.add_argument(
         "--export-anki",
         type=Path,
-        help=translate("Export the collection to an Anki TSV folder.", language),
+        help=translate(
+            "Export the collection to an Anki .apkg file (default) or TSV folder.", language
+        ),
     )
     options.add_argument(
         "--recording",
         action="append",
         type=Path,
-        help=translate("Select a saved MP3 for translation or export; repeatable.", language),
+        help=translate("Select a collection JSON or an unambiguous MP3; repeatable.", language),
     )
     options.add_argument(
         "--translate-saved",
@@ -342,7 +388,9 @@ def main(argv: list[str] | None = None) -> int:
         help=translate("Select a source sense by its displayed translation ID.", language),
     )
     args = parser.parse_args(argv)
-    if (args.list_variants or args.variant) and not args.word:
+    if (
+        args.list_variants or args.variant or args.sense or args.audio or args.preview
+    ) and not args.word:
         parser.error("--list-variants and --variant require a word argument.")
     if args.dictionary_info or args.install_dictionary:
         print(PACKAGE.description)
@@ -357,6 +405,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if (
         args.recording
+        or args.anki_reference
         or args.export_anki
         or args.translate_saved
         or args.set_translation is not None
@@ -406,8 +455,12 @@ def main(argv: list[str] | None = None) -> int:
                 if result and not args.translate_saved:
                     print(result.format(args.lang))
                 updated.append(saved)
+            if args.anki_reference:
+                count = adopt_anki_identities(updated, args.anki_reference, args.output_dir)
+                print(translate("Mapped {count} existing Anki notes.", args.lang, count=count))
             if args.export_anki:
-                print(export_anki(updated, args.export_anki, language=language))
+                exporter = export_apkg if args.export_format == "apkg" else export_anki
+                print(exporter(updated, args.export_anki, language=language))
             return 0
         except (CambridgeError, OSError, ValueError) as exc:
             print(str(exc), file=sys.stderr)
@@ -456,7 +509,34 @@ def main(argv: list[str] | None = None) -> int:
         try:
             if args.list_variants:
                 for choice in variants(client.lookup(" ".join(args.word)), args.accent):
-                    print(f"{choice.id}  {choice.label}")
+                    print(
+                        f"{choice.id}  sense={choice.entry.sense_id}  "
+                        f"audio={choice.pronunciation.id}  {choice.label}"
+                    )
+            elif args.preview:
+                from tempfile import TemporaryDirectory
+
+                choices = tuple(
+                    v
+                    for v in variants(client.lookup(" ".join(args.word)), args.accent)
+                    if (not args.variant or v.id == args.variant)
+                    and (not args.sense or v.entry.sense_id == args.sense)
+                    and (not args.audio or v.pronunciation.id == args.audio)
+                )
+                if not choices:
+                    raise ValueError(
+                        translate(
+                            "The selected meaning/audio is no longer available. Choose again.",
+                            args.lang,
+                        )
+                    )
+                if len(choices) != 1:
+                    raise SelectionRequired(choices, tuple(v.entry for v in choices))
+                with TemporaryDirectory(prefix="cambridge-preview-") as temp:
+                    path = preview_recording(
+                        client, choices[0], Path(temp), collection_dir=args.output_dir
+                    )
+                    play_audio(path, args.lang)
             else:
                 download_word(client, " ".join(args.word), args, set())
         except (CambridgeError, OSError, ValueError) as exc:

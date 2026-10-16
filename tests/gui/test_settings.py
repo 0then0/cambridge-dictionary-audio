@@ -18,7 +18,7 @@ def test_language_theme_and_folder_are_remembered(window, app, monkeypatch, tmp_
     window.preferences_dialog.language_combo.setCurrentIndex(
         window.preferences_dialog.language_combo.findData("ru")
     )
-    assert window.download_button.text() == "Скачать"
+    assert window.download_button.text() == "Найти"
     window.preferences_dialog.theme_combo.setCurrentIndex(
         window.preferences_dialog.theme_combo.findData("dark")
     )
@@ -31,7 +31,7 @@ def test_language_theme_and_folder_are_remembered(window, app, monkeypatch, tmp_
     assert restored.language == "ru"
     assert restored.theme == "dark"
     assert restored.output_dir == selected
-    assert restored.download_button.text() == "Скачать"
+    assert restored.download_button.text() == "Найти"
     restored.preferences_dialog.theme_combo.setCurrentIndex(
         restored.preferences_dialog.theme_combo.findData("light")
     )

@@ -61,7 +61,7 @@ def test_ambiguity_does_not_download_and_selected_variants_never_collide(
     assert client.session.get.call_count == 1
     assert not list(tmp_path.iterdir())
     for choice in error.value.choices:
-        audio = b"ID3" + choice.id.encode()
+        audio = b"ID3" + choice.pronunciation.url.encode()
         client.session.get.return_value = response(audio)
         result = download_recordings(
             client,
@@ -77,13 +77,14 @@ def test_ambiguity_does_not_download_and_selected_variants_never_collide(
         assert record.ipa == choice.pronunciation.ipa
         assert record.audio_url == choice.pronunciation.url
         assert record.path.read_bytes() == audio
-        assert read_recording(record.path).recording == record
+        assert read_recording(record.reference).recording == record
     assert len(scan_recordings(tmp_path)) == 5
     before = {s.recording.path: s.recording.path.read_bytes() for s in scan_recordings(tmp_path)}
     selected = scan_recordings(tmp_path)[2].recording
     client.session.get.return_value = response(b"ID3replacement")
-    with pytest.raises(FileExistsError):
-        download_recordings(client, "lead", tmp_path, entries=error.value.entries, target=selected)
+    count = client.session.get.call_count
+    download_recordings(client, "lead", tmp_path, entries=error.value.entries, target=selected)
+    assert client.session.get.call_count == count
     download_recordings(
         client,
         "lead",

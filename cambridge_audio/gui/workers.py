@@ -1,20 +1,18 @@
 """Background download, translation and dictionary installation tasks."""
 
-import errno
 from dataclasses import dataclass
 from pathlib import Path
 
-import requests
 from PySide6.QtCore import QThread, Signal
 
 from ..dictionary import (
-    AudioNotFoundError,
     CambridgeClient,
     SelectionRequired,
 )
+from ..errors import diagnostic_details
 from ..i18n import translate
 from ..library import SavedRecording, read_recording, save_metadata
-from ..service import DownloadCancelled, Recording, download_recordings
+from ..service import DownloadCancelled, Recording, download_recordings, preview_recording
 from ..translations import (
     persist_translation,
     resolve_translation,
@@ -38,6 +36,10 @@ class DownloadRequest:
     target: Recording | None = None
     translation_language: str = "russian"
     dictionary_dir: Path | None = None
+    select_only: bool = False
+    preview_choice: object = None
+    preview_dir: Path | None = None
+    sense_id: str | None = None
 
 
 class DownloadWorker(QThread):
@@ -45,6 +47,7 @@ class DownloadWorker(QThread):
     completed = Signal(object)
     failed = Signal(str)
     selection = Signal(object)
+    previewed = Signal(object)
 
     def __init__(self, request: DownloadRequest, parent=None):
         super().__init__(parent)
@@ -59,7 +62,7 @@ class DownloadWorker(QThread):
                 self.request.translation_language if self.request.translation else None,
             )
         except OSError as exc:
-            self.metadata_error = str(exc)
+            self.metadata_error = diagnostic_details(exc)
 
     def _recording_saved(self, record):
         self._save_metadata(record)
@@ -75,6 +78,15 @@ class DownloadWorker(QThread):
             with CambridgeClient(
                 language=request.language, check_cancelled=self._check_cancelled
             ) as client:
+                if request.preview_choice is not None:
+                    path = preview_recording(
+                        client,
+                        request.preview_choice,
+                        request.preview_dir,
+                        collection_dir=request.output_dir,
+                    )
+                    self.previewed.emit(path)
+                    return
                 result = download_recordings(
                     client,
                     request.word,
@@ -84,11 +96,14 @@ class DownloadWorker(QThread):
                     combine=request.combine,
                     translation=request.translation_language if request.translation else None,
                     variant_id=request.variant_id,
+                    sense_id=request.sense_id,
                     entries=request.entries,
                     target=request.target,
                     dictionary_dir=request.dictionary_dir,
                     on_recording=self._recording_saved,
                     check_cancelled=self._check_cancelled,
+                    select_only=request.select_only,
+                    audio_cache_dir=request.preview_dir,
                 )
             for record in result.recordings:
                 self._save_metadata(
@@ -97,43 +112,13 @@ class DownloadWorker(QThread):
             for record, translation in zip(
                 result.recordings, result.translation_results, strict=False
             ):
-                persist_translation(read_recording(record.path), translation)
+                persist_translation(read_recording(record.reference), translation)
             self.completed.emit(result)
         except SelectionRequired as exc:
             self.selection.emit(exc)
         except Exception as exc:
             # Keep the UI usable even when a dependency raises an unexpected error.
-            self.failed.emit(self._error_message(exc))
-
-    def _error_message(self, error: Exception) -> str:
-        cause = error.__cause__ or error
-        values = {}
-        if isinstance(cause, requests.Timeout):
-            message = "Cambridge took too long to respond. Please try again."
-        elif isinstance(cause, requests.HTTPError) and cause.response is not None:
-            message = "Cambridge could not provide the recording (HTTP {status}). Try again later."
-            values["status"] = cause.response.status_code
-        elif isinstance(cause, requests.RequestException):
-            message = (
-                "Could not connect to Cambridge. Check your internet connection and try again."
-            )
-        elif isinstance(error, AudioNotFoundError):
-            message = "No recording was found for '{word}' with this pronunciation."
-            values["word"] = self.request.word
-        elif isinstance(error, FileExistsError):
-            message = (
-                "A recording appeared in this folder. "
-                "Download again to choose whether to replace it."
-            )
-        elif isinstance(error, PermissionError):
-            message = (
-                "Cannot save in this folder. Choose another folder or close apps using the file."
-            )
-        elif isinstance(error, OSError) and error.errno == errno.ENOSPC:
-            message = "Not enough free space in the selected folder."
-        else:
-            return str(error) or type(error).__name__
-        return translate(message, self.request.language, **values)
+            self.failed.emit(diagnostic_details(exc))
 
 
 class TranslationWorker(QThread):
@@ -160,7 +145,7 @@ class TranslationWorker(QThread):
                 )
             self.completed.emit(self.saved, result, "")
         except Exception as exc:
-            self.completed.emit(self.saved, (), str(exc) or type(exc).__name__)
+            self.completed.emit(self.saved, (), diagnostic_details(exc))
 
 
 class DictionaryWorker(QThread):
@@ -184,4 +169,4 @@ class DictionaryWorker(QThread):
             )
             self.completed.emit(str(path))
         except Exception as exc:
-            self.failed.emit(str(exc))
+            self.failed.emit(diagnostic_details(exc))

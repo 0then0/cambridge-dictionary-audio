@@ -24,6 +24,9 @@ def test_download_metadata_survives_restart(tmp_path, monkeypatch, client, html,
             app.query_one("#query", Input).value = "hello"
             await pilot.press("enter")
             await finish_download(app, pilot)
+            assert app.query_one("#save-meaning").display
+            app.save_meaning()
+            await finish_download(app, pilot)
             assert not app.busy
             assert app.selected.recording.ipa == "heˈloʊ"
             assert "used when meeting" in app.selected.recording.definition
@@ -51,6 +54,8 @@ def test_both_downloads_only_missing_accent(tmp_path, monkeypatch, client, html,
             app.query_one("#query", Input).value = "hello"
             await pilot.press("enter")
             await finish_download(app, pilot)
+            app.save_meaning()
+            await finish_download(app, pilot)
             assert existing.path.read_bytes() == b"ID3saved"
             assert (tmp_path / "hello.uk.mp3").read_bytes() == mp3
             assert read_recording(existing.path).translations == ("привет",)
@@ -70,7 +75,7 @@ def test_partial_failure_keeps_audio_and_metadata(tmp_path, monkeypatch, client,
         app = CambridgeApp(Options(tmp_path, accent="both", play=False))
         async with app.run_test() as pilot:
             app.query_one("#query", Input).value = "hello"
-            await pilot.press("enter")
+            app.start_download("hello", "both")
             await finish_download(app, pilot)
             assert not app.busy
             assert app.query_one("#status", Static).has_class("error")
@@ -158,24 +163,19 @@ def test_tui_pronunciation_choice_saves_matching_variant(tmp_path, monkeypatch, 
         async with app.run_test() as pilot:
             app.query_one("#query", Input).value = "hello"
             app.submit()
-            await wait_for_ui(
-                pilot,
-                lambda: (
-                    isinstance(app.screen, terminal.ChooseOption)
-                    and bool(app.screen.query("#choice"))
-                    and bool(app.screen.query("#accept"))
-                    and app.screen.query_one("#accept", Button).is_mounted
-                ),
-            )
-            selector = app.screen.query_one("#choice", Select)
-            selected_id = app.screen.choices[1][1]
-            selector.value = selected_id
-            app.screen.query_one("#accept", Button).press()
+            await finish_download(app, pilot)
+            from textual.widgets import OptionList
+
+            app.query_one("#meanings", OptionList).highlighted = 1
+            await pilot.pause()
+            selected_id = app.current_choice().id
+            app.save_meaning()
             await wait_for_ui(pilot, lambda: not app.busy and app.selected is not None)
             record = app.selected.recording
             assert record.definition == "a different sense"
             assert record.ipa == "other-ipa"
-            assert record.variant_id == selected_id
+            assert app.current_choice().id == selected_id
+            assert record.source_sense_id == app.current_choice().entry.sense_id
             assert record.path.read_bytes() == b"ID3selected"
             assert read_recording(record.path).recording == record
             assert client.session.get.call_count == 2
@@ -217,7 +217,7 @@ def test_tui_edit_reset_and_export_collection(tmp_path, monkeypatch):
             await pilot.pause()
             app.screen.query_one("#choice", Select).value = "all"
             destination = tmp_path / "export"
-            app.screen.query_one("#value", Input).value = str(destination)
+            app.screen.query_one("#value", Input).value = str(destination.with_suffix(".tsv"))
             app.screen.query_one("#accept", Button).press()
             await wait_for_ui(pilot, lambda: (destination / "collection.tsv").exists())
             assert len(list((destination / "media").iterdir())) == 2
@@ -263,6 +263,8 @@ def test_both_downloads_missing_accent_beside_saved_variant(
         async with app.run_test() as pilot:
             app.query_one("#query", Input).value = "hello"
             await pilot.press("enter")
+            await finish_download(app, pilot)
+            app.save_meaning()
             await finish_download(app, pilot)
             assert variant_path.read_bytes() == before
             assert (tmp_path / "hello.uk.mp3").read_bytes() == mp3

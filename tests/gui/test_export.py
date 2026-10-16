@@ -23,7 +23,11 @@ def test_gui_export_selected_and_all_and_reports_missing_mp3(window, monkeypatch
     window.refresh_library()
     parent = tmp_path / "exports"
     parent.mkdir()
-    monkeypatch.setattr(gui.QFileDialog, "getExistingDirectory", lambda *args: str(parent))
+    monkeypatch.setattr(
+        gui.QFileDialog,
+        "getSaveFileName",
+        lambda *args: (str(parent / "cambridge-anki.tsv"), "TSV (*.tsv)"),
+    )
     scope = [0]
 
     def accept_export(dialog):

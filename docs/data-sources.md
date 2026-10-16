@@ -23,7 +23,7 @@ each sense after removal of wiki markup. Distinct glosses are not merged.
 The full English morphology database is not installed; unsupported inflected
 forms are not guessed. A source-provided Cambridge headword may be queried.
 
-Installation retains the database unchanged. Display and TSV export remove
+Installation retains the database unchanged. Display and Anki export remove
 formatting markup and duplicates; these transformations are identified in the
 attribution notice. Included WikDict translations and adaptations retain
 CC BY-SA 4.0, including its attribution and ShareAlike requirements. The installed

@@ -191,7 +191,7 @@ def test_russian_help_includes_translated_new_shortcuts(tmp_path):
             await pilot.press("f1")
             text = "\n".join(getattr(w.render(), "plain", "") for w in app.screen.query(Static))
             assert "Enter в поиске" in text
-            assert "Ctrl+O: выбрать произношение" in text
+            assert "Ctrl+O: выбрать значение" in text
             assert "Ctrl+E: экспорт в Anki" in text
             assert "Enter in search" not in text
 

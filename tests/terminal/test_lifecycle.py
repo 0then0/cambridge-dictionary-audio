@@ -38,7 +38,7 @@ def test_cancel_waits_for_request_and_retains_already_saved_file(
         async with app.run_test() as pilot:
             try:
                 app.query_one("#query", Input).value = "hello"
-                await pilot.press("enter")
+                app.start_download("hello", "both")
                 assert await asyncio.to_thread(started.wait, 5)
                 assert app.busy
                 await pilot.press("ctrl+q" if quit_requested else "ctrl+c")

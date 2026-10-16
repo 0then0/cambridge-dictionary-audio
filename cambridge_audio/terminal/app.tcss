@@ -51,3 +51,12 @@ ModalScreen { align: center middle; background: $background 70%; }
 .dialog-buttons { height: 3; margin-top: 1; }
 .dialog-buttons Button { margin-right: 1; }
 #settings-error { height: auto; color: $error; }
+
+#meanings { height: 8; margin-bottom: 1; }
+#result-accent, #other-audio { height: 3; margin-bottom: 1; }
+#save-meaning { min-width: 14; margin-right: 1; }
+
+#error-details { height: 3; margin: 0 2; width: auto; }
+#diagnostic-text { height: auto; margin: 1 0; }
+
+#error-summary { height: auto; margin: 0 2; color: $error; }

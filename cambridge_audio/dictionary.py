@@ -100,6 +100,10 @@ class Pronunciation:
     url: str
     ipa: str = ""
 
+    @property
+    def id(self) -> str:
+        return stable_id("cambridge-audio", self.accent, self.url)
+
 
 @dataclass(frozen=True)
 class Entry:
@@ -111,6 +115,7 @@ class Entry:
     sense_id: str = ""
     source_url: str = ""
     lemma: str = ""
+    legacy_ids: tuple[str, ...] = ()
 
 
 def stable_id(*values: str) -> str:
@@ -147,12 +152,11 @@ def variants(entries: tuple[Entry, ...], accent: str = "us") -> tuple[Variant, .
 
 
 class SelectionRequired(CambridgeError):
-    def __init__(self, choices: tuple[Variant, ...], entries: tuple[Entry, ...]):
+    def __init__(self, choices: tuple[Variant, ...], entries: tuple[Entry, ...], language="en"):
         self.choices = choices
         self.entries = entries
         super().__init__(
-            "Choose a dictionary entry / pronunciation:\n"
-            + "\n".join(f"{v.id}  {v.label}" for v in choices)
+            "Choose a meaning and its audio:\n" + "\n".join(f"{v.id}  {v.label}" for v in choices)
         )
 
 
@@ -186,6 +190,7 @@ def dictionary_url(word: str, mode: str = "english", language: str = "en") -> st
 def parse_entries(html: str | bytes, page_url: str) -> tuple[Entry, ...]:
     soup = BeautifulSoup(html, "html.parser")
     entries = []
+    fallback_blocks = {}
     for block in soup.select(".entry-body__el"):
         header = block.select_one(".pos-header, .dpos-h")
         if header is None:
@@ -215,10 +220,24 @@ def parse_entries(html: str | bytes, page_url: str) -> tuple[Entry, ...]:
                     Pronunciation(accent, url, ipa.get_text(strip=True) if ipa else "")
                 )
                 seen.add((accent, url))
-        upstream = str(block.get("id", ""))
+        upstream = str(block.get("id") or header.get("id") or "")
+        # Source IDs take precedence over mutable definitions and pronunciation lists.
+        # Without an upstream block ID, word + POS is only a fallback namespace;
+        # definition fingerprints below distinguish senses without guessing on edits.
+        fallback = word + ":" + part
+        ordinal = fallback_blocks.get(fallback, 0)
+        fallback_blocks[fallback] = ordinal + 1
         entry_id = stable_id(
-            "cambridge", word, part, upstream, *sorted(p.url for p in pronunciations)
+            "cambridge-entry", page_url.split("#")[0], upstream or f"{fallback}:{ordinal}"
         )
+        legacy_entry = stable_id(
+            "cambridge",
+            word,
+            part,
+            str(block.get("id", "")),
+            *sorted(p.url for p in pronunciations),
+        )
+        fallback_senses = {}
         for definition in block.select(".def.ddef_d") or [None]:
             text = (
                 definition.get_text(" ", strip=True).removesuffix(":").rstrip()
@@ -226,7 +245,9 @@ def parse_entries(html: str | bytes, page_url: str) -> tuple[Entry, ...]:
                 else ""
             )
             sense = definition.find_parent(class_="def-block") if definition else None
-            sense_key = str(sense.get("data-wl-senseid", sense.get("id", ""))) if sense else ""
+            sense_key = str(sense.get("data-wl-senseid") or sense.get("id") or "") if sense else ""
+            occurrence = fallback_senses.get(text, 0)
+            fallback_senses[text] = occurrence + 1
             entries.append(
                 Entry(
                     word,
@@ -234,9 +255,15 @@ def parse_entries(html: str | bytes, page_url: str) -> tuple[Entry, ...]:
                     tuple(pronunciations),
                     part,
                     entry_id,
-                    stable_id(entry_id, sense_key, text),
+                    stable_id("cambridge-sense", page_url.split("#")[0], sense_key)
+                    if sense_key
+                    else stable_id(entry_id, "text", text, str(occurrence)),
                     page_url,
                     word,
+                    tuple(
+                        stable_id(stable_id(legacy_entry, sense_key, text), p.accent, p.url)
+                        for p in pronunciations
+                    ),
                 )
             )
     return tuple(entries)

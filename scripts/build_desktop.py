@@ -52,6 +52,11 @@ def collect_licenses() -> Path:
     destination = ROOT / "build/third-party-licenses"
     destination.mkdir(parents=True, exist_ok=True)
     runtime = (
+        "genanki",
+        "cached-property",
+        "chevron",
+        "frozendict",
+        "pyyaml",
         "beautifulsoup4",
         "soupsieve",
         "typing-extensions",

@@ -111,8 +111,9 @@ def test_gui_translation_failure_can_be_retried_without_audio_download(
     window.refresh_library()
     window.translation_check.click()
     wait_until(app, lambda: window._translation_worker is None)
-    assert window.translation_label.text().startswith("Translation: offline")
+    assert "offline" in window.error_details_text.toPlainText()
     assert "not installed" in window.translation_label.text()
+    assert not window.error_details_text.isVisible()
     app.processEvents()
     assert client.translations.call_count == 1
     window.translation_check.click()
@@ -259,7 +260,12 @@ def test_new_translation_displays_readable_senses_without_ids(
     assert "unspecified sense" not in text
     result = cached_translation(read_recording(window.selected_recording().path), "russian")
     assert all(option.id not in text for option in result.options)
-    monkeypatch.setattr(gui.QInputDialog, "getItem", lambda *args: (args[3][1], True))
+
+    def choose_second(dialog):
+        dialog.setTextValue(dialog.comboBoxItems()[1])
+        return gui.QInputDialog.DialogCode.Accepted
+
+    monkeypatch.setattr(gui.QInputDialog, "exec", choose_second)
     window.choose_translation_sense()
     assert "алло" in window.translation_label.text()
     assert "привет" not in window.translation_label.text()
@@ -356,7 +362,9 @@ def test_wikdict_read_error_does_not_offer_or_start_download(window, monkeypatch
     monkeypatch.setattr(workers, "install_dictionary", installer)
     monkeypatch.setattr(gui, "validate_package", Mock(side_effect=PermissionError("read denied")))
     window.install_wikdict()
-    assert "read denied" in window.status_label.text()
+    assert "permissions" in window.status_label.text()
+    assert "read denied" not in window.status_label.text()
+    assert "read denied" in window.error_details_text.toPlainText()
     question.assert_not_called()
     installer.assert_not_called()
     assert window.dictionary_button.isEnabled()
@@ -405,11 +413,117 @@ def test_russian_translation_block_ignores_old_language_setting_and_preserves_ca
 
 
 def test_russian_translation_block_keyboard_focus_follows_layout(window, app):
-    window.accent_combo.setFocus()
-    QTest.keyClick(window.accent_combo, Qt.Key.Key_Tab)
     if window.combine_check.isEnabled():
+        window.combine_check.setFocus()
         assert window.combine_check.hasFocus()
         QTest.keyClick(window.combine_check, Qt.Key.Key_Tab)
+    else:
+        window.translation_check.setFocus()
     assert window.translation_check.hasFocus()
     QTest.keyClick(window.translation_check, Qt.Key.Key_Tab)
     assert window.dictionary_button.hasFocus()
+
+
+@pytest.mark.parametrize(
+    "language,title", [("en", "Refine translation"), ("ru", "Уточнить перевод")]
+)
+@pytest.mark.parametrize("count", [0, 1, 2])
+def test_refine_translation_only_shown_for_ambiguous_saved_translation(
+    window, mp3, language, title, count
+):
+    from cambridge_audio.library import read_recording, save_metadata
+    from cambridge_audio.translations import (
+        TranslationOption,
+        TranslationResult,
+        persist_translation,
+    )
+
+    window.language = language
+    window._retranslate()
+    window.output_dir.mkdir()
+    path = window.output_dir / "bank.us.mp3"
+    path.write_bytes(mp3)
+    record = Recording("bank", "us", path, "", "financial institution")
+    save_metadata(record)
+    persist_translation(
+        read_recording(path),
+        TranslationResult(
+            "russian",
+            record.sense_id,
+            "Cambridge",
+            tuple(
+                TranslationOption(str(i), (text,))
+                for i, text in enumerate(("банк", "берег")[:count])
+            ),
+        ),
+    )
+    window.refresh_library()
+    assert not window.select_translation_button.isVisible()
+    window.translation_check.setChecked(True)
+    assert window.select_translation_button.isVisible() == (count > 1)
+    assert window.select_translation_button.text() == title
+    assert "Cambridge" in window.variant_button.toolTip()
+    layout = window.translation_label.parentWidget().layout()
+    actions = layout.itemAt(layout.indexOf(window.translation_label) + 1).layout()
+    assert actions.indexOf(window.select_translation_button) >= 0
+    window.translation_check.setChecked(False)
+    assert not window.select_translation_button.isVisible()
+
+
+@pytest.mark.parametrize(
+    "action,expected", [("edit", "новый берег"), ("reset", "берег"), ("choose", "побережье")]
+)
+def test_translation_actions_refresh_selected_inline_meaning(
+    window, monkeypatch, client, action, expected
+):
+    from cambridge_audio.dictionary import SelectionRequired, variants
+    from cambridge_audio.library import read_recording
+    from cambridge_audio.translations import (
+        TranslationOption,
+        TranslationResult,
+        cached_translation,
+        edit_translation,
+        persist_translation,
+    )
+    from tests.core.test_shared_audio import AUDIO, bank, save
+
+    client.session.get.return_value = response(AUDIO)
+    first, second = [save(client, window.output_dir, choice) for choice in variants(bank())]
+    edit_translation(read_recording(first.reference), "russian", "банк")
+    result = TranslationResult(
+        "russian",
+        second.sense_id,
+        "Cambridge",
+        (
+            TranslationOption("shore", ("берег",)),
+            TranslationOption("coast", ("побережье",)),
+        ),
+        selected_id="shore",
+    )
+    persist_translation(read_recording(second.reference), result)
+    if action != "choose":
+        edit_translation(read_recording(second.reference), "russian", "старый берег")
+    window._open_saved([read_recording(first.reference)])
+    window.translation_check.setChecked(True)
+    window._selection_word = "bank"
+    window._choose_variant(SelectionRequired(variants(bank()), bank()))
+    window.meaning_list.setCurrentRow(2)
+    if action == "edit":
+        monkeypatch.setattr(gui.QInputDialog, "getMultiLineText", lambda *args: (expected, True))
+        window.edit_selected_translation()
+    elif action == "reset":
+        window.reset_selected_translation()
+    else:
+
+        def choose_second(dialog):
+            dialog.setTextValue(dialog.comboBoxItems()[1])
+            return gui.QInputDialog.DialogCode.Accepted
+
+        monkeypatch.setattr(gui.QInputDialog, "exec", choose_second)
+        window.choose_translation_sense()
+    assert expected in window.translation_label.text()
+    assert expected in window.meaning_list.currentItem().text()
+    assert cached_translation(read_recording(second.reference), "russian").texts == (expected,)
+    assert cached_translation(read_recording(first.reference), "russian").texts == ("банк",)
+    assert window.definition_label.text() == "river"
+    assert client.session.get.call_count == 1

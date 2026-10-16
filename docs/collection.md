@@ -1,46 +1,74 @@
-# Collection, translations and Anki (0.3.0)
+# Collection, translations and Anki
 
 The CLI, terminal workspace and desktop app use the same recording, translation
 and export services. The browser extensions remain independent pronunciation downloaders.
 
-## Choose a pronunciation
+## Choose a meaning and audio
 
-A choice identifies a Cambridge entry, part of speech, definition and a specific
-US or UK MP3 with its own IPA. Multiple definitions sharing audio remain distinct
-choices. A word with one choice downloads immediately. Ambiguous words open a
-selector in the GUI and TUI. Labels show accent, part of speech, definition and IPA.
+Enter a word and choose **Find** in the GUI or TUI. Meanings appear beneath the
+result, grouped by part of speech. Selecting a meaning immediately shows its full
+definition, IPA and available translation. Use US/UK and **Play** before
+**Save meaning**. **Other pronunciation** appears only when the selected meaning
+has several distinct recordings for that accent. Already saved choices are marked.
+A missing accent is not replaced with another accent's recording. If its download
+fails in the GUI, switching back opens the saved accent without a network request.
+After saving a meaning, the GUI hides the selection list; use **Choose meaning**
+to open it again.
+
+Opening a saved word works offline. To search all meanings again, use
+**Choose meaning** in the GUI or **Ctrl+O** in the TUI. Select saved collection
+entries individually to edit their translation or export them. Technical IDs are
+shown only by the CLI's diagnostic listing, not in ordinary interface labels.
 
 ```sh
 cambridge-audio lead --list-variants
-cambridge-audio lead --variant ID_FROM_THE_LIST
-cambridge-audio lead --variant ID_FROM_THE_LIST --overwrite
+cambridge-audio lead --sense SENSE_ID --audio AUDIO_ID --preview
+cambridge-audio lead --sense SENSE_ID --audio AUDIO_ID
+cambridge-audio lead --variant CHOICE_ID
 ```
 
-One explicit ID selects one accent and pronunciation, including with `--accent both`.
-Without an explicit ID, `both` saves both accents when each has a single choice.
-If choices are ambiguous, choose and save individual variants. One-shot CLI commands
-report available IDs and exit with status 1 until `--variant` selects one.
-The plain interactive prompt asks for an ID when needed.
+The listing contains the combined choice ID, `sense=…` and `audio=…`.
+`--sense` chooses a meaning; `--audio` chooses its recording. If more than one
+choice remains, the CLI lists choices and exits with status 1. `--variant` remains
+supported. `--preview` plays from a temporary cache without adding a collection
+entry. Without it, one unambiguous CLI choice is saved immediately. `--accent both`
+saves both accents when each has one choice; an explicit audio/choice ID selects
+only that recording. `--overwrite` requests a fresh download. The plain interactive
+prompt shows numbered choices rather than technical IDs.
 
-The GUI's **Choose another pronunciation** button searches the current word even
-if a recording is already saved. In the TUI use **Ctrl+O**. Saved variants appear
-separately in the library. **Download again** targets only the selected recording
-and asks before replacement. In the CLI `--overwrite` is the explicit replacement
-confirmation; it only applies to the selected variant.
+Meanings stay linked to their source dictionary blocks: for example, the metal
+and verb senses of “lead” keep their respective recordings. Two meanings of
+“bank” may reference one MP3. Audio identity uses accent and source URL, never IPA
+alone. Selecting another meaning reuses verified local audio, including after a
+restart. Missing audio, invalid signatures and checksum mismatches trigger repair.
+Explicitly replacing shared audio affects all entries referencing that file.
 
-IDs derive from Cambridge's entry/sense identifiers and content, not HTML order.
-A recording ID additionally includes accent and the MP3 URL. If Cambridge changes
-these identifiers or definitions, a new ID can result; old recordings are retained.
-Ambiguous variants use `word--ID.us.mp3` / `word--ID.uk.mp3`. Long words are truncated
-with a hash; Windows reserved names receive `_`. Names are portable across all
-three platforms. A unique ordinary download keeps `word.us.mp3` / `word.uk.mp3`.
+### Storage and existing collections
 
-JSON v2 sidecars preserve source entry, sense, part of speech, definition, IPA,
-audio URL, IDs and translation caches. The app reads old v1 sidecars and MP3s
-without metadata, including symlink aliases. Unknown legacy translation languages
-are never assumed to be Russian. Existing files are not renamed or moved.
-A legacy recording without source identity must be selected again to associate a
-precise Cambridge sense; its original file remains available.
+New collection entries have permanent local IDs and separate JSON v3 metadata.
+Their `audio_file` may point to the same MP3. Keep JSON files and MP3s together
+when moving or backing up the collection. For CLI selection, use the entry's JSON
+path with `--recording`; an MP3 path is accepted only when it identifies one meaning.
+Filenames remain portable across Windows, macOS and Linux.
+
+Cambridge block and sense IDs identify source entries when available. Changing a
+definition, translation or pronunciation list does not change these identities.
+Without source IDs, the fallback uses the page, headword, part of speech and block
+occurrence, then a definition fingerprint. Such a fallback cannot safely identify
+a rewritten or reordered ambiguous source entry. Existing local IDs remain stored;
+unmatched choices are never automatically merged. Select the saved record and
+choose its updated meaning explicitly when a source match is unavailable. In the
+CLI use `cambridge-audio WORD --update-recording PATH_TO_ENTRY.json --sense SENSE_ID
+--audio AUDIO_ID --output-dir downloads` (as one command). The saved local ID and
+personal translation are retained.
+
+Old v1/v2 sidecars, MP3-only collections and symlink aliases remain readable.
+Opening them does not rewrite them. A later metadata save upgrades only that
+sidecar atomically, retaining the original collection/export ID, user translations,
+source selections and unknown translation languages. Failed replacement retains
+the previous JSON; repeating an update is safe. Old duplicate MP3s are not removed
+or consolidated automatically. Deleting one collection entry retains audio used
+by another entry.
 
 ## Translation lookup and editing
 
@@ -50,7 +78,7 @@ playback do not depend on a successful translation. A local fallback keeps the
 Cambridge error visible. Missing translation, network failure, blocking, missing
 local dictionary and corrupt local dictionary produce separate statuses.
 
-Version 0.3.0 supports English words and definitions with optional Russian
+The application supports English words and definitions with optional Russian
 translations. The GUI has a **Show Russian translation** checkbox, an offline
 dictionary status and **Install WikDict**; no free-form language field is shown.
 The TUI offers the same Russian translation toggle in its recording panel and
@@ -91,7 +119,7 @@ edit so the original cached dictionary result becomes available again.
 
 ## Install the local dictionary
 
-The supported translation direction in 0.3.0 is **English → Russian**, both for
+The supported translation direction is **English → Russian**, both for
 Cambridge online lookup and the verified local WikDict package.
 
 ```sh
@@ -132,40 +160,97 @@ Default locations:
 See [data sources and licenses](data-sources.md). WikDict data is CC BY-SA 4.0,
 separate from the application's Apache-2.0 code.
 
+## Errors and diagnostics
+
+GUI and TUI errors show a short explanation and an appropriate action, such as
+retrying later, checking the connection or choosing another folder. This applies
+to translation, audio, collection files, exports and unexpected failures.
+
+**Technical details** is available when an error occurs. In the GUI, expand it
+next to the error message to read and copy the original diagnostic. In the TUI, the same
+button opens a scrollable dialog; Escape closes it. Details include the original
+error and, when available, its underlying cause. They remain hidden by default
+and are updated for the current operation. Interface messages use the selected
+English/Russian language; the original diagnostic is retained unchanged.
+CLI diagnostic output remains available as before.
+
 ## Export to Anki
 
-GUI: **Export to Anki**, select the current recording or whole collection, then a
-parent folder. The app writes `cambridge-anki/` there. TUI: **Ctrl+E**, choose scope
-and enter the export folder. CLI exports everything in `--output-dir` unless one
-or more `--recording` arguments select specific MP3s:
+Choose the selected entry or the whole collection, then **Export to Anki** and
+save one `.apkg`. Import it in Anki with **File → Import**. No running Anki,
+manual field setup or copying into `collection.media` is needed for export.
 
 ```sh
-cambridge-audio --output-dir downloads --export-anki exports/my-deck --translation russian
-cambridge-audio --recording downloads/hello.us.mp3 --recording downloads/hello.uk.mp3 --export-anki exports/two-notes
+cambridge-audio --output-dir downloads --export-anki exports/my-deck.apkg
+cambridge-audio --recording downloads/ENTRY.us.json --export-anki exports/selected.apkg
+cambridge-audio --output-dir downloads --export-anki exports/tsv --export-format tsv
 ```
 
-The export folder contains `collection.tsv` (UTF-8), `media/` with flat, unique
-MP3 names, `IMPORT.txt` and `SOURCES.txt`. The nine fields are **ID, Word,
-PartOfSpeech, Definition, Translation, IPA, Accent, Audio, Source**.
-Only the selected translation for the requested language is exported. A blank
-translation stays blank. Ambiguous untranslated sense choices must be resolved
-before export. Missing, invalid or inaccessible MP3s fail the export with the
-specific file named. No original file is changed and no audio is downloaded.
+The package contains one note per selected collection entry, a fixed note type,
+one card template and deduplicated MP3 media. The front shows the word. The back
+shows the chosen translation, definition, part of speech, IPA, accent and audio,
+followed by sources and data-license attribution. The template defines light and
+Anki night-mode colours. Text is HTML-escaped, including user translations.
 
-Copy the contents of `media/` directly into Anki's `collection.media`, without a
-subdirectory. Create a note type with the nine fields in the listed order, keeping
-**ID first**, and use Word and Audio in your card templates. Import with **Tab**
-as separator and **Allow HTML in fields** enabled. The TSV includes these headers
-for Anki 2.1.54+. Text is HTML-escaped; line breaks become `<br>`; quotes and tabs
-are handled as quoted TSV fields. Audio fields contain `[sound:filename.mp3]`.
+The note type, field IDs, template ID/ordinal and note GUIDs are stable. GUIDs use
+the permanent local collection ID, not editable fields or storage paths. Reimport
+into the same Anki collection updates matching notes when the incoming version is
+newer; Anki 23.10+ also provides update controls. Keep the note type's fields and
+single card template intact. Existing card scheduling is retained by Anki's note
+update mechanism. This utility does not export study progress or reverse cards.
+Edits to the exported note fields in Anki may be replaced on update. Other notes
+are not matched by their word or translation.
 
-For repeat imports use the same note type, match on its first field and choose
-**update existing notes**. Map our ID to the ordinary ID field, not Anki's internal
-GUID. Different senses and pronunciations have distinct IDs. Re-exporting the
-same variants preserves IDs and media names. Existing Cambridge export folders
-can be replaced transactionally; unrelated destination folders are refused.
-A copy or publication failure preserves the previous export and source collection.
-Do not add personal files inside an export folder that will be regenerated.
+Missing/damaged MP3s or unresolved translation choices fail the export before
+replacing the previous package. Existing files are replaced only if recognized as
+this application's exports. Sources and license notices are included in each
+note's Source field, the deck description and `SOURCES.txt` inside the package.
 
-This release creates TSV only, without `.apkg`, AnkiConnect or synchronization.
-Format reference: [Anki text import manual](https://docs.ankiweb.net/manual/importing/text-files).
+### Additional TSV export
+
+GUI: select **TSV** in the save dialog. TUI: use a destination ending in `.tsv`;
+this creates a folder with that suffix removed. CLI: use `--export-format tsv`
+and a folder path. The folder contains `collection.tsv`, `media/`, `IMPORT.txt`
+and `SOURCES.txt`. Follow `IMPORT.txt` to create the nine fields, copy the MP3s
+and import with Tab separation and HTML enabled. ID remains the first field;
+repeat TSV imports match the same note type and ID and retain scheduling.
+Do not map the first field to Anki's internal GUID.
+
+### Existing notes imported from TSV
+
+Importing an ordinary new `.apkg` over older TSV notes can create duplicates:
+TSV matched the first field, while packages match Anki GUIDs. Changing note type
+alone does not establish that correspondence. Do not delete cards with learning
+history to work around this difference. Continuing to update those notes with TSV
+is supported.
+
+For an explicit transition with the original nine fields and one normal card:
+
+1. In Anki, export the relevant old deck as **Anki Deck Package (.apkg)** with
+   **Support older Anki versions** enabled. Retain a backup. This is a copy of the
+   collection; the utility does not open your live Anki database.
+2. Run the following once, using the same local collection that produced the TSV:
+
+   ```sh
+   cambridge-audio --output-dir downloads --anki-reference old-from-anki.apkg
+   cambridge-audio --output-dir downloads --export-anki updated.apkg
+   ```
+
+3. Import `updated.apkg` in the original Anki profile. Use update-existing-notes
+   behaviour, and keep note types unchanged. The package uses the exported GUID
+   and original note type for each mapped ID, rather than creating a new identity.
+
+The command reports the number of mapped notes. Only exact first-field IDs are
+mapped. Duplicate IDs, incompatible schemas and conflicting prior mappings are
+rejected before writing. Unmatched local entries remain new package notes; compare
+the mapped count with the old notes you intend to move. Store the generated
+`.anki-mapping.json` with the collection and use it for all later exports. Migration
+does not rewrite the reference package, delete notes or touch review history.
+Collections with extra fields or multiple card templates should keep using TSV.
+
+Package structure and identity mapping are covered by automated tests. Real Anki
+import, repeated import and retention of review history were not exercised in this
+environment because Anki was unavailable; these tests do not establish actual
+importer compatibility on every Anki version. Import rules are described in the
+[Anki package manual](https://docs.ankiweb.net/manual/importing/packaged-decks)
+and [text import manual](https://docs.ankiweb.net/manual/importing/text-files).

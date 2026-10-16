@@ -24,6 +24,8 @@ jobs:
       - run: uv sync --locked
       - run: uv run --locked ruff check .
       - run: uv run --locked ruff format --check .
+      - name: Verify the CLI environment does not require Qt
+        run: uv run --locked python -c "import importlib.util; assert importlib.util.find_spec('PySide6') is None"
       - run: uv run --locked pytest
 
   gui:

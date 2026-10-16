@@ -209,7 +209,7 @@ def persist_translation(saved, result: TranslationResult):
     if saved is None:
         return None
     with _METADATA_LOCK:
-        current = read_recording(saved.recording.path)
+        current = read_recording(saved.recording.reference)
         if current is None or current.recording.sense_id != result.sense_id:
             return current
         cache = tuple(
@@ -219,14 +219,14 @@ def persist_translation(saved, result: TranslationResult):
             != (result.language, result.source, result.sense_id)
         ) + (result,)
         save_metadata(current.recording, translation_cache=cache)
-        return read_recording(current.recording.path)
+        return read_recording(current.recording.reference)
 
 
 def edit_translation(saved, language: str, text: str | None):
     from .library import _METADATA_LOCK, read_recording, save_metadata, scan_recordings
 
     with _METADATA_LOCK:
-        current = read_recording(saved.recording.path)
+        current = read_recording(saved.recording.reference)
         if current is None:
             raise FileNotFoundError(saved.recording.path)
         cache = tuple(
@@ -247,7 +247,7 @@ def edit_translation(saved, language: str, text: str | None):
             record = related.recording
             if (
                 record.word != current.recording.word
-                or record.sense_id != current.recording.sense_id
+                or record.meaning_key != current.recording.meaning_key
             ):
                 continue
             own_cache = tuple(
@@ -258,12 +258,14 @@ def edit_translation(saved, language: str, text: str | None):
                 )
             )
             own_cache += tuple(
-                t
+                replace(t, sense_id=record.sense_id)
                 for t in cache
-                if t.language == language and t.source == "User" and t.sense_id == record.sense_id
+                if t.language == language
+                and t.source == "User"
+                and t.sense_id == current.recording.sense_id
             )
             save_metadata(record, translation_cache=own_cache)
-        return read_recording(current.recording.path)
+        return read_recording(current.recording.reference)
 
 
 def select_translation(saved, language: str, option_id: str):

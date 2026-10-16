@@ -22,6 +22,22 @@ class Dialog(ModalScreen):
         self.dismiss(None)
 
 
+class ErrorDetails(Dialog):
+    def __init__(self, language, details):
+        super().__init__()
+        self.language, self.details = language, details
+
+    def compose(self):
+        with VerticalScroll(classes="dialog"):
+            yield Label(translate("Technical details", self.language), classes="dialog-title")
+            yield Static(Text(self.details), id="diagnostic-text")
+            yield Button(translate("Close", self.language), id="close-errors")
+
+    @on(Button.Pressed, "#close-errors")
+    def close_details(self):
+        self.dismiss(None)
+
+
 class Settings(Dialog):
     def __init__(self, options: Options, theme: str):
         super().__init__()
@@ -207,7 +223,7 @@ class Help(Dialog):
                     "Up / Down: navigate saved recordings\n"
                     "Ctrl+L: focus search\nCtrl+P: play / stop selected recording\n"
                     "Ctrl+R: refresh library\nCtrl+S: settings\n"
-                    "Ctrl+O: choose pronunciation\nCtrl+T: edit / choose / reset translation\n"
+                    "Ctrl+O: choose meaning\nCtrl+T: edit / choose / reset translation\n"
                     "Ctrl+D: install WikDict\nCtrl+E: export to Anki\n"
                     "Ctrl+C: cancel download / stop playback, or quit when idle\nCtrl+Q: quit\n"
                     "F1: this help\nEsc: close a dialog",
@@ -227,7 +243,7 @@ class Help(Dialog):
                 translate(
                     "Any keyboard layout: F3 search; F4 play / stop; F5 refresh; "
                     "F6 settings; F7 export; F8 translation; F9 WikDict; "
-                    "F10 pronunciation; F11 cancel; F12 quit. "
+                    "F10 meaning; F11 cancel; F12 quit. "
                     "Ctrl shortcuts also accept Russian and Ukrainian key positions.",
                     self.language,
                 ),
