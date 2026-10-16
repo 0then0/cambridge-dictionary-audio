@@ -45,14 +45,13 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libegl1 libopengl0 libpulse0 libxkbcommon0
       - run: uv sync --locked --group gui
-      - if: matrix.os != 'ubuntu-latest' || matrix.python != '3.10'
-        run: uv run --locked --group gui pytest
       - name: Trace Linux Python 3.10 shutdown
         if: matrix.os == 'ubuntu-latest' && matrix.python == '3.10'
         run: >-
-          uv run --locked --group gui "$SWIFT_PATH/lldb" --batch
-          -o run -k 'thread backtrace all'
-          -- .venv/bin/python -X faulthandler -m pytest
+          PYTHONMALLOC=debug uv run --locked --group gui
+          python -X faulthandler -X tracemalloc=5 -m pytest
+          tests/test_gui.py tests/test_theme.py
+      - run: uv run --locked --group gui pytest
 
   extension:
     name: Browser extension (${{ matrix.os }})
