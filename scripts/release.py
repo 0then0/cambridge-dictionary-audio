@@ -22,6 +22,7 @@ CLI_MODULES = {
     "audio.py",
     "cli.py",
     "dictionary.py",
+    "errors.py",
     "i18n.py",
     "service.py",
     "library.py",

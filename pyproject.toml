@@ -1,6 +1,6 @@
 [project]
 name = "cambridge-dictionary-audio"
-version = "0.3.0"
+version = "0.4.0"
 description = "Download UK and US pronunciations from Cambridge Dictionary"
 readme = "docs/cli.md"
 requires-python = ">=3.10,<3.16"

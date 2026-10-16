@@ -195,3 +195,20 @@ def test_ffmpeg_verified_source_cache_needs_no_network(tmp_path, monkeypatch):
 
     monkeypatch.setattr(build_ffmpeg.urllib.request, "urlopen", unexpected_download)
     assert build_ffmpeg.download(source, tmp_path) == path
+
+
+def test_cli_artifact_contract_covers_all_runtime_modules():
+    package = release.ROOT / "cambridge_audio"
+    modules = {
+        path.relative_to(package).as_posix()
+        for path in package.rglob("*")
+        if path.is_file()
+        and path.suffix in {".py", ".tcss"}
+        and "__pycache__" not in path.parts
+        and not any(
+            path.relative_to(release.ROOT).as_posix() == gui
+            or path.relative_to(release.ROOT).as_posix().startswith(gui + "/")
+            for gui in release.GUI_PATHS
+        )
+    }
+    assert release.CLI_MODULES == modules

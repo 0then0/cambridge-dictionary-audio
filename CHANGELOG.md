@@ -7,6 +7,8 @@ release dates are included only where a published release can be verified.
 
 ## Unreleased
 
+## 0.4.0 (2026-10-17)
+
 - Allow `uv sync` on Windows with Python 3.15 without Visual C++ Build Tools by
   disabling PyYAML's optional C extension for source builds. Windows CI verifies
   this fallback explicitly.
