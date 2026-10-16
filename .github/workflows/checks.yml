@@ -50,12 +50,45 @@ jobs:
         if: matrix.os == 'ubuntu-latest' && matrix.python == '3.10'
         env:
           PYTHONMALLOC: debug
-          PYTHONTRACEMALLOC: "5"
           PYTHONFAULTHANDLER: "1"
         run: |
-          uv run --locked --group gui python -c 'import cambridge_audio.gui; import cambridge_audio.terminal'
-          uv run --locked --group gui python -c 'import cambridge_audio.terminal; import cambridge_audio.gui'
-          uv run --locked --group gui pytest
+          uv run --locked --group gui python - <<'PYTHON'
+          import subprocess
+          import sys
+          from pathlib import Path
+
+          code = """
+          from concurrent.futures import ThreadPoolExecutor
+          from cambridge_audio import gui
+          import pytest, sys
+          print('EMPTY_TUPLE_BEFORE', hex(id(())), sys.getrefcount(()), flush=True)
+          result = pytest.main(sys.argv[1:])
+          print('EMPTY_TUPLE_AFTER', hex(id(())), sys.getrefcount(()), flush=True)
+          raise SystemExit(result)
+          """
+          import textwrap
+          code = textwrap.dedent(code)
+          failed = []
+          for path in sorted(Path('tests').glob('test_*.py')):
+              if path.name in {'test_gui.py', 'test_theme.py'}:
+                  continue
+              print('QT_PRELOADED_FILE', path, flush=True)
+              result = subprocess.run([sys.executable, '-c', code, str(path), '-q'])
+              print('QT_PRELOADED_RESULT', path, result.returncode, flush=True)
+              if result.returncode:
+                  failed.append(str(path))
+          if not failed:
+              for name in ('test_cli.py', 'test_terminal.py'):
+                  print('GUI_COMBINED_FILE', name, flush=True)
+                  result = subprocess.run([
+                      sys.executable, '-c', code, 'tests/test_gui.py', 'tests/' + name, '-q'
+                  ])
+                  print('GUI_COMBINED_RESULT', name, result.returncode, flush=True)
+                  if result.returncode:
+                      failed.append(name)
+          print('FAILED_COMBINATIONS', failed, flush=True)
+          raise SystemExit(bool(failed))
+          PYTHON
 
   extension:
     name: Browser extension (${{ matrix.os }})
