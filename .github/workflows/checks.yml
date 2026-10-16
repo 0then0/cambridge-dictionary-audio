@@ -53,7 +53,8 @@ jobs:
           PYTHONFAULTHANDLER: "1"
         run: |
           uv run --locked --group gui python - <<'PYTHON'
-          import sys,gc
+          import subprocess,sys
+          setup = """import sys,gc
           from PySide6.QtGui import QPainter,QImage
           from PySide6.QtCore import QObject,QSignalBlocker
           image=QImage(10,10,QImage.Format.Format_ARGB32)
@@ -64,10 +65,17 @@ jobs:
               p=QPainter(image);p.drawLine(0,0,2,2);p.end()
           def blocker_context():
               with QSignalBlocker(obj):pass
-          for fn in (painter_context,painter_explicit,blocker_context):
-              fn();gc.collect();before=sys.getrefcount(True)
-              for i in range(1000):fn()
-              gc.collect();print(fn.__name__,sys.getrefcount(True)-before,flush=True)
+          """
+          import textwrap
+          setup = setup.splitlines()[0] + '\n' + textwrap.dedent('\n'.join(setup.splitlines()[1:]))
+          failed=[]
+          for name in ('painter_context','painter_explicit','blocker_context'):
+              code=setup + "\nf=" + name + "; f();gc.collect();before=sys.getrefcount(None);[f() for _ in range(100)];gc.collect();print('NONE_DELTA',sys.getrefcount(None)-before,flush=True)"
+              print('CASE',name,flush=True)
+              result=subprocess.run([sys.executable,'-c',code])
+              print('RESULT',name,result.returncode,flush=True)
+              if result.returncode:failed.append(name)
+          raise SystemExit(bool(failed))
           PYTHON
 
   extension:
