@@ -1484,3 +1484,36 @@ def test_russian_translation_block_keyboard_focus_follows_layout(window, app):
     assert window.translation_check.hasFocus()
     QTest.keyClick(window.translation_check, Qt.Key.Key_Tab)
     assert window.dictionary_button.hasFocus()
+
+
+def test_repeated_scrollbar_painting_exits_without_native_runtime_corruption():
+    # A successful assertion inside the process is insufficient: broken Qt ABI
+    # builds can corrupt singleton refcounts and abort only at interpreter exit.
+    code = textwrap.dedent(
+        """
+        from PySide6.QtCore import Qt
+        from PySide6.QtWidgets import QApplication
+        from cambridge_audio.theme import ScrollBar
+
+        app = QApplication([])
+        bar = ScrollBar(Qt.Orientation.Vertical)
+        bar.resize(12, 300)
+        bar.setRange(0, 100)
+        bar.setPageStep(25)
+        bar.show()
+        app.processEvents()
+        for index in range(2000):
+            bar.setValue(index % 100)
+            assert not bar.grab().isNull()
+        bar.close()
+        app.shutdown()
+        """
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", code],
+        capture_output=True,
+        text=True,
+        timeout=30,
+        env={**os.environ, "QT_QPA_PLATFORM": "offscreen"},
+    )
+    assert result.returncode == 0, result.stdout + result.stderr

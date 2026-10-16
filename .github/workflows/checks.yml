@@ -32,6 +32,9 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         python: ["3.10", "3.15"]
+        include:
+          - {os: ubuntu-latest, python: "3.11"}
+          - {os: ubuntu-latest, python: "3.12"}
     runs-on: ${{ matrix.os }}
     env:
       QT_QPA_PLATFORM: offscreen
@@ -45,7 +48,7 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libegl1 libopengl0 libpulse0 libxkbcommon0
       - run: uv sync --locked --group gui
-      - run: uv run --locked --group gui pytest tests/test_gui.py tests/test_theme.py tests/test_library.py
+      - run: uv run --locked --group gui pytest
 
   extension:
     name: Browser extension (${{ matrix.os }})
