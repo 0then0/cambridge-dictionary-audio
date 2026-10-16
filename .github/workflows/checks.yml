@@ -53,15 +53,18 @@ jobs:
           PYTHONFAULTHANDLER: "1"
         run: |
           uv run --locked --group gui python - <<'PYTHON'
-          import gc
-          import pytest
-          class Cleanup:
-              @pytest.hookimpl(hookwrapper=True)
-              def pytest_runtest_teardown(self, item, nextitem):
-                  gc.collect()
-                  yield
-                  gc.collect()
-          raise SystemExit(pytest.main(['-q'],plugins=[Cleanup()]))
+          import sys,gc
+          from PySide6.QtWidgets import QApplication,QWidget,QCheckBox
+          from PySide6.QtCore import QEvent,QThread
+          app=QApplication([])
+          widget=QWidget(); widget.show()
+          checkbox=QCheckBox(); checkbox.setChecked(True)
+          event=QEvent(QEvent.Type.User); event.accept()
+          for name, fn in [('visible',widget.isVisible),('enabled',widget.isEnabled),('checked',checkbox.isChecked),('accepted',event.isAccepted),('platform',lambda:app.platformName()=='offscreen')]:
+              fn();gc.collect();before=sys.getrefcount(True)
+              for i in range(1000):fn()
+              gc.collect();print(name,sys.getrefcount(True)-before,flush=True)
+          app.shutdown()
           PYTHON
 
   extension:
