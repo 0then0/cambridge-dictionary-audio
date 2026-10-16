@@ -333,6 +333,9 @@ uv run -m cambridge_audio "hello friendly world" --combine
 
 Поддерживаются Python **3.10–3.15**. Диапазон версий задан в `pyproject.toml`.
 `.python-version` выбирает **3.15** для разработки, без фиксации патч-версии.
+Если PyYAML собирается из исходников, настройки uv отключают его необязательное
+C-расширение. Для `uv sync` на Windows с Python 3.15 не нужны Visual C++ Build Tools;
+экспорт Anki работает с реализацией на Python.
 Это не ограничивает поддержку других версий:
 
 ```sh

@@ -7,6 +7,10 @@ release dates are included only where a published release can be verified.
 
 ## Unreleased
 
+- Allow `uv sync` on Windows with Python 3.15 without Visual C++ Build Tools by
+  disabling PyYAML's optional C extension for source builds. Windows CI verifies
+  this fallback explicitly.
+
 - Close Anki reference databases before temporary-file cleanup on Windows, and
   account for the actual viewport when sizing short GUI choice lists.
 

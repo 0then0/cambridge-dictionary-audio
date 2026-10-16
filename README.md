@@ -313,6 +313,9 @@ uv run --python 3.10 -m cambridge_audio hello
 ```
 
 Keep the same `--python` selection when running commands in that environment.
+When PyYAML needs a source build, the project's uv configuration disables its
+optional C extension. Running `uv sync` on Windows with Python 3.15 therefore does
+not require Visual C++ Build Tools; Anki export works with the Python implementation.
 
 ## Development
 
