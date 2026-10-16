@@ -57,14 +57,17 @@ jobs:
           cases = {
               'settings-bool': "from PySide6.QtCore import QSettings; s=QSettings('/tmp/boolean.ini', QSettings.Format.IniFormat); s.setValue('value',True); f=lambda:s.value('value',False,type=bool)",
               'settings-default': "from PySide6.QtCore import QSettings; s=QSettings('/tmp/default.ini', QSettings.Format.IniFormat); f=lambda:s.value('missing',True,type=bool)",
-              'window': "from cambridge_audio.gui import create_application, MainWindow; from PySide6.QtCore import QEvent, QSettings; app=create_application([]); s=QSettings('/tmp/window.ini',QSettings.Format.IniFormat); s.setValue('output_dir','/tmp/audio'); exec('def f():\n w=MainWindow(s); w.show(); app.processEvents(); w.close(); w.deleteLater(); app.sendPostedEvents(None,QEvent.Type.DeferredDelete); app.processEvents()')",
-              'bare-widget': "from PySide6.QtWidgets import QApplication,QWidget; from PySide6.QtCore import QEvent; app=QApplication([]); exec('def f():\n w=QWidget(); w.show(); app.processEvents(); w.close(); w.deleteLater(); app.sendPostedEvents(None,QEvent.Type.DeferredDelete); app.processEvents()')",
+              'window': "from cambridge_audio.gui import create_application, MainWindow; from PySide6.QtCore import QEvent, QSettings; app=create_application([]); s=QSettings('/tmp/window.ini',QSettings.Format.IniFormat); s.setValue('output_dir','/tmp/audio'); exec('def f():\\n w=MainWindow(s); w.show(); app.processEvents(); w.close(); w.deleteLater(); app.sendPostedEvents(None,QEvent.Type.DeferredDelete); app.processEvents()')",
+              'bare-widget': "from PySide6.QtWidgets import QApplication,QWidget; from PySide6.QtCore import QEvent; app=QApplication([]); exec('def f():\\n w=QWidget(); w.show(); app.processEvents(); w.close(); w.deleteLater(); app.sendPostedEvents(None,QEvent.Type.DeferredDelete); app.processEvents()')",
           }
+          failed = []
           for name, setup in cases.items():
               code = "import sys,gc; " + setup + "; f(); gc.collect(); before=sys.getrefcount(True); [f() for _ in range(100)]; gc.collect(); print('TRUE_DELTA', sys.getrefcount(True)-before,flush=True)"
               print('CASE',name,flush=True)
               result = subprocess.run([sys.executable,'-c',code])
               print('RESULT',name,result.returncode,flush=True)
+              if result.returncode: failed.append(name)
+          raise SystemExit(bool(failed))
           PYTHON
 
   extension:
