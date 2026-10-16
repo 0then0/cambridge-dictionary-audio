@@ -1,6 +1,6 @@
 """Choice dialogs with readable, wrapping rows instead of native combo popups."""
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QEvent, Qt
 from PySide6.QtWidgets import QInputDialog, QListView
 
 from .theme import fit_list_height, install_scrollbars
@@ -15,6 +15,8 @@ class ChoiceDialog(QInputDialog):
         self.setComboBoxEditable(False)
         self.setOption(QInputDialog.InputDialogOption.UseListViewForComboBoxItems)
         self.list_view = self.findChild(QListView)
+        self._sizing_list = False
+        self.list_view.viewport().installEventFilter(self)
         view = self.list_view
         view.setWordWrap(True)
         view.setTextElideMode(Qt.TextElideMode.ElideNone)
@@ -26,8 +28,19 @@ class ChoiceDialog(QInputDialog):
         self.setTextValue(choices[0] if choices else "")
 
     def _size_list(self):
-        limit = max(80, self.screen().availableGeometry().height() // 2)
-        fit_list_height(self.list_view, limit)
+        if self._sizing_list:
+            return
+        self._sizing_list = True
+        try:
+            limit = max(80, self.screen().availableGeometry().height() // 2)
+            fit_list_height(self.list_view, limit)
+        finally:
+            self._sizing_list = False
+
+    def eventFilter(self, watched, event):
+        if event.type() == QEvent.Type.Resize and watched is self.list_view.viewport():
+            self._size_list()
+        return super().eventFilter(watched, event)
 
     def showEvent(self, event):
         super().showEvent(event)

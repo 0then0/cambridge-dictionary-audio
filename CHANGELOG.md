@@ -7,6 +7,9 @@ release dates are included only where a published release can be verified.
 
 ## Unreleased
 
+- Close Anki reference databases before temporary-file cleanup on Windows, and
+  account for the actual viewport when sizing short GUI choice lists.
+
 - Keep GUI meaning selection tied to its search, restore saved accents after failed
   downloads, and refresh translation edits for the currently displayed meaning.
 - Retain legacy collection metadata paths when replacing audio; old media stays on

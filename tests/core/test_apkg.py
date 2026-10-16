@@ -2,6 +2,7 @@
 
 import json
 import sqlite3
+from contextlib import closing
 from dataclasses import replace
 from pathlib import Path
 from unittest.mock import Mock
@@ -23,7 +24,7 @@ def inspect_package(path, tmp_path):
         db = tmp_path / "inspect.sqlite"
         db.write_bytes(archive.read("collection.anki2"))
         media = json.loads(archive.read("media"))
-        with sqlite3.connect(db) as connection:
+        with closing(sqlite3.connect(db)) as connection:
             notes = connection.execute("SELECT guid, mid, flds FROM notes ORDER BY flds").fetchall()
             models = json.loads(connection.execute("SELECT models FROM col").fetchone()[0])
             cards = connection.execute("SELECT ord FROM cards").fetchall()
@@ -138,7 +139,7 @@ def test_rapid_exports_to_different_paths_have_increasing_note_mtime(client, tmp
         with ZipFile(output) as archive:
             database = tmp_path / "timestamp.sqlite"
             database.write_bytes(archive.read("collection.anki2"))
-        with sqlite3.connect(database) as connection:
+        with closing(sqlite3.connect(database)) as connection:
             times.append(connection.execute("SELECT mod FROM notes").fetchone()[0])
     assert times[1] > times[0]
 
@@ -179,3 +180,34 @@ def test_card_text_and_source_have_readable_contrast_in_both_themes():
             foreground = re.search(r"color:\s*#([a-f0-9]{6})", style)[1]
             one, two = sorted((luminance(foreground), luminance(background)))
             assert (two + 0.05) / (one + 0.05) >= 4.5
+
+
+@pytest.mark.parametrize("invalid", [False, True])
+def test_reference_database_is_closed_before_temporary_directory_cleanup(
+    client, tmp_path, monkeypatch, invalid
+):
+    client.session.get.return_value = response(AUDIO)
+    record = save(client, tmp_path, variants(bank())[0])
+    reference = tmp_path / "reference.apkg"
+    legacy_reference(reference, record, duplicate=invalid)
+    connect = sqlite3.connect
+    connections = []
+
+    def retain_connection(*args, **kwargs):
+        connection = connect(*args, **kwargs)
+        connections.append(connection)
+        return connection
+
+    monkeypatch.setattr(sqlite3, "connect", retain_connection)
+    try:
+        if invalid:
+            with pytest.raises(ValueError, match="Ambiguous Anki ID"):
+                adopt_anki_identities([SavedRecording(record)], reference, tmp_path)
+        else:
+            assert adopt_anki_identities([SavedRecording(record)], reference, tmp_path) == 1
+        assert len(connections) == 1
+        with pytest.raises(sqlite3.ProgrammingError, match="closed database"):
+            connections[0].execute("SELECT 1")
+    finally:
+        for connection in connections:
+            connection.close()

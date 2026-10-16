@@ -135,16 +135,13 @@ def install_scrollbars(area):
 def fit_list_height(view, limit):
     view.doItemsLayout()
     offset = view.spacing() - view.visualRect(view.model().index(0, 0)).top()
-    height = (
-        max(
-            (
-                view.visualRect(view.model().index(row, 0)).bottom() + 1 + view.spacing() + offset
-                for row in range(view.model().rowCount())
-            ),
-            default=0,
-        )
-        + 2 * view.frameWidth()
-    )
+    height = max(
+        (
+            view.visualRect(view.model().index(row, 0)).bottom() + 1 + view.spacing() + offset
+            for row in range(view.model().rowCount())
+        ),
+        default=0,
+    ) + max(2 * view.frameWidth(), view.height() - view.viewport().height())
     view.setFixedHeight(min(max(height, 40), limit))
 
 

@@ -4,6 +4,7 @@ import csv
 import html
 import os
 import shutil
+from contextlib import closing
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -299,7 +300,7 @@ def adopt_anki_identities(records, reference: Path, directory: Path) -> int:
         database = Path(temp) / "reference.anki2"
         database.write_bytes(archive.read(member))
         try:
-            with sqlite3.connect(database.as_uri() + "?mode=ro", uri=True) as connection:
+            with closing(sqlite3.connect(database.as_uri() + "?mode=ro", uri=True)) as connection:
                 models = json.loads(connection.execute("SELECT models FROM col").fetchone()[0])
                 for guid, mid, values in connection.execute("SELECT guid, mid, flds FROM notes"):
                     columns = values.split("\x1f")

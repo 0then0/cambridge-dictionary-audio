@@ -77,3 +77,16 @@ def test_short_combo_popup_fits_all_rows(window, app):
     finally:
         combo.hidePopup()
         combo.close()
+
+
+def test_choice_list_includes_viewport_margins_in_its_height(window, app):
+    dialog = ChoiceDialog(window, "Choose", "Meaning", ["first meaning", "second meaning"])
+    dialog.list_view.setViewportMargins(0, 6, 0, 8)
+    dialog.show()
+    app.processEvents()
+    try:
+        view = dialog.list_view
+        assert view.verticalScrollBar().maximum() == 0
+        assert view.viewport().rect().contains(view.visualRect(view.model().index(1, 0)))
+    finally:
+        dialog.close()
