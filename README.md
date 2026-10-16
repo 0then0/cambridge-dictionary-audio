@@ -96,7 +96,7 @@ or **Open folder** to find the MP3. No external player is needed for GUI playbac
 - Scrollbar handles are 4 logical pixels wide and expand to 8 on hover. Their
   wider hit area stays fixed, so the surrounding layout does not shift.
 
-The GUI uses PySide6 6.12 Essentials and Addons, without WebEngine or PDF components.
+The GUI uses PySide6 Essentials and Addons, without WebEngine or PDF components.
 On macOS, launching from source automatically creates a small `.app` wrapper in
 the application's cache so Dock displays the project name and icon.
 Current wheels require macOS 14+, Linux glibc 2.34+ on x86-64 or 2.39+ on ARM64,
@@ -290,7 +290,8 @@ Keep the same `--python` selection when running commands in that environment.
 Dependencies are declared in `pyproject.toml` and resolved in `uv.lock`.
 The minimal toolset is uv, Ruff (linting, import sorting, formatting), and pytest.
 CI uses uv 0.13.1 and covers all six Python versions on Linux, plus Python 3.10 and
-3.15 on Windows and macOS. Separate GUI jobs cover Python 3.10 and 3.15 on all three OSes.
+3.15 on Windows and macOS. Jobs with GUI dependencies run the full suite on Python
+3.10 and 3.15 on all three OSes, plus Python 3.11 and 3.12 on Linux.
 
 ```sh
 uv sync --locked
@@ -308,12 +309,10 @@ available and otherwise report a skip. Update dependencies explicitly with
 
 To run without development tools, use `uv run --no-dev -m cambridge_audio hello`.
 
-Run the desktop suite separately with
-`uv run --locked --group gui pytest tests/test_gui.py tests/test_theme.py tests/test_library.py`.
-The core/terminal and Qt suites use separate processes and environments, as in CI.
-The combined suite can abort during interpreter teardown on Linux/Python 3.10
-even after all assertions pass; the separate runs retain all test coverage and
-check each process's exit status.
+To include desktop tests, run `uv run --locked --group gui pytest`.
+On Linux with Python 3.10 or 3.11, the lockfile selects Qt 6.11.2 for runtime
+compatibility; other environments use Qt 6.12. The suite checks normal process
+termination after repeated scrollbar painting, as well as widget behavior.
 GUI tests use an offscreen Qt platform, temporary settings and mocked HTTP responses.
 The [desktop design system](docs/design.md) documents layout, appearance and behavior.
 

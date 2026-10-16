@@ -57,8 +57,10 @@ release dates are included only where a published release can be verified.
 
 - TUI resizing updates the main layout even while Settings, Help or About is open,
   keeping recording controls visible after the dialog closes.
-- Core/terminal and Qt CI suites run in separate environments, preserving test
-  coverage while avoiding the combined-process shutdown crash on Linux/Python 3.10.
+- Linux with Python 3.10 or 3.11 uses compatible Qt 6.11.2 wheels to prevent
+  singleton reference corruption and crashes during interpreter shutdown.
+  GUI CI runs the full core/terminal/Qt suite together; a subprocess regression
+  checks normal exit after repeated scrollbar painting.
 - README download-link updates explicitly use UTF-8 on Windows and other
   platforms, preserving Russian documentation regardless of the system locale.
 - TUI button widths are recalculated after language changes and playback state
