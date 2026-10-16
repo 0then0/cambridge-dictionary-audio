@@ -709,7 +709,7 @@ class MainWindow(QMainWindow):
         )
         dialog.setOkButtonText(self._t("OK"))
         dialog.setCancelButtonText(self._t("Cancel"))
-        if dialog.exec() == QInputDialog.DialogCode.Accepted:
+        if dialog.exec() == ChoiceDialog.DialogCode.Accepted:
             text = dialog.textValue()
             try:
                 select_translation(
@@ -803,7 +803,7 @@ class MainWindow(QMainWindow):
         dialog = ChoiceDialog(self, self._t("Export to Anki"), self._t("Export"), choices)
         dialog.setOkButtonText(self._t("Export"))
         dialog.setCancelButtonText(self._t("Cancel"))
-        if dialog.exec() != QInputDialog.DialogCode.Accepted:
+        if dialog.exec() != ChoiceDialog.DialogCode.Accepted:
             return
         scope = dialog.textValue()
         records = (

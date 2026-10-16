@@ -19,6 +19,8 @@ def test_two_dialog_choices_fit_without_scrolling(window, app, long):
     app.processEvents()
     try:
         view = dialog.list_view
+        assert view.isVisible()
+        assert view.parentWidget() is dialog
         assert view.verticalScrollBar().maximum() == 0, {
             "view": view.size(),
             "viewport": view.viewport().size(),

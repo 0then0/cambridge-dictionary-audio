@@ -263,9 +263,9 @@ def test_new_translation_displays_readable_senses_without_ids(
 
     def choose_second(dialog):
         dialog.setTextValue(dialog.comboBoxItems()[1])
-        return gui.QInputDialog.DialogCode.Accepted
+        return gui.ChoiceDialog.DialogCode.Accepted
 
-    monkeypatch.setattr(gui.QInputDialog, "exec", choose_second)
+    monkeypatch.setattr(gui.ChoiceDialog, "exec", choose_second)
     window.choose_translation_sense()
     assert "алло" in window.translation_label.text()
     assert "привет" not in window.translation_label.text()
@@ -517,9 +517,9 @@ def test_translation_actions_refresh_selected_inline_meaning(
 
         def choose_second(dialog):
             dialog.setTextValue(dialog.comboBoxItems()[1])
-            return gui.QInputDialog.DialogCode.Accepted
+            return gui.ChoiceDialog.DialogCode.Accepted
 
-        monkeypatch.setattr(gui.QInputDialog, "exec", choose_second)
+        monkeypatch.setattr(gui.ChoiceDialog, "exec", choose_second)
         window.choose_translation_sense()
     assert expected in window.translation_label.text()
     assert expected in window.meaning_list.currentItem().text()

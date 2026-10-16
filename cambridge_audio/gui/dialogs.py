@@ -1,51 +1,50 @@
-"""Choice dialogs with readable, wrapping rows instead of native combo popups."""
+"""Choice dialogs with explicit, wrapping lists on every platform."""
 
-from PySide6.QtCore import QEvent, Qt
-from PySide6.QtWidgets import QInputDialog, QListView
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QDialog, QDialogButtonBox, QLabel, QVBoxLayout
 
-from .theme import fit_list_height, install_scrollbars
+from .theme import ContentList
 
 
-class ChoiceDialog(QInputDialog):
+class ChoiceDialog(QDialog):
     def __init__(self, parent, title, prompt, choices):
         super().__init__(parent)
         self.setWindowTitle(title)
-        self.setLabelText(prompt)
-        self.setComboBoxItems(choices)
-        self.setComboBoxEditable(False)
-        self.setOption(QInputDialog.InputDialogOption.UseListViewForComboBoxItems)
-        self.list_view = self.findChild(QListView)
-        self._sizing_list = False
-        self.list_view.viewport().installEventFilter(self)
-        view = self.list_view
-        view.setWordWrap(True)
-        view.setTextElideMode(Qt.TextElideMode.ElideNone)
-        view.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        view.setSpacing(4)
-        install_scrollbars(view)
+        self._choices = list(choices)
+        layout = QVBoxLayout(self)
+        label = QLabel(prompt)
+        label.setTextFormat(Qt.TextFormat.PlainText)
+        label.setWordWrap(True)
+        layout.addWidget(label)
+        self.list_view = ContentList(self)
+        self.list_view.setSpacing(4)
+        self.list_view.addItems(self._choices)
+        self.list_view.setCurrentRow(0)
+        self.list_view.itemDoubleClicked.connect(self.accept)
+        layout.addWidget(self.list_view)
+        self.buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        self.buttons.accepted.connect(self.accept)
+        self.buttons.rejected.connect(self.reject)
+        layout.addWidget(self.buttons)
         available = self.screen().availableGeometry()
         self.resize(min(680, available.width() - 40), self.sizeHint().height())
-        self.setTextValue(choices[0] if choices else "")
 
-    def _size_list(self):
-        if self._sizing_list:
-            return
-        self._sizing_list = True
-        try:
-            limit = max(80, self.screen().availableGeometry().height() // 2)
-            fit_list_height(self.list_view, limit)
-        finally:
-            self._sizing_list = False
+    def comboBoxItems(self):
+        return self._choices.copy()
 
-    def eventFilter(self, watched, event):
-        if event.type() == QEvent.Type.Resize and watched is self.list_view.viewport():
-            self._size_list()
-        return super().eventFilter(watched, event)
+    def textValue(self):
+        item = self.list_view.currentItem()
+        return item.text() if item else ""
 
-    def showEvent(self, event):
-        super().showEvent(event)
-        self._size_list()
+    def setTextValue(self, text):
+        matches = self.list_view.findItems(text, Qt.MatchFlag.MatchExactly)
+        if matches:
+            self.list_view.setCurrentItem(matches[0])
 
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-        self._size_list()
+    def setOkButtonText(self, text):
+        self.buttons.button(QDialogButtonBox.StandardButton.Ok).setText(text)
+
+    def setCancelButtonText(self, text):
+        self.buttons.button(QDialogButtonBox.StandardButton.Cancel).setText(text)

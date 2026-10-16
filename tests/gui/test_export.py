@@ -32,9 +32,9 @@ def test_gui_export_selected_and_all_and_reports_missing_mp3(window, monkeypatch
 
     def accept_export(dialog):
         dialog.setTextValue(dialog.comboBoxItems()[scope[0]])
-        return gui.QInputDialog.DialogCode.Accepted
+        return gui.ChoiceDialog.DialogCode.Accepted
 
-    monkeypatch.setattr(gui.QInputDialog, "exec", accept_export)
+    monkeypatch.setattr(gui.ChoiceDialog, "exec", accept_export)
     window.export_collection()
     output = parent / "cambridge-anki"
     assert len(list((output / "media").iterdir())) == 1
