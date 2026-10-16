@@ -14,15 +14,20 @@
 ## Графическое приложение
 
 <!-- downloads:start -->
-Прямые ссылки на опубликованную стабильную версию **v0.2.1**:
 
-- Windows x86-64: [setup.exe](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-dictionary-audio-0.2.1-windows-x86_64-setup.exe), [portable.zip](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-dictionary-audio-0.2.1-windows-x86_64-portable.zip).
-- macOS 14+ Apple Silicon: [.pkg](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-dictionary-audio-0.2.1-macos-arm64.pkg), [.dmg](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-dictionary-audio-0.2.1-macos-arm64.dmg), [.tar.gz](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-dictionary-audio-0.2.1-macos-arm64.tar.gz).
-- macOS 14+ Intel: [.pkg](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-dictionary-audio-0.2.1-macos-x86_64.pkg), [.dmg](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-dictionary-audio-0.2.1-macos-x86_64.dmg), [.tar.gz](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-dictionary-audio-0.2.1-macos-x86_64.tar.gz).
-- Linux x86-64, glibc 2.34+: [.deb](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-dictionary-audio_0.2.1_amd64.deb), [.rpm](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-dictionary-audio-0.2.1-1.x86_64.rpm), [.tar.gz](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-dictionary-audio-0.2.1-linux-x86_64-portable.tar.gz).
-- Python CLI: [.whl](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge_dictionary_audio-0.2.1-py3-none-any.whl), [.tar.gz](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge_dictionary_audio-0.2.1.tar.gz).
-- Chrome / Firefox: [Chrome ZIP](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-audio-chrome-0.2.1.zip), [Firefox ZIP](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-audio-firefox-0.2.1.zip).
-- SHA-256: [SHA256SUMS.txt](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/SHA256SUMS.txt).
+Прямое скачивание последнего проверенного стабильного релиза **v0.2.1**:
+
+| Платформа   | Архитектура           | Скачать                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| ----------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Windows 10+ | x86-64                | [![Windows 10+ x86-64 EXE](https://img.shields.io/badge/EXE-0078D4?style=for-the-badge&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0xIDFoMTB2MTBIMXpNMTMgMWgxMHYxMEgxM3pNMSAxM2gxMHYxMEgxek0xMyAxM2gxMHYxMEgxM3oiLz48L3N2Zz4%3D&logoColor=white)](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-dictionary-audio-0.2.1-windows-x86_64-setup.exe) [![Windows 10+ x86-64 Portable ZIP](https://img.shields.io/badge/Portable%20ZIP-0078D4?style=for-the-badge&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0xIDFoMTB2MTBIMXpNMTMgMWgxMHYxMEgxM3pNMSAxM2gxMHYxMEgxek0xMyAxM2gxMHYxMEgxM3oiLz48L3N2Zz4%3D&logoColor=white)](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-dictionary-audio-0.2.1-windows-x86_64-portable.zip) |
+| macOS 14+   | Apple Silicon (arm64) | [![macOS 14+ Apple Silicon (arm64) PKG](https://img.shields.io/badge/PKG-555555?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-dictionary-audio-0.2.1-macos-arm64.pkg) [![macOS 14+ Apple Silicon (arm64) DMG](https://img.shields.io/badge/DMG-555555?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-dictionary-audio-0.2.1-macos-arm64.dmg) [![macOS 14+ Apple Silicon (arm64) TAR.GZ](https://img.shields.io/badge/TAR.GZ-555555?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-dictionary-audio-0.2.1-macos-arm64.tar.gz)                                                                                                                                                                                                                            |
+| macOS 14+   | Intel (x86-64)        | [![macOS 14+ Intel (x86-64) PKG](https://img.shields.io/badge/PKG-555555?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-dictionary-audio-0.2.1-macos-x86_64.pkg) [![macOS 14+ Intel (x86-64) DMG](https://img.shields.io/badge/DMG-555555?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-dictionary-audio-0.2.1-macos-x86_64.dmg) [![macOS 14+ Intel (x86-64) TAR.GZ](https://img.shields.io/badge/TAR.GZ-555555?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-dictionary-audio-0.2.1-macos-x86_64.tar.gz)                                                                                                                                                                                                                                              |
+| Linux       | x86-64 · glibc 2.34+  | [![Linux x86-64 · glibc 2.34+ DEB](https://img.shields.io/badge/DEB-FCC624?style=for-the-badge&logo=linux&logoColor=white)](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-dictionary-audio_0.2.1_amd64.deb) [![Linux x86-64 · glibc 2.34+ RPM](https://img.shields.io/badge/RPM-FCC624?style=for-the-badge&logo=linux&logoColor=white)](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-dictionary-audio-0.2.1-1.x86_64.rpm) [![Linux x86-64 · glibc 2.34+ Portable TAR.GZ](https://img.shields.io/badge/Portable%20TAR.GZ-FCC624?style=for-the-badge&logo=linux&logoColor=white)](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-dictionary-audio-0.2.1-linux-x86_64-portable.tar.gz)                                                                                                                                                                                                                      |
+| Python CLI  | Любая                 | [![Python CLI Любая WHL](https://img.shields.io/badge/WHL-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge_dictionary_audio-0.2.1-py3-none-any.whl) [![Python CLI Любая Source TAR.GZ](https://img.shields.io/badge/Source%20TAR.GZ-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge_dictionary_audio-0.2.1.tar.gz)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Chrome      | Любая                 | [![Chrome Любая ZIP](https://img.shields.io/badge/ZIP-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white)](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-audio-chrome-0.2.1.zip)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| Firefox     | Любая                 | [![Firefox Любая ZIP](https://img.shields.io/badge/ZIP-FF7139?style=for-the-badge&logo=firefoxbrowser&logoColor=white)](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/cambridge-audio-firefox-0.2.1.zip)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+
+[![SHA-256](https://img.shields.io/badge/SHA--256-SHA256SUMS.txt-555555?style=flat-square)](https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.2.1/SHA256SUMS.txt)
 <!-- downloads:end -->
 
 Установщики и переносимые сборки включают Python, Qt и минимальный аудио-FFmpeg
@@ -37,10 +42,11 @@ CLI устанавливается отдельно из [PyPI](https://pypi.org
 uv tool install cambridge-dictionary-audio
 ```
 
-Ссылки закреплены на опубликованном стабильном релизе. После следующего релиза
-команда `uv run --no-sync python scripts/download_links.py --refresh` обновит
-оба README через GitHub API. `--verify-network` дополнительно проверит прямые
-ссылки. Команда ничего не публикует.
+Каждая кнопка скачивает нужный файл напрямую, без перехода на страницу релиза.
+Ссылки закреплены на проверенной стабильной версии, указанной над таблицей:
+имена файлов содержат номер версии. После публикации нового стабильного релиза
+команда `uv run --no-sync python scripts/download_links.py --refresh --verify-network`
+обновит обе таблицы и проверит скачивание.
 
 ### Запуск из исходников
 
@@ -209,8 +215,9 @@ uv run -m cambridge_audio --lang ru --no-play --translation russian
 версию, ссылку на репозиторий и сведения о лицензиях.
 
 В настройках доступны язык интерфейса, светлая и тёмная темы, US/UK, папка,
-переключатель русского перевода, автовоспроизведение и склейка фраз. Изменения
-действуют в текущей сессии; для следующих запусков используйте параметры CLI.
+переключатель русского перевода, автовоспроизведение и склейка фраз. После нажатия
+«Применить» настройки сохраняются для следующих запусков TUI. Явные параметры CLI
+имеют приоритет при запуске. Флажок перевода в основном окне тоже запоминается.
 Чекбокс показывает и скрывает русский перевод сразу. Готовый кэш используется без
 повторных запросов; отсутствующий перевод загружается без скачивания MP3.
 Английское определение остаётся видимым при выключенном переводе. Язык интерфейса
@@ -305,17 +312,17 @@ CI проверяет сборку на всех трёх ОС и дополни
 - `cambridge_audio/dictionary.py`: словарные статьи, HTML, HTTP-запросы и сохранение MP3.
 - `cambridge_audio/audio.py`: склейка фраз и воспроизведение на разных платформах.
 - `cambridge_audio/cli.py`: параметры командной строки, разовое скачивание и построчный диалог.
-- `cambridge_audio/terminal.py`: терминальный интерфейс, настройки и фоновые задачи.
+- `cambridge_audio/terminal/`: терминальный интерфейс, настройки и фоновые задачи.
 - `cambridge_audio/console.py`: форматированный вывод и простой текст для перенаправления.
 - `cambridge_audio/service.py`: общий сценарий скачивания для обоих интерфейсов.
-- `cambridge_audio/gui.py`: окно, фоновые задачи аудио и перевода, встроенное воспроизведение.
-- `cambridge_audio/theme.py`: цветовые токены и оформление Qt.
-- `cambridge_audio/preferences.py`: настройки языка и оформления.
+- `cambridge_audio/gui/`: окно, фоновые задачи аудио и перевода, встроенное воспроизведение.
+- `cambridge_audio/gui/theme.py`: цветовые токены и оформление Qt.
+- `cambridge_audio/gui/preferences.py`: настройки языка и оформления.
 - `cambridge_audio/library.py`: сохранённые записи и дополнительные сведения в JSON.
 - `cambridge_audio/i18n.py`: английские и русские сообщения интерфейса.
 - `assets/icon.svg`: исходная векторная иконка; `assets/icon.ico`: её версия для Windows.
 - `extension/`: popup на TypeScript, манифесты браузеров, тесты DOM и сборка.
-- `tests/`: тесты без сети и необязательные интеграционные тесты FFmpeg.
+- `tests/`: группы core, cli, gui, terminal и packaging; общие вспомогательные функции.
 - `scripts/` и `packaging/`: проверки релиза, сборка приложения и шаблоны установщиков.
 
 Основной запуск: `python -m cambridge_audio`. Корневой `main.py` оставлен для

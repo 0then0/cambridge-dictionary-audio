@@ -1,6 +1,6 @@
-"""Keyboard-friendly terminal workspace, independent of the desktop GUI."""
+"""Terminal workspace, actions and background task coordination."""
 
-from dataclasses import dataclass, replace
+from dataclasses import replace
 from importlib.metadata import version
 from pathlib import Path
 from threading import Event
@@ -10,376 +10,42 @@ from textual import on, work
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical, VerticalScroll
-from textual.message import Message
 from textual.screen import ModalScreen
 from textual.theme import Theme
-from textual.widgets import Button, Checkbox, DataTable, Footer, Input, Label, Link, Select, Static
+from textual.widgets import Button, Checkbox, DataTable, Footer, Input, Static
 from textual.worker import Worker, WorkerState
 
-from .anki import export_anki
-from .audio import play_audio
-from .dictionary import (
+from ..anki import export_anki
+from ..audio import play_audio
+from ..dictionary import (
     CambridgeClient,
     CambridgeError,
     SelectionRequired,
     audio_filename,
     normalize_word,
 )
-from .i18n import translate
-from .library import SavedRecording, read_recording, save_metadata, scan_recordings
-from .service import DownloadCancelled, download_recordings
-from .translations import (
-    TranslationResult,
+from ..i18n import translate
+from ..library import SavedRecording, read_recording, save_metadata, scan_recordings
+from ..service import DownloadCancelled, download_recordings
+from ..translations import (
     cached_translation,
     edit_translation,
     persist_translation,
     resolve_translation,
     select_translation,
 )
-from .wikdict import PACKAGE, install_dictionary
-
-
-def translation_context(option, language: str) -> str:
-    return " · ".join(filter(None, (translate(option.part_of_speech, language), option.definition)))
-
-
-def render_translation(result: TranslationResult, language: str) -> Text:
-    """Present source senses without exposing storage IDs or empty gloss placeholders."""
-    t = lambda message: translate(message, language)  # noqa: E731
-    if not result.options:
-        return Text(result.format(language))
-    text = Text()
-    text.append(t("Translation"), style="bold")
-    text.append(" · " + t(result.source), style="dim")
-    text.append("\n", style="none")
-    selected = next((o for o in result.options if o.id == result.selected_id), None)
-    options = (selected,) if selected else result.options
-    ambiguous = len(options) > 1
-    for index, option in enumerate(options, start=1):
-        if index > 1:
-            text.append("\n", style="none")
-        if ambiguous:
-            text.append(f"{index}. ", style="bold")
-        text.append("; ".join(option.texts), style="none")
-        if option.part_of_speech:
-            text.append(" · " + t(option.part_of_speech), style="dim")
-        if option.definition:
-            text.append("\n" + ("   " if ambiguous else "") + option.definition, style="dim")
-    if ambiguous:
-        text.append("\n\n" + t("Ctrl+T: choose a meaning or edit the translation."), style="dim")
-    if not all(option.matched for option in options):
-        text.append(
-            ("\n" if ambiguous else "\n\n") + t("Sense match with Cambridge is unverified."),
-            style="dim",
-        )
-    if result.error:
-        text.append(
-            "\n\n" + "; ".join(t(part) for part in result.error.split("; ")), style="italic"
-        )
-    return text
-
-
-def display_path(path: Path) -> str:
-    for base, prefix in ((Path.cwd(), "."), (Path.home(), "~")):
-        try:
-            return str(Path(prefix) / path.relative_to(base))
-        except ValueError:
-            pass
-    return str(path)
-
-
-@dataclass(frozen=True)
-class Options:
-    directory: Path
-    language: str = "en"
-    accent: str = "us"
-    play: bool = True
-    combine: bool = True
-    translation: str | None = None
-    timeout: float = 15.0
-    overwrite: bool = False
-    dictionary_dir: Path | None = None
-    offline: bool = False
-
-
-class Dialog(ModalScreen):
-    BINDINGS = [("escape", "close", "Close")]
-
-    def action_close(self) -> None:
-        self.dismiss(None)
-
-
-class Settings(Dialog):
-    def __init__(self, options: Options, theme: str):
-        super().__init__()
-        self.options = options
-        self.current_theme = theme
-
-    def compose(self) -> ComposeResult:
-        t = lambda message: translate(message, self.options.language)  # noqa: E731
-        with VerticalScroll(classes="dialog"):
-            yield Label(t("Settings"), classes="dialog-title")
-            yield Label(t("Language"))
-            yield Select(
-                [("English", "en"), ("Русский", "ru")],
-                value=self.options.language,
-                allow_blank=False,
-                id="language",
-            )
-            yield Label(t("Appearance"))
-            yield Select(
-                [(t("Dark"), "cambridge-dark"), (t("Light"), "cambridge-light")],
-                value=self.current_theme,
-                allow_blank=False,
-                id="theme",
-            )
-            yield Label(t("Pronunciation"))
-            yield Select(
-                [(t("American (US)"), "us"), (t("British (UK)"), "uk"), (t("Both"), "both")],
-                value=self.options.accent,
-                allow_blank=False,
-                id="accent",
-            )
-            yield Label(t("Save to"))
-            yield Input(str(self.options.directory), id="directory")
-            yield Checkbox(
-                t("Show Russian translation"), bool(self.options.translation), id="translation"
-            )
-            yield Checkbox(t("Autoplay"), self.options.play, id="autoplay")
-            yield Checkbox(
-                t("Combine words if the phrase has no recording"),
-                self.options.combine,
-                id="combine",
-            )
-            yield Static(
-                t("Settings apply to this session. Use CLI flags for future launches."),
-                classes="muted",
-            )
-            yield Static("", id="settings-error")
-            with Horizontal(classes="dialog-buttons"):
-                yield Button(t("Apply"), variant="primary", id="apply")
-                yield Button(t("Cancel"), id="dismiss")
-
-    @on(Button.Pressed)
-    def apply_settings(self, event: Button.Pressed) -> None:
-        if event.button.id != "apply":
-            self.dismiss(None)
-            return
-        directory = self.query_one("#directory", Input).value.strip()
-        if not directory:
-            self.query_one("#settings-error", Static).update(
-                translate("Choose a download folder", self.options.language)
-            )
-            return
-        options = replace(
-            self.options,
-            directory=Path(directory).expanduser().resolve(),
-            language=str(self.query_one("#language", Select).value),
-            accent=str(self.query_one("#accent", Select).value),
-            translation="russian" if self.query_one("#translation", Checkbox).value else None,
-            play=self.query_one("#autoplay", Checkbox).value,
-            combine=self.query_one("#combine", Checkbox).value,
-        )
-        self.dismiss((options, str(self.query_one("#theme", Select).value)))
-
-
-class ConfirmReplace(Dialog):
-    def __init__(self, language: str, word: str):
-        super().__init__()
-        self.language = language
-        self.word = word
-
-    def compose(self) -> ComposeResult:
-        with Vertical(classes="dialog"):
-            yield Label(translate("Replace recordings?", self.language), classes="dialog-title")
-            yield Static(
-                Text(translate("Replace saved audio for '{word}'?", self.language, word=self.word))
-            )
-            with Horizontal(classes="dialog-buttons"):
-                yield Button(translate("Keep existing", self.language), id="keep")
-                yield Button(translate("Replace", self.language), variant="warning", id="replace")
-
-    @on(Button.Pressed)
-    def answer(self, event: Button.Pressed) -> None:
-        self.dismiss(event.button.id == "replace")
-
-
-class ChooseOption(Dialog):
-    def __init__(self, language, title, choices, *, text=None, note=""):
-        super().__init__()
-        self.language, self.title, self.choices = language, title, choices
-        self.text, self.note = text, note
-
-    def compose(self):
-        t = lambda message: translate(message, self.language)  # noqa: E731
-        with VerticalScroll(classes="dialog"):
-            yield Label(t(self.title), classes="dialog-title")
-            if self.note:
-                yield Static(Text(self.note))
-            if self.choices:
-                yield Select(
-                    [(Text(label), value) for label, value in self.choices],
-                    value=self.choices[0][1],
-                    allow_blank=False,
-                    id="choice",
-                )
-            if self.text is not None:
-                yield Input(self.text, id="value")
-            with Horizontal(classes="dialog-buttons"):
-                yield Button(t("Apply"), variant="primary", id="accept")
-                yield Button(t("Cancel"), id="cancel")
-
-    @on(Button.Pressed)
-    def answer(self, event):
-        if event.button.id != "accept":
-            self.dismiss(None)
-        else:
-            value = self.query_one("#choice", Select).value if self.choices else ""
-            text = self.query_one("#value", Input).value if self.text is not None else None
-            self.dismiss((value, text))
-
-
-class VariantSelection(Message):
-    def __init__(self, word, selection):
-        super().__init__()
-        self.word, self.selection = word, selection
-
-
-class DictionaryFinished(Message):
-    def __init__(self, error=""):
-        super().__init__()
-        self.error = error
-
-
-class About(Dialog):
-    def __init__(self, language: str):
-        super().__init__()
-        self.language = language
-
-    def compose(self) -> ComposeResult:
-        t = lambda message: translate(message, self.language)  # noqa: E731
-        with VerticalScroll(classes="dialog"):
-            yield Label(t("About"), classes="dialog-title")
-            yield Static(Text("Cambridge Dictionary Audio", style="bold"))
-            yield Static(
-                translate(
-                    "Version {version}",
-                    self.language,
-                    version=version("cambridge-dictionary-audio"),
-                ),
-                id="about-version",
-            )
-            yield Static(t("Download and listen to English pronunciation."), classes="help-note")
-            yield Link(
-                "github.com/0then0/cambridge-dictionary-audio",
-                url="https://github.com/0then0/cambridge-dictionary-audio",
-                tooltip=t("Source code on GitHub"),
-                id="about-repository",
-            )
-            yield Static(
-                t("Application code: Apache-2.0; inherited code: MIT."), classes="help-note"
-            )
-            yield Static(
-                t("Dictionary content and recordings retain their own licenses."),
-                classes="help-note",
-            )
-            yield Button(t("Close"), id="close-about")
-
-    @on(Button.Pressed, "#close-about")
-    def close_about(self) -> None:
-        self.dismiss(None)
-
-
-class Help(Dialog):
-    def __init__(self, language: str):
-        super().__init__()
-        self.language = language
-
-    def compose(self) -> ComposeResult:
-        with VerticalScroll(classes="dialog"):
-            yield Label(translate("Keyboard shortcuts", self.language), classes="dialog-title")
-            yield Static(
-                translate(
-                    "Enter in search: download or open saved audio\n"
-                    "Enter in library: play selected recording\n"
-                    "Tab / Shift+Tab: move between controls\n"
-                    "Up / Down: navigate saved recordings\n"
-                    "Ctrl+L: focus search\nCtrl+P: play / stop selected recording\n"
-                    "Ctrl+R: refresh library\nCtrl+S: settings\n"
-                    "Ctrl+O: choose pronunciation\nCtrl+T: edit / choose / reset translation\n"
-                    "Ctrl+D: install WikDict\nCtrl+E: export to Anki\n"
-                    "Ctrl+C: cancel download / stop playback, or quit when idle\nCtrl+Q: quit\n"
-                    "F1: this help\nEsc: close a dialog",
-                    self.language,
-                )
-            )
-            yield Static(
-                translate(
-                    "Existing audio opens offline. Download again asks before replacing it.\n"
-                    "Phrase synthesis needs FFmpeg; Linux playback needs ffplay.",
-                    self.language,
-                ),
-                classes="help-note",
-            )
-            yield Static(translate("F2: About", self.language), classes="help-note")
-            yield Static(
-                translate(
-                    "Any keyboard layout: F3 search; F4 play / stop; F5 refresh; "
-                    "F6 settings; F7 export; F8 translation; F9 WikDict; "
-                    "F10 pronunciation; F11 cancel; F12 quit. "
-                    "Ctrl shortcuts also accept Russian and Ukrainian key positions.",
-                    self.language,
-                ),
-                classes="help-note",
-            )
-            with Horizontal(classes="dialog-buttons"):
-                yield Button(translate("About", self.language), id="help-about")
-                yield Button(translate("Close", self.language), id="close-help")
-
-    @on(Button.Pressed, "#close-help")
-    def close_help(self) -> None:
-        self.dismiss(None)
-
-    @on(Button.Pressed, "#help-about")
-    def open_about(self) -> None:
-        self.app.action_about()
-
-
-class DownloadUpdate(Message):
-    def __init__(self, saved: SavedRecording):
-        super().__init__()
-        self.saved = saved
-
-
-class DownloadFinished(Message):
-    def __init__(self, error: str = "", warning: str = "", translation_error: str = ""):
-        super().__init__()
-        self.error = error
-        self.warning = warning
-        self.translation_error = translation_error
-
-
-class TranslationFinished(Message):
-    def __init__(
-        self,
-        saved: SavedRecording,
-        translations: tuple[str, ...] = (),
-        error: str = "",
-        language: str = "russian",
-        result: TranslationResult | None = None,
-    ):
-        super().__init__()
-        self.saved = saved
-        self.language = language
-        self.translations = translations
-        self.result = result
-        self.error = error
-
-
-class PlaybackFinished(Message):
-    def __init__(self, error: str = ""):
-        super().__init__()
-        self.error = error
+from ..wikdict import PACKAGE, install_dictionary
+from .dialogs import About, ChooseOption, ConfirmReplace, Help, Settings
+from .messages import (
+    DictionaryFinished,
+    DownloadFinished,
+    DownloadUpdate,
+    PlaybackFinished,
+    TranslationFinished,
+    VariantSelection,
+)
+from .rendering import display_path, render_translation, translation_context
+from .settings import Options, save_settings
 
 
 class CambridgeApp(App[None]):
@@ -416,63 +82,9 @@ class CambridgeApp(App[None]):
             ("ctrl+й,f12", "quit", "Quit"),
         )
     ]
-    CSS = """
-    Screen { background: $background; }
-    #brand { height: 3; padding: 1 2 0 2; text-style: bold; color: $text; }
-    #context { height: 2; padding: 0 2; color: $text-muted;
-               text-overflow: ellipsis; text-wrap: nowrap; }
-    #search-bar { height: 3; margin: 0 2 1 2; }
-    #query { width: 1fr; }
-    #download { margin-left: 1; min-width: 14; }
-    #workspace { height: 1fr; margin: 0 2; }
-    #library-pane { width: 38%; min-width: 24; border: round $panel; }
-    #detail-pane { width: 1fr; margin-left: 1; border: round $panel; }
-    #library-pane, #detail-pane { border-title-color: $text-muted; }
-    Input { border: round $panel; }
-    Input:focus { border: round $primary; }
-    Button { border: round $panel; }
-    Button.-primary { border: round $primary; }
-    Button:focus { border: round $accent; }
-    #recordings { height: 1fr; background: $background; }
-    DataTable > .datatable--header { background: $panel; color: $text-muted; }
-    DataTable > .datatable--cursor { background: $primary; color: #ffffff; }
-    #empty { padding: 1 2; color: $text-muted; height: auto; }
-    #detail-scroll { height: 1fr; padding: 1 2; }
-    #word { height: auto; color: $text; text-style: bold; margin-bottom: 1; }
-    #pronunciation { height: auto; color: $accent; margin-bottom: 1; }
-    #definition, #translation { height: auto; margin-bottom: 1; }
-    #file { height: auto; color: $text-muted; }
-    #detail-actions { height: 3; margin: 0 1 1 1; }
-    #play { min-width: 10; margin-right: 1; }
-    #again { min-width: 16; }
-    #show-translation { height: 1; margin: 0 2 1 2; }
-    #status { height: auto; max-height: 4; min-height: 2; margin: 0 2; padding: 1 0 0 0; }
-    #status.error { color: $error; }
-    #status.warning { color: $warning; }
-    Footer { background: $panel; }
-    .narrow #workspace { layout: vertical; }
-    .narrow #library-pane { width: 100%; height: 35%; min-width: 0; }
-    .narrow #detail-pane { width: 100%; height: 1fr; margin: 1 0 0 0; }
-    .narrow #detail-scroll { padding: 0 1; }
-    .short #brand { height: 2; padding-top: 0; }
-    .short #context { height: 1; }
-    .short #search-bar { margin-bottom: 0; }
-    .short #status { min-height: 1; padding-top: 0; }
-    ModalScreen { align: center middle; background: $background 70%; }
-    .dialog { width: 64; max-width: 95%; height: auto; max-height: 90%;
-              padding: 1 2; border: round $primary; background: $surface; }
-    .dialog Label { height: auto; margin-top: 1; }
-    .dialog .dialog-title { margin-top: 0; text-style: bold; color: $accent; }
-    .dialog Input, .dialog Select { width: 100%; }
-    .dialog Checkbox { height: auto; width: 100%; margin-top: 1; }
-    .muted { color: $text-muted; height: auto; margin-top: 1; }
-    .help-note { color: $text-muted; height: auto; margin: 1 0; }
-    .dialog-buttons { height: 3; margin-top: 1; }
-    .dialog-buttons Button { margin-right: 1; }
-    #settings-error { height: auto; color: $error; }
-    """
+    CSS_PATH = "app.tcss"
 
-    def __init__(self, options: Options):
+    def __init__(self, options: Options, *, theme: str = "cambridge-dark"):
         super().__init__()
         self.register_theme(
             Theme(
@@ -500,7 +112,7 @@ class CambridgeApp(App[None]):
                 dark=False,
             )
         )
-        self.theme = "cambridge-dark"
+        self.theme = theme
         self.options = replace(
             options,
             directory=options.directory.expanduser().resolve(),
@@ -709,12 +321,15 @@ class CambridgeApp(App[None]):
         if not self.screen_stack or not self.screen_stack[0].query("#show-translation"):
             return
         enabled = self.screen_stack[0].query_one("#show-translation", Checkbox).value
+        changed = bool(self.options.translation) != enabled
         self.options = replace(self.options, translation="russian" if enabled else None)
         if self.selected and enabled:
             self.translation_errors.pop(
                 (self.selected.recording.path, self.options.translation or "russian"), None
             )
         self.update_translation()
+        if changed:
+            self.save_preferences()
 
     def update_translation(self) -> None:
         widget = self.screen_stack[0].query_one("#translation", Static)
@@ -744,8 +359,14 @@ class CambridgeApp(App[None]):
 
     @work(thread=True, group="translation", exit_on_error=False)
     def fetch_translation(self, saved: SavedRecording, options: Options) -> None:
+        def cancelled():
+            if self.quit_pending:
+                raise DownloadCancelled(translate("Download cancelled.", options.language))
+
         try:
-            with CambridgeClient(options.timeout, language=options.language) as client:
+            with CambridgeClient(
+                options.timeout, language=options.language, check_cancelled=cancelled
+            ) as client:
                 result = resolve_translation(
                     client,
                     saved,
@@ -944,7 +565,9 @@ class CambridgeApp(App[None]):
             )
 
         try:
-            with CambridgeClient(options.timeout, language=options.language) as client:
+            with CambridgeClient(
+                options.timeout, language=options.language, check_cancelled=cancelled
+            ) as client:
                 result = download_recordings(
                     client,
                     word,
@@ -1260,6 +883,14 @@ class CambridgeApp(App[None]):
                 self.warning or self.t("Opened saved recording."), warning=bool(self.warning)
             )
 
+    def save_preferences(self) -> None:
+        try:
+            save_settings(self.options, self.theme)
+        except OSError as exc:
+            self.status(
+                self.t("Could not save terminal settings: {error}", error=str(exc)), error=True
+            )
+
     def action_settings(self) -> None:
         if self.busy or self.quit_pending or isinstance(self.screen, ModalScreen):
             return
@@ -1275,6 +906,7 @@ class CambridgeApp(App[None]):
                 self.selected = None
                 self.localize()
                 self.action_refresh()
+                self.save_preferences()
 
         self.push_screen(Settings(self.options, self.theme), apply_settings)
 

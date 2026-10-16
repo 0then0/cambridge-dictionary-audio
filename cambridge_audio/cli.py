@@ -421,6 +421,18 @@ def main(argv: list[str] | None = None) -> int:
     if not args.word and not args.plain and is_terminal():
         # Import lazily: scripts and desktop packaging do not initialize a TUI.
         from .terminal import CambridgeApp, Options
+        from .terminal.settings import load_settings
+
+        saved = load_settings()
+        # Reparse with persisted defaults so argparse itself gives explicit flags
+        # priority, including --flag=value, abbreviations and --no-play/combine.
+        names = {"language": "lang", "directory": "output_dir"}
+        parser.set_defaults(**{names.get(k, k): v for k, v in saved.items() if k != "theme"})
+        args = parser.parse_args(argv)
+        if args.play is None:
+            args.play = True
+        if args.combine is None:
+            args.combine = True
 
         CambridgeApp(
             Options(
@@ -434,7 +446,8 @@ def main(argv: list[str] | None = None) -> int:
                 overwrite=args.overwrite,
                 dictionary_dir=args.dictionary_dir,
                 offline=args.offline,
-            )
+            ),
+            theme=saved.get("theme", "cambridge-dark"),
         ).run()
         return 0
     with CambridgeClient(args.timeout, language=args.lang) as client:

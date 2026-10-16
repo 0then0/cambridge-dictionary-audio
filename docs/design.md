@@ -36,7 +36,7 @@ whose thumb geometry is implemented in
 Colors continue to follow the application's light, dark and custom palettes.
 
 Palette tokens, contrast calculations and widget styles are in
-[`theme.py`](../cambridge_audio/theme.py). Shared icons are in
+[`theme.py`](../cambridge_audio/gui/theme.py). Shared icons are in
 [`assets/ui/`](../assets/ui/), each with an accessible SVG title.
 
 ## Recording workflow

@@ -4,7 +4,6 @@ from threading import Event
 from unittest.mock import Mock
 
 import pytest
-from test_wikdict import download_session
 
 from cambridge_audio import translations, wikdict
 from cambridge_audio.dictionary import CambridgeBlockedError, CambridgeError
@@ -19,6 +18,7 @@ from cambridge_audio.translations import (
     resolve_translation,
     select_translation,
 )
+from tests.helpers import download_session
 
 
 def recording(tmp_path):
@@ -195,10 +195,9 @@ def test_new_pronunciation_inherits_sense_edits_and_reset_after_restart(tmp_path
 
 
 def test_legacy_edit_preserves_provenance_and_reset_after_redownload(tmp_path, client):
-    from conftest import response
-
     from cambridge_audio.dictionary import Entry, Pronunciation
     from cambridge_audio.service import download_recordings
+    from tests.helpers import response
 
     path = tmp_path / "hello.us.mp3"
     path.write_bytes(b"ID3old")

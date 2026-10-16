@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
-from .i18n import translate
+from ..i18n import translate
 from .theme import ComboBox, stored_colors, theme_colors
 
 

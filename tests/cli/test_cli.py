@@ -1,10 +1,11 @@
+from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
-from conftest import response
 
 from cambridge_audio import cli, service
 from cambridge_audio.dictionary import CambridgeError
+from tests.helpers import response
 
 
 def test_cli_downloads_both_accents(monkeypatch, client, html, mp3, tmp_path, capsys):
@@ -237,3 +238,79 @@ def test_cli_rejects_other_translation_languages_before_io(
     ) in message
     assert not (tmp_path / "audio").exists()
     client.assert_not_called()
+
+
+@pytest.mark.parametrize("explicit", [False, True])
+def test_tui_restores_preferences_and_explicit_flags_override_without_rewriting(
+    tmp_path, monkeypatch, isolated_terminal_settings, explicit
+):
+    from cambridge_audio import terminal
+    from cambridge_audio.terminal import settings as terminal_settings
+
+    saved = terminal.Options(
+        tmp_path / "saved",
+        language="ru",
+        accent="both",
+        play=False,
+        combine=False,
+        translation="russian",
+        overwrite=True,
+        offline=True,
+    )
+    terminal_settings.save_settings(saved, "cambridge-light")
+    previous = isolated_terminal_settings.read_bytes()
+    application = Mock()
+    monkeypatch.setattr(cli, "is_terminal", lambda: True)
+    monkeypatch.setattr(terminal, "CambridgeApp", application)
+    flags = (
+        ["--lang=en", "--accent=us", "--play", "--combine", "--output-dir", str(tmp_path)]
+        if explicit
+        else []
+    )
+    assert cli.main(flags) == 0
+    options = application.call_args.args[0]
+    assert options.directory == (tmp_path if explicit else saved.directory)
+    assert options.language == ("en" if explicit else "ru")
+    assert options.accent == ("us" if explicit else "both")
+    assert options.play is explicit
+    assert options.combine is explicit
+    assert options.translation == "russian"
+    assert not options.overwrite and not options.offline
+    assert application.call_args.kwargs["theme"] == "cambridge-light"
+    assert isolated_terminal_settings.read_bytes() == previous
+
+
+def test_tui_negative_flags_override_saved_enabled_preferences(tmp_path, monkeypatch):
+    from cambridge_audio import terminal
+    from cambridge_audio.terminal import settings as terminal_settings
+
+    terminal_settings.save_settings(terminal.Options(tmp_path), "cambridge-dark")
+    application = Mock()
+    monkeypatch.setattr(cli, "is_terminal", lambda: True)
+    monkeypatch.setattr(terminal, "CambridgeApp", application)
+    assert cli.main(["--no-play", "--no-combine"]) == 0
+    options = application.call_args.args[0]
+    assert not options.play and not options.combine
+
+
+@pytest.mark.parametrize("plain", [False, True])
+def test_saved_tui_preferences_do_not_change_other_cli_modes(tmp_path, monkeypatch, client, plain):
+    from cambridge_audio import terminal
+    from cambridge_audio.terminal import settings as terminal_settings
+
+    terminal_settings.save_settings(
+        terminal.Options(tmp_path / "saved", language="ru", accent="both", play=False),
+        "cambridge-light",
+    )
+    captured = []
+    monkeypatch.setattr(cli, "is_terminal", lambda: True)
+    monkeypatch.setattr(cli, "CambridgeClient", lambda *a, **kw: client)
+    monkeypatch.setattr(cli, "interactive", lambda client, args: captured.append(args) or 0)
+    monkeypatch.setattr(
+        cli, "download_word", lambda client, word, args, files: captured.append(args)
+    )
+    assert cli.main(["--plain"] if plain else ["hello"]) == 0
+    args = captured[0]
+    assert args.lang == "en" and args.accent == "us"
+    assert args.output_dir == Path.cwd() / "downloads"
+    assert args.play is plain and args.combine is plain

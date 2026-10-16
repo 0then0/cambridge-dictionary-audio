@@ -9,6 +9,15 @@ release dates are included only where a published release can be verified.
 
 ### Added
 
+- TUI settings persist across launches: interface language, theme, accent,
+  destination, autoplay, phrase synthesis and Russian translation visibility.
+  Explicit CLI flags override saved preferences; cancelled dialogs do not save.
+- Cambridge requests share a one-second interval within each process. HTTP 429
+  responses honor `Retry-After` and use at most two retries with exponential
+  backoff and jitter otherwise. Long server cooldowns are reported without
+  blocking the interface; GUI/TUI waits can be cancelled.
+- Each Cambridge client reuses up to 64 successful HTML pages. Explicit audio
+  redownloads still fetch fresh MP3 data.
 - Shared pronunciation selection in the CLI, TUI and GUI, keeping the Cambridge
   entry, part of speech, definition, IPA and audio together. Multiple meanings
   and US/UK pronunciations can be saved separately with stable recording IDs and
@@ -33,11 +42,16 @@ release dates are included only where a published release can be verified.
   application version, repository link and license information.
 - Restoration of the desktop window's size, position and maximized state,
   including recovery when the previous monitor is unavailable.
-- Direct platform-specific download links in both READMEs and a script to refresh
-  them from the latest published stable GitHub release and verify the URLs.
+- Platform download tables in both READMEs with Shields.io format buttons that
+  download each verified stable release asset directly, including a custom
+  Windows icon. A script refreshes pinned URLs and validates the release assets.
 
 ### Changed
 
+- GUI and TUI code is grouped into packages with separate workers, dialogs,
+  rendering and settings modules; terminal styles live in a packaged TCSS file.
+  Existing CLI and GUI launch commands are preserved. Tests are grouped by
+  interface and behavior, sharing HTTP helpers without cross-test imports.
 - Translation controls now explicitly enable Russian translations of English
   words. The free-form language field was removed; CLI aliases `russian`, `ru`
   and `русский` are accepted, and other languages are rejected before network

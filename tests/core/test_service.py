@@ -1,11 +1,11 @@
 from unittest.mock import Mock
 
 import pytest
-from conftest import response
 
 from cambridge_audio import service
 from cambridge_audio.dictionary import CambridgeError
 from cambridge_audio.service import DownloadCancelled, download_recordings
+from tests.helpers import response
 
 
 def test_translation_failure_retains_recording(client, html, mp3, tmp_path):

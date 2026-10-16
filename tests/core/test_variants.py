@@ -3,7 +3,6 @@
 from dataclasses import replace
 
 import pytest
-from conftest import response
 
 from cambridge_audio.dictionary import (
     SelectionRequired,
@@ -14,6 +13,7 @@ from cambridge_audio.dictionary import (
 )
 from cambridge_audio.library import read_recording, save_metadata, scan_recordings
 from cambridge_audio.service import download_recordings
+from tests.helpers import response
 
 
 @pytest.fixture

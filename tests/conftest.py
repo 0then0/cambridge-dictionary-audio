@@ -1,16 +1,40 @@
 import concurrent.futures
+from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
-import requests
 
-from cambridge_audio.dictionary import BASE_URL, CambridgeClient
+from cambridge_audio import dictionary
+from cambridge_audio.dictionary import CambridgeClient
+from cambridge_audio.terminal import settings as terminal_settings
 
 # Resolve Python 3.15's lazy import before PySide6 installs its import hook.
 # The CLI itself never loads Qt; this only affects a mixed GUI/CLI test process.
 _executor_type = concurrent.futures.ThreadPoolExecutor
 
 MP3 = b"ID3\x04\x00\x00\x00\x00\x00\x00audio data"
+
+
+@pytest.fixture(autouse=True)
+def isolated_terminal_settings(tmp_path, monkeypatch):
+    path = tmp_path / "config/tui-settings.json"
+    monkeypatch.setattr(terminal_settings, "settings_path", lambda: path)
+    return path
+
+
+@pytest.fixture(autouse=True)
+def request_clock(monkeypatch):
+    clock = SimpleNamespace(now=1000.0)
+
+    def advance(seconds):
+        clock.now += seconds
+
+    monkeypatch.setattr(dictionary, "monotonic", lambda: clock.now)
+    monkeypatch.setattr(dictionary, "time", lambda: clock.now)
+    monkeypatch.setattr(dictionary, "sleep", advance)
+    monkeypatch.setattr(dictionary, "uniform", lambda low, high: 0.0)
+    monkeypatch.setattr(dictionary, "_request_pacer", dictionary._RequestPacer())
+    return clock
 
 
 @pytest.fixture(autouse=True)
@@ -40,14 +64,6 @@ HTML = """
   <div class="def ddef_d db">used when meeting someone</div>
 </div>
 """
-
-
-def response(content, *, status=200, url=f"{BASE_URL}/us/dictionary/english/hello"):
-    result = requests.Response()
-    result.status_code = status
-    result.url = url
-    result._content = content.encode() if isinstance(content, str) else content
-    return result
 
 
 @pytest.fixture

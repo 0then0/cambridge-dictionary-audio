@@ -55,3 +55,18 @@ def test_bundle_child_and_packaged_app_do_not_relaunch(tmp_path, monkeypatch):
     monkeypatch.setattr(desktop.sys, "frozen", True, raising=False)
     assert desktop.launch_macos_bundle(tmp_path / "cache") is None
     assert not (tmp_path / "cache").exists()
+
+
+def test_gui_package_module_entrypoint_dispatches_to_main(monkeypatch):
+    import runpy
+    from unittest.mock import Mock
+
+    pytest.importorskip("PySide6")
+    from cambridge_audio.gui import app
+
+    main = Mock(return_value=7)
+    monkeypatch.setattr(app, "main", main)
+    with pytest.raises(SystemExit) as error:
+        runpy.run_module("cambridge_audio.gui", run_name="__main__")
+    assert error.value.code == 7
+    main.assert_called_once_with()

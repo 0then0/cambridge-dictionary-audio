@@ -265,7 +265,7 @@ _ICON_DIRECTORY = TemporaryDirectory(prefix="cambridge-theme-icons-")
 def icon_path(name: str, color: str) -> str:
     """Tint the shared SVG geometry, including stylesheet icons, for any palette."""
     color = QColor(color).name()
-    source = Path(__file__).resolve().parents[1] / "assets" / "ui" / f"{name}.svg"
+    source = Path(__file__).resolve().parents[2] / "assets" / "ui" / f"{name}.svg"
     svg = re.sub(r'(?<=stroke=")#[0-9a-fA-F]{6}', color, source.read_text(encoding="utf-8"))
     destination = Path(_ICON_DIRECTORY.name) / f"{name}-{color[1:]}.svg"
     destination.write_text(svg, encoding="utf-8")

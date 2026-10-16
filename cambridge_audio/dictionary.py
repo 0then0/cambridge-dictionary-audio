@@ -4,9 +4,14 @@ import hashlib
 import math
 import os
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
+from email.utils import parsedate_to_datetime
 from pathlib import Path
+from random import uniform
 from tempfile import NamedTemporaryFile
+from threading import Lock
+from time import monotonic, sleep, time
 from urllib.parse import quote, urljoin, urlparse
 
 import requests
@@ -16,6 +21,10 @@ from .i18n import translate
 
 BASE_URL = "https://dictionary.cambridge.org"
 DEFAULT_REQUESTS_HEADERS = {"User-Agent": "Mozilla/5.0"}
+_REQUEST_INTERVAL = 1.0
+_MAX_WAIT = 30.0
+_MAX_RETRIES = 2
+_PAGE_CACHE_SIZE = 64
 
 
 class CambridgeError(Exception):
@@ -28,6 +37,61 @@ class CambridgeBlockedError(CambridgeError):
 
 class AudioNotFoundError(CambridgeError):
     """The requested pronunciation is absent."""
+
+
+class _RequestPacer:
+    """Share request spacing and server cooldowns across clients in this process."""
+
+    def __init__(self):
+        self._lock = Lock()
+        self._next_request = 0.0
+
+    def defer(self, seconds: float):
+        with self._lock:
+            self._next_request = max(self._next_request, monotonic() + seconds)
+
+    def wait(self, check_cancelled: Callable[[], None] | None, language: str):
+        while True:
+            if check_cancelled:
+                check_cancelled()
+            with self._lock:
+                remaining = self._next_request - monotonic()
+                if remaining <= 0:
+                    self._next_request = monotonic() + _REQUEST_INTERVAL
+                    return
+            if remaining > _MAX_WAIT:
+                raise CambridgeBlockedError(
+                    translate(
+                        "Cambridge rate limit reached. Try again in {seconds} seconds.",
+                        language,
+                        seconds=math.ceil(remaining),
+                    )
+                )
+            # Never hold the shared lock while sleeping or checking cancellation.
+            sleep(min(remaining, 0.1) if check_cancelled else remaining)
+
+
+_request_pacer = _RequestPacer()
+
+
+def _retry_after(value: str | None) -> float | None:
+    if value is None:
+        return None
+    value = value.strip()
+    if re.fullmatch(r"[0-9]+", value):
+        try:
+            seconds = float(value)
+        except ValueError:
+            return None
+        # Keep even an unreasonably large server cooldown; do not retry early.
+        return min(seconds, 1e100)
+    try:
+        date = parsedate_to_datetime(value)
+        if date.tzinfo is None:
+            return None
+        return max(0.0, date.timestamp() - time())
+    except (ValueError, TypeError, OverflowError):
+        return None
 
 
 @dataclass(frozen=True)
@@ -217,11 +281,20 @@ def save_mp3(
 
 
 class CambridgeClient:
-    def __init__(self, timeout: float = 15.0, headers: dict | None = None, *, language: str = "en"):
+    def __init__(
+        self,
+        timeout: float = 15.0,
+        headers: dict | None = None,
+        *,
+        language: str = "en",
+        check_cancelled: Callable[[], None] | None = None,
+    ):
         if not math.isfinite(timeout) or timeout <= 0:
             raise ValueError(translate("Timeout must be a positive finite number.", language))
         self.language = language
         self.timeout = timeout
+        self.check_cancelled = check_cancelled
+        self._pages: dict[str, requests.Response] = {}
         self.session = requests.Session()
         self.session.headers.update(headers or DEFAULT_REQUESTS_HEADERS)
 
@@ -229,20 +302,49 @@ class CambridgeClient:
         return self
 
     def __exit__(self, *args):
+        self._pages.clear()
         self.session.close()
 
-    def _get(self, url: str, *, missing_entry: bool = False) -> requests.Response:
+    def _get(
+        self, url: str, *, missing_entry: bool = False, cache: bool = False
+    ) -> requests.Response:
+        if self.check_cancelled:
+            self.check_cancelled()
+        if cache and url in self._pages:
+            return self._pages[url]
         try:
-            response = self.session.get(url, timeout=self.timeout)
-            if missing_entry and response.status_code == 404:
-                raise AudioNotFoundError(
-                    translate("Dictionary entry not found: {url}", self.language, url=url)
-                )
-            if response.status_code in {403, 429}:
-                raise CambridgeBlockedError(
-                    f"Cambridge blocked the request (HTTP {response.status_code}): {url}"
-                )
+            for attempt in range(_MAX_RETRIES + 1):
+                _request_pacer.wait(self.check_cancelled, self.language)
+                response = self.session.get(url, timeout=self.timeout)
+                if response.status_code == 429:
+                    delay = _retry_after(response.headers.get("Retry-After"))
+                    if delay is None:
+                        delay = 2 ** (attempt + 1) + uniform(0, 0.5)
+                    _request_pacer.defer(delay)
+                    response.close()
+                    if attempt < _MAX_RETRIES:
+                        continue
+                    raise CambridgeBlockedError(
+                        translate(
+                            "Cambridge rate limit reached (HTTP 429). Try again later.",
+                            self.language,
+                        )
+                    )
+                if missing_entry and response.status_code == 404:
+                    raise AudioNotFoundError(
+                        translate("Dictionary entry not found: {url}", self.language, url=url)
+                    )
+                if response.status_code == 403:
+                    raise CambridgeBlockedError(
+                        f"Cambridge blocked the request (HTTP {response.status_code}): {url}"
+                    )
+                break
             response.raise_for_status()
+            if cache:
+                self._check_blocked(response)
+                if len(self._pages) >= _PAGE_CACHE_SIZE:
+                    del self._pages[next(iter(self._pages))]
+                self._pages[url] = response
             return response
         except requests.RequestException as exc:
             raise CambridgeError(
@@ -250,10 +352,12 @@ class CambridgeClient:
             ) from exc
 
     def lookup(self, word: str) -> tuple[Entry, ...]:
-        response = self._get(dictionary_url(word, language=self.language), missing_entry=True)
-        self._check_blocked(response)
+        response = self._get(
+            dictionary_url(word, language=self.language), missing_entry=True, cache=True
+        )
         entries = parse_entries(response.content, response.url)
         if not entries:
+            self._pages.pop(dictionary_url(word, language=self.language), None)
             raise AudioNotFoundError(
                 translate("No dictionary entry found for '{word}'.", self.language, word=word)
             )
@@ -342,9 +446,10 @@ class CambridgeClient:
 
     def translations(self, word: str, language: str) -> tuple[str, ...]:
         response = self._get(
-            dictionary_url(word, f"english-{language}", self.language), missing_entry=True
+            dictionary_url(word, f"english-{language}", self.language),
+            missing_entry=True,
+            cache=True,
         )
-        self._check_blocked(response)
         self._translation_html = response.content
         soup = BeautifulSoup(response.content, "html.parser")
         return tuple(

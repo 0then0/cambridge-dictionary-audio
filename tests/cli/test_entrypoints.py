@@ -12,7 +12,7 @@ import pytest
 def test_package_and_compatibility_launchers(entrypoint, language, heading):
     result = subprocess.run(
         [sys.executable, *entrypoint, "--lang", language, "--help"],
-        cwd=Path(__file__).resolve().parents[1],
+        cwd=Path(__file__).resolve().parents[2],
         capture_output=True,
         text=True,
         encoding="utf-8",

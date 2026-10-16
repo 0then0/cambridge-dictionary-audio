@@ -40,10 +40,8 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build]
 exclude = [
-    "cambridge_audio/gui.py",
+    "cambridge_audio/gui",
     "cambridge_audio/desktop.py",
-    "cambridge_audio/preferences.py",
-    "cambridge_audio/theme.py",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -53,12 +51,8 @@ packages = ["cambridge_audio"]
 only-include = [
     "cambridge_audio", "pyproject.toml", "docs/cli.md", "docs/collection.md", "docs/data-sources.md",
     "LICENSE", "LICENSE-MIT", "NOTICE", "main.py",
-    "tests/conftest.py", "tests/test_audio.py", "tests/test_cli.py",
-    "tests/test_dictionary.py", "tests/test_entrypoints.py",
-    "tests/test_ffmpeg.py", "tests/test_service.py",
-    "tests/test_library.py", "tests/test_terminal.py",
-    "tests/test_translations.py", "tests/test_wikdict.py", "tests/test_anki.py",
-    "tests/test_variants.py",
+    "tests/__init__.py", "tests/conftest.py", "tests/helpers.py",
+    "tests/core", "tests/cli", "tests/terminal",
 ]
 
 [dependency-groups]

@@ -36,9 +36,10 @@ RUSSIAN = {
         "Показывать русский перевод (russian, ru или русский); по умолчанию выключен."
     ),
     "Translation language (Russian if empty)": "Язык перевода (русский, если поле пустое)",
-    "Settings apply to this session. Use CLI flags for future launches.": (
-        "Настройки действуют в текущей сессии. Для следующих запусков используйте параметры CLI."
+    "Settings are saved for future launches. CLI flags override saved values.": (
+        "Настройки сохраняются для следующих запусков. Параметры CLI имеют приоритет."
     ),
+    "Could not save terminal settings: {error}": "Не удалось сохранить настройки TUI: {error}",
     "Replace saved audio for '{word}'?": "Заменить сохранённое аудио для «{word}»?",
     "Ready · {count} saved recordings": "Готово · сохранённых записей: {count}",
     "No matching recordings": "Подходящих записей нет",
@@ -228,6 +229,12 @@ RUSSIAN = {
     ),
     "Cambridge could not provide the recording (HTTP {status}). Try again later.": (
         "Cambridge не смог предоставить запись (HTTP {status}). Попробуйте позже."
+    ),
+    "Cambridge rate limit reached. Try again in {seconds} seconds.": (
+        "Cambridge ограничил частоту запросов. Повторите через {seconds} сек."
+    ),
+    "Cambridge rate limit reached (HTTP 429). Try again later.": (
+        "Cambridge ограничил частоту запросов (HTTP 429). Повторите позже."
     ),
     "Could not connect to Cambridge. Check your internet connection and try again.": (
         "Не удалось связаться с Cambridge. Проверьте интернет-соединение и попробуйте ещё раз."

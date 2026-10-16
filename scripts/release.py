@@ -15,7 +15,7 @@ from tempfile import TemporaryDirectory
 from packaging.version import Version
 
 ROOT = Path(__file__).resolve().parents[1]
-GUI_MODULES = {"gui.py", "theme.py", "preferences.py", "desktop.py"}
+GUI_PATHS = {"cambridge_audio/gui", "cambridge_audio/desktop.py"}
 CLI_MODULES = {
     "__init__.py",
     "__main__.py",
@@ -25,7 +25,13 @@ CLI_MODULES = {
     "i18n.py",
     "service.py",
     "library.py",
-    "terminal.py",
+    "terminal/__init__.py",
+    "terminal/app.py",
+    "terminal/app.tcss",
+    "terminal/dialogs.py",
+    "terminal/messages.py",
+    "terminal/rendering.py",
+    "terminal/settings.py",
     "console.py",
     "translations.py",
     "wikdict.py",
@@ -56,7 +62,11 @@ def verify_python(directory: Path):
         raise ValueError("Expected exactly one CLI wheel and one source distribution")
     with zipfile.ZipFile(wheels[0]) as archive:
         names = archive.namelist()
-        modules = {Path(name).name for name in names if name.startswith("cambridge_audio/")}
+        modules = {
+            name.removeprefix("cambridge_audio/")
+            for name in names
+            if name.startswith("cambridge_audio/") and not name.endswith("/")
+        }
         if modules != CLI_MODULES:
             raise ValueError(f"Unexpected wheel modules: {modules}")
         metadata_name = next(name for name in names if name.endswith(".dist-info/METADATA"))
@@ -73,7 +83,8 @@ def verify_python(directory: Path):
                 raise ValueError(f"Missing {name} in wheel")
     with tarfile.open(sources[0]) as archive:
         names = archive.getnames()
-        if any(Path(name).name in GUI_MODULES for name in names):
+        relative = {"/".join(Path(name).parts[1:]) for name in names}
+        if any(path == gui or path.startswith(gui + "/") for path in relative for gui in GUI_PATHS):
             raise ValueError("The source distribution must contain CLI code only")
         if any("assets/" in name for name in names):
             raise ValueError("GUI assets must not appear in the CLI source distribution")

@@ -32,6 +32,20 @@ files. Completed MP3s are published atomically; an interrupted write leaves no
 partial recording. Running `cambridge-audio` without a word opens the terminal workspace.
 `python -m cambridge_audio` is also supported.
 
+## Request pacing and rate limits
+
+Cambridge requests share a one-second minimum interval within the process.
+HTTP 429 responses are retried at most twice. The client honors `Retry-After`
+(seconds or an HTTP date); otherwise delays start at two and four seconds with
+up to half a second of random jitter. HTTP 403 responses are not retried.
+If a server cooldown exceeds 30 seconds, the operation stops and reports the
+remaining wait; subsequent requests in the same process honor that cooldown.
+GUI/TUI cancellation interrupts these waits, and Ctrl+C interrupts CLI waits.
+
+A client caches up to 64 successful HTML pages for its lifetime. This reduces
+repeated lookups while preserving fresh MP3 downloads when explicitly requested.
+Saved recordings and translations retain their existing persistent cache behavior.
+
 ## Terminal workspace
 
 The workspace has a searchable library and a recording detail panel. Narrow
@@ -53,8 +67,18 @@ Ctrl shortcuts accept Russian and Ukrainian letters at the same key positions.
 If the terminal does not report Ctrl with non-Latin letters, use the function keys.
 
 Settings offer English/Russian interface messages, light/dark themes, accent,
-destination, a Russian translation toggle, autoplay and phrase synthesis. They
-apply to the current session; use CLI flags for future launches. Translation is
+destination, a Russian translation toggle, autoplay and phrase synthesis. Apply
+saves these preferences for future TUI launches; Cancel discards dialog changes.
+Explicit CLI flags override saved values for the current run without rewriting
+the file until preferences are changed in the UI. Plain and one-shot CLI commands
+keep their existing defaults. The main translation checkbox also saves its state.
+
+Preferences are stored as UTF-8 JSON in `cambridge-dictionary-audio/tui-settings.json`
+under `~/Library/Application Support` on macOS, `%APPDATA%` on Windows, or
+`$XDG_CONFIG_HOME` (default `~/.config`) on Linux. Invalid fields fall back to
+defaults; failed writes preserve the previous file and show an error in the TUI.
+
+Translation is
 optional and always targets Russian. The checkbox shows or hides cached results
 immediately. Missing translations are fetched in the background without downloading
 audio again. The panel shows loading and request errors. English definitions stay

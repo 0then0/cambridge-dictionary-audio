@@ -4,7 +4,7 @@ import pytest
 
 pytest.importorskip("PySide6", reason="Install the gui group to run theme tests")
 
-from cambridge_audio.theme import COLORS, contrast, theme_colors  # noqa: E402
+from cambridge_audio.gui.theme import COLORS, contrast, theme_colors  # noqa: E402
 
 
 @pytest.mark.parametrize("mode", ["light", "dark"])

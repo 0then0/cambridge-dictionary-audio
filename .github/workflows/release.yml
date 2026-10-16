@@ -76,7 +76,7 @@ jobs:
         if: runner.os == 'macOS'
         run: brew install pkgconf
       - run: uv sync --locked --group gui --group release
-      - run: uv run --locked --group gui --group release pytest tests/test_gui.py tests/test_theme.py tests/test_library.py
+      - run: uv run --locked --group gui --group release pytest tests/gui tests/core/test_library.py
       - uses: msys2/setup-msys2@v2.33.0
         if: runner.os == 'Windows'
         with:

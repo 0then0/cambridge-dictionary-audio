@@ -1,9 +1,11 @@
-"""Refresh pinned README downloads from the latest published stable GitHub release."""
+"""Verify the latest stable release and refresh direct README download buttons."""
 
 import argparse
 import json
 import re
+from base64 import b64encode
 from pathlib import Path
+from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -69,49 +71,61 @@ def assets_for(release):
     return groups
 
 
+# The named Windows logo is absent from Shields' Simple Icons collection.
+# Embed the four-pane mark through Shields' documented custom SVG logo support.
+WINDOWS_LOGO = "data:image/svg+xml;base64," + b64encode(
+    b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">'
+    b'<path fill="white" d="M1 1h10v10H1zM13 1h10v10H13zM1 13h10v10H1zM13 13h10v10H13z"/>'
+    b"</svg>"
+).decode("ascii")
+
+
 def render(release, russian=False):
     groups = assets_for(release)
     version = release["tag_name"]
     heading = (
-        f"Прямые ссылки на опубликованную стабильную версию **{version}**:"
+        f"Прямое скачивание последнего проверенного стабильного релиза **{version}**:"
         if russian
-        else f"Direct downloads for published stable **{version}**:"
+        else f"Direct downloads for the latest verified stable release **{version}**:"
     )
-    # The snapshot version and asset URLs stay pinned together across future releases.
-    lines = [heading, ""]
-    for label, group in groups:
-        links = []
-        for name, url in group:
-            extension = next(
-                (
-                    s
-                    for s in (
-                        "-setup.exe",
-                        "-portable.zip",
-                        ".tar.gz",
-                        ".whl",
-                        ".pkg",
-                        ".dmg",
-                        ".deb",
-                        ".rpm",
-                        ".zip",
-                        ".txt",
-                    )
-                    if name.endswith(s)
-                ),
-                name,
+    any_arch = "Любая" if russian else "Any"
+    rows = [
+        ("Windows 10+", "x86-64", groups[0][1], "0078D4", WINDOWS_LOGO),
+        ("macOS 14+", "Apple Silicon (arm64)", groups[1][1], "555555", "apple"),
+        ("macOS 14+", "Intel (x86-64)", groups[2][1], "555555", "apple"),
+        ("Linux", "x86-64 · glibc 2.34+", groups[3][1], "FCC624", "linux"),
+        ("Python CLI", any_arch, groups[4][1], "3776AB", "python"),
+        ("Chrome", any_arch, groups[5][1][:1], "4285F4", "googlechrome"),
+        ("Firefox", any_arch, groups[5][1][1:], "FF7139", "firefoxbrowser"),
+    ]
+    headers = (
+        "| Платформа | Архитектура | Скачать |"
+        if russian
+        else "| Platform | Architecture | Download |"
+    )
+    lines = [heading, "", headers, "| --- | --- | --- |"]
+    for platform, architecture, assets, color, logo in rows:
+        buttons = []
+        for name, url in assets:
+            label = (
+                "EXE"
+                if name.endswith(".exe")
+                else "Portable ZIP"
+                if name.endswith("-portable.zip")
+                else "Portable TAR.GZ"
+                if "-portable.tar.gz" in name
+                else "Source TAR.GZ"
+                if name.startswith("cambridge_dictionary_audio-") and name.endswith(".tar.gz")
+                else "TAR.GZ"
+                if name.endswith(".tar.gz")
+                else name.rsplit(".", 1)[-1].upper()
             )
-            title = (
-                "Chrome ZIP"
-                if "chrome-" in name
-                else "Firefox ZIP"
-                if "firefox-" in name
-                else "SHA256SUMS.txt"
-                if name == "SHA256SUMS.txt"
-                else extension.lstrip("-")
-            )
-            links.append(f"[{title}]({url})")
-        lines.append(f"- {label}: " + ", ".join(links) + ".")
+            query = urlencode({"style": "for-the-badge", "logo": logo, "logoColor": "white"})
+            badge = f"https://img.shields.io/badge/{quote(label, safe='')}-{color}?{query}"
+            buttons.append(f"[![{platform} {architecture} {label}]({badge})]({url})")
+        lines.append(f"| {platform} | {architecture} | " + " ".join(buttons) + " |")
+    checksum = "https://img.shields.io/badge/SHA--256-SHA256SUMS.txt-555555?style=flat-square"
+    lines.extend(["", f"[![SHA-256]({checksum})]({groups[6][1][0][1]})"])
     return "\n".join(lines)
 
 
@@ -170,7 +184,10 @@ def main():
                     if response.status != 200:
                         raise ValueError(f"Download unavailable: {url}")
                 print(f"OK {name}")
-    print(f"Verified {release['tag_name']} release assets and pinned download links")
+    print(
+        f"Verified {release['tag_name']} release assets; "
+        "README buttons download matching files directly"
+    )
 
 
 if __name__ == "__main__":

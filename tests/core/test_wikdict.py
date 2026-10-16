@@ -2,29 +2,12 @@
 
 import hashlib
 from dataclasses import replace
-from unittest.mock import Mock
 
 import pytest
 import requests
 
 from cambridge_audio import wikdict
-
-
-def download_session(content, failure=None):
-    response = Mock()
-    response.__enter__ = Mock(return_value=response)
-    response.__exit__ = Mock(return_value=False)
-
-    def chunks(size):
-        yield content[:100]
-        if failure:
-            raise failure
-        yield content[100:]
-
-    response.iter_content.side_effect = chunks
-    session = Mock()
-    session.get.return_value = response
-    return session
+from tests.helpers import download_session
 
 
 def test_verified_install_and_local_query_without_network(tmp_path, wikdict_package):
