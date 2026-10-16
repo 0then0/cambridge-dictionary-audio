@@ -5,7 +5,7 @@ current source tree and may not be available in published downloads. Historical
 entries were reconstructed from Git history and project development discussions;
 release dates are included only where a published release can be verified.
 
-## 0.3.0 (Unreleased)
+## 0.3.0 (2026-10-16)
 
 ### Added
 
