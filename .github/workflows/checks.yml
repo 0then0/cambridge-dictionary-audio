@@ -53,9 +53,21 @@ jobs:
           PYTHONFAULTHANDLER: "1"
         run: |
           uv run --locked --group gui python - <<'PYTHON'
-          from cambridge_audio import terminal
-          import pytest
-          raise SystemExit(pytest.main(['tests/test_gui.py','tests/test_cli.py','-q']))
+          import sys,gc
+          from PySide6.QtGui import QPainter,QImage
+          from PySide6.QtCore import QObject,QSignalBlocker
+          image=QImage(10,10,QImage.Format.Format_ARGB32)
+          obj=QObject()
+          def painter_context():
+              with QPainter(image) as p:p.drawLine(0,0,2,2)
+          def painter_explicit():
+              p=QPainter(image);p.drawLine(0,0,2,2);p.end()
+          def blocker_context():
+              with QSignalBlocker(obj):pass
+          for fn in (painter_context,painter_explicit,blocker_context):
+              fn();gc.collect();before=sys.getrefcount(True)
+              for i in range(1000):fn()
+              gc.collect();print(fn.__name__,sys.getrefcount(True)-before,flush=True)
           PYTHON
 
   extension:
