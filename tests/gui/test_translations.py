@@ -577,3 +577,91 @@ def test_unmatched_saved_cache_uses_installed_wikdict_without_repeating_cambridg
     app.processEvents()
     lookup.assert_called_once()
     client.translation_options.assert_not_called()
+
+
+@pytest.mark.parametrize("action,expected", [("choose", "доброе утро"), ("edit", "с добрым утром")])
+def test_saved_good_morning_translation_actions_allow_resolution_and_apkg_export(
+    window, app, monkeypatch, client, mp3, tmp_path, action, expected
+):
+    import sqlite3
+    from contextlib import closing
+    from zipfile import ZipFile
+
+    from cambridge_audio.dictionary import Entry, Pronunciation, dictionary_url
+    from cambridge_audio.library import read_recording
+    from cambridge_audio.translations import (
+        TranslationOption,
+        TranslationResult,
+        cached_translation,
+    )
+
+    entry = Entry(
+        "good morning",
+        "something you say to greet someone politely when you meet them in the morning",
+        (
+            Pronunciation(
+                "us", "https://dictionary.cambridge.org/media/good-morning.mp3", "ɡʊd ˈmɔːrnɪŋ"
+            ),
+        ),
+        "exclamation",
+        "greeting-entry",
+        "morning-sense",
+        dictionary_url("good morning"),
+    )
+    client.lookup = Mock(return_value=(entry,))
+    client.session.get.return_value = response(mp3)
+    monkeypatch.setattr(workers, "CambridgeClient", lambda **kw: client)
+    window._preview_translations[entry.sense_id] = TranslationResult(
+        "russian",
+        entry.sense_id,
+        "Cambridge",
+        (
+            TranslationOption(
+                "morning", ("доброе утро",), "used to greet someone in the morning", "exclamation"
+            ),
+        ),
+        alignment="unmatched",
+    )
+    window.translation_check.setChecked(True)
+    window.word_edit.setText("good morning")
+    window.download_button.click()
+    wait_until(app, lambda: window._worker is None)
+    window.save_button.click()
+    wait_until(app, lambda: window._worker is None and window._translation_worker is None)
+    assert not window.meaning_list.isVisible()
+    assert window.selected_recording().word == "good morning"
+    assert window.edit_translation_button.isEnabled()
+    assert window.reset_translation_button.isEnabled()
+    assert window.select_translation_button.isVisible()
+    assert window.select_translation_button.isEnabled()
+
+    output = tmp_path / "greeting.apkg"
+    monkeypatch.setattr(
+        gui.ChoiceDialog, "exec", lambda dialog: gui.ChoiceDialog.DialogCode.Accepted
+    )
+    monkeypatch.setattr(
+        gui.QFileDialog, "getSaveFileName", lambda *a: (str(output), "Anki (*.apkg)")
+    )
+    window.export_button.click()
+    assert not output.exists()
+    assert window.status_label.property("severity") == "error"
+    if action == "choose":
+        window.select_translation_button.click()
+    else:
+        monkeypatch.setattr(gui.QInputDialog, "getMultiLineText", lambda *a: (expected, True))
+        window.edit_translation_button.click()
+    saved = read_recording(window.selected_recording().reference)
+    assert cached_translation(saved, "russian").texts == (expected,)
+    assert not window.select_translation_button.isVisible()
+    window.export_button.click()
+    assert window.status_label.property("severity") != "error"
+    with ZipFile(output) as archive:
+        database = tmp_path / "greeting.sqlite"
+        database.write_bytes(archive.read("collection.anki2"))
+    with closing(sqlite3.connect(database)) as connection:
+        notes = connection.execute("SELECT flds FROM notes").fetchall()
+    assert len(notes) == 1
+    fields = notes[0][0].split("\x1f")
+    assert fields[1] == "good morning"
+    assert fields[4] == expected
+    client.session.get.assert_called_once()

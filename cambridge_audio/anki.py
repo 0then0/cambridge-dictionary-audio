@@ -193,11 +193,23 @@ CARD_CSS = """
         color: #202124; background: #ffffff; line-height: 1.5; padding: 20px; }
 .word { font-size: 32px; font-weight: bold; }
 .context, .source { font-size: 15px; overflow-wrap: anywhere; }
-.source { margin-top: 24px; color: #53565a; }
+.source { margin-top: 20px; font-size: 13px; color: #6b7280; }
+.source summary { cursor: pointer; }
 .nightMode.card, .night_mode.card { color: #f1f3f4; background: #202124; }
-.nightMode .source, .night_mode .source { color: #bdc1c6; }
+.nightMode .source, .night_mode .source { color: #a2a8b0; }
 """
 MAPPING_FILE = ".anki-mapping.json"
+
+
+def _source_disclosure(text: str) -> str:
+    # Put the disclosure in note content, so older or user-edited templates
+    # displaying {{Source}} receive it without replacing their styling.
+    return (
+        '<details class="cambridge-source" style="display:inline-block; max-width:100%; '
+        "font-size:13px; line-height:1.45; text-align:left; "
+        'overflow-wrap:anywhere;"><summary style="cursor:pointer;">Source</summary>'
+        '<div style="margin-top:8px;">' + field(text) + "</div></details>"
+    )
 
 
 def _model():
@@ -390,7 +402,11 @@ def export_apkg(records, destination: Path, *, language: str = "russian") -> Pat
         for directory, state in states.items():
             _atomic_json(directory / MAPPING_FILE, state | {"last_export": timestamp})
     model = _model()
-    deck = genanki.Deck(DECK_ID, MODEL_NAME, description=field(SOURCES))
+    deck = genanki.Deck(
+        DECK_ID,
+        MODEL_NAME,
+        description='<div style="text-align:center;">' + _source_disclosure(SOURCES) + "</div>",
+    )
     seen, mappings = set(), {}
     destination.parent.mkdir(parents=True, exist_ok=True)
     with TemporaryDirectory(prefix=".cambridge-apkg-", dir=destination.parent) as temporary:
@@ -459,9 +475,9 @@ def export_apkg(records, destination: Path, *, language: str = "russian") -> Pat
                 )
                 note_model.original = original
                 guid = identity["guid"]
-            deck.add_note(
-                genanki.Note(model=note_model, fields=[field(v) for v in values], guid=guid)
-            )
+            fields = [field(v) for v in values]
+            fields[-1] = _source_disclosure(source)
+            deck.add_note(genanki.Note(model=note_model, fields=fields, guid=guid))
         output = staging / "collection.apkg"
         genanki.Package(deck, media_files=list(media.values())).write_to_file(
             str(output), timestamp=timestamp

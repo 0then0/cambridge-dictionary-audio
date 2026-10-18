@@ -49,6 +49,24 @@ def test_package_notes_template_sources_escaping_and_shared_media(client, tmp_pa
     assert "{{Audio}}" not in model["tmpls"][0]["qfmt"]
     assert "{{Translation}}" in model["tmpls"][0]["afmt"]
     assert "nightMode" in model["css"]
+    from bs4 import BeautifulSoup
+
+    answer = model["tmpls"][0]["afmt"]
+    assert answer.count("{{Source}}") == 1
+    assert BeautifulSoup(answer, "html.parser").find("details") is None
+    for note in notes:
+        source = BeautifulSoup(note[2].split("\x1f")[-1], "html.parser")
+        disclosure = source.select_one("details.cambridge-source")
+        assert disclosure is not None and not disclosure.has_attr("open")
+        assert disclosure.summary.get_text(strip=True) == "Source"
+        assert "Cambridge content retains" in disclosure.div.get_text()
+        assert "font-size:13px" in disclosure["style"]
+    with closing(sqlite3.connect(tmp_path / "inspect.sqlite")) as connection:
+        decks = json.loads(connection.execute("SELECT decks FROM col").fetchone()[0])
+    description = BeautifulSoup(decks[str(anki.DECK_ID)]["desc"], "html.parser")
+    disclosure = description.select_one("details.cambridge-source")
+    assert disclosure is not None and not disclosure.has_attr("open")
+    assert "Cambridge content retains" in disclosure.get_text()
     assert "&lt;b&gt;&quot;test&quot;&lt;/b&gt; &amp;<br>new" in " ".join(n[2] for n in notes)
     assert "Cambridge" in sources and "CC BY-SA 4.0" in sources
     assert all("Cambridge content retains" in n[2] for n in notes)
@@ -211,3 +229,25 @@ def test_reference_database_is_closed_before_temporary_directory_cleanup(
     finally:
         for connection in connections:
             connection.close()
+
+
+def test_source_disclosure_escapes_untrusted_text_and_keeps_legacy_templates(client, tmp_path):
+    from bs4 import BeautifulSoup
+
+    client.session.get.return_value = response(AUDIO)
+    record = save(client, tmp_path, variants(bank())[0])
+    reference = tmp_path / "legacy.apkg"
+    legacy_reference(reference, record)
+    saved = SavedRecording(replace(record, source_url='<img src=x onerror="alert(1)">'))
+    adopt_anki_identities([saved], reference, tmp_path)
+    output = export_apkg([saved], tmp_path / "disclosure.apkg")
+    notes, models, _, _, _ = inspect_package(output, tmp_path)
+    with ZipFile(reference) as archive:
+        old_db = tmp_path / "legacy.sqlite"
+        old_db.write_bytes(archive.read("collection.anki2"))
+    with closing(sqlite3.connect(old_db)) as connection:
+        old_models = json.loads(connection.execute("SELECT models FROM col").fetchone()[0])
+    assert models["1700000000"] == old_models["1700000000"]
+    source = BeautifulSoup(notes[0][2].split("\x1f")[-1], "html.parser")
+    assert source.find("details") is not None and source.find("img") is None
+    assert '<img src=x onerror="alert(1)">' in source.get_text()

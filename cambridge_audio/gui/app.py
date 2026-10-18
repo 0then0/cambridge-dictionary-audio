@@ -592,6 +592,13 @@ class MainWindow(QMainWindow):
             self._show_choice()
             return
         self.select_translation_button.hide()
+        translation_actions = (
+            self.edit_translation_button,
+            self.reset_translation_button,
+            self.select_translation_button,
+        )
+        for button in translation_actions:
+            button.setEnabled(False)
         record = self.selected_recording()
         visible = self.translation_check.isChecked() and record is not None
         self.translation_label.setVisible(visible)
@@ -606,6 +613,10 @@ class MainWindow(QMainWindow):
                 self._t("The recording was moved or deleted. Download it again.")
             )
             return
+        # Preview saving disables these actions while the download worker runs.
+        # Recompute their state for the saved record instead of retaining it.
+        for button in translation_actions:
+            button.setEnabled(self._worker is None and not self._closing)
         result = cached_translation(saved, self.translation_language)
         self.translations = result.texts if result else ()
         self.translation_label.setText(self._format_translation(result))
