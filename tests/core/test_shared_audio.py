@@ -419,3 +419,246 @@ def test_concurrent_meaning_saves_share_one_download(client, tmp_path):
     assert results[0].id != results[1].id
     assert len(scan_recordings(tmp_path)) == 2
     assert client.session.get.call_count == 1
+
+
+def test_prepared_translation_is_saved_once_and_reused_for_another_accent(client, tmp_path):
+    from cambridge_audio.translations import (
+        TranslationOption,
+        TranslationResult,
+        cached_translation,
+    )
+
+    entries = bank()
+    entries = (
+        replace(
+            entries[0],
+            pronunciations=entries[0].pronunciations
+            + (Pronunciation("uk", "https://dictionary.cambridge.org/media/bank-uk.mp3", "bæŋk"),),
+        ),
+    ) + entries[1:]
+    prepared = TranslationResult(
+        "russian",
+        entries[0].sense_id,
+        "User",
+        (TranslationOption("confirmed", ("банк",), matched=True),),
+    )
+    client.session.get.return_value = response(AUDIO)
+    client.translation_options = Mock(side_effect=AssertionError("Preview must be reused"))
+    first = download_recordings(
+        client,
+        "bank",
+        tmp_path,
+        "us",
+        entries=entries,
+        sense_id=entries[0].sense_id,
+        translation="russian",
+        prepared_translation=prepared,
+    )
+    second = download_recordings(
+        client,
+        "bank",
+        tmp_path,
+        "uk",
+        entries=entries,
+        sense_id=entries[0].sense_id,
+        translation="russian",
+    )
+    assert first.translations == second.translations == ("банк",)
+    for record in (first.recordings[0], second.recordings[0]):
+        result = cached_translation(read_recording(record.reference), "russian")
+        assert result.source == "User" and result.texts == ("банк",)
+    assert client.session.get.call_count == 2  # One file per accent, no translation requests.
+
+
+def test_prepared_translation_cannot_leak_to_another_meaning(client, tmp_path):
+    from cambridge_audio.translations import TranslationOption, TranslationResult
+
+    entries = bank()
+    prepared = TranslationResult(
+        "russian",
+        entries[0].sense_id,
+        "User",
+        (TranslationOption("money", ("банк",), matched=True),),
+    )
+    client.session.get.return_value = response(AUDIO)
+    client.translation_options = Mock(return_value=())
+    result = download_recordings(
+        client,
+        "bank",
+        tmp_path,
+        entries=entries,
+        sense_id=entries[1].sense_id,
+        translation="russian",
+        prepared_translation=prepared,
+    )
+    assert not result.translations
+    client.translation_options.assert_called_once()
+    assert not any(
+        t.source == "User" for t in read_recording(result.recordings[0].reference).translation_cache
+    )
+
+
+def test_personal_preview_for_new_accent_overrides_shared_automatic_translation(client, tmp_path):
+    from cambridge_audio.translations import (
+        TranslationOption,
+        TranslationResult,
+        persist_translation,
+    )
+
+    entries = bank()
+    entries = (
+        replace(
+            entries[0],
+            pronunciations=entries[0].pronunciations
+            + (Pronunciation("uk", "https://dictionary.cambridge.org/media/uk.mp3", "bæŋk"),),
+        ),
+    )
+    client.session.get.return_value = response(AUDIO)
+    us = download_recordings(client, "bank", tmp_path, entries=entries).recordings[0]
+    persist_translation(
+        read_recording(us.reference),
+        TranslationResult(
+            "russian",
+            us.sense_id,
+            "Cambridge",
+            (TranslationOption("auto", ("банк",), "money", "noun", matched=True),),
+        ),
+    )
+    prepared = TranslationResult(
+        "russian",
+        entries[0].sense_id,
+        "User",
+        (TranslationOption("personal", ("мой банк",), matched=True),),
+    )
+    client.translation_options = Mock(side_effect=AssertionError("No new translation lookup"))
+    uk = download_recordings(
+        client,
+        "bank",
+        tmp_path,
+        "uk",
+        entries=entries,
+        translation="russian",
+        prepared_translation=prepared,
+    ).recordings[0]
+    for record in (us, uk):
+        result = cached_translation(read_recording(record.reference), "russian")
+        assert result.source == "User" and result.texts == ("мой банк",)
+
+
+@pytest.mark.parametrize("prior_source", ["Cambridge", "User"])
+def test_new_personal_preview_must_override_inherited_confirmed_source_choice(
+    client, tmp_path, prior_source
+):
+    from cambridge_audio.translations import (
+        TranslationOption,
+        TranslationResult,
+        persist_translation,
+    )
+
+    entries = bank()
+    entries = (
+        replace(
+            entries[0],
+            pronunciations=entries[0].pronunciations
+            + (Pronunciation("uk", "https://dictionary.cambridge.org/media/uk.mp3", "bæŋk"),),
+        ),
+    )
+    client.session.get.return_value = response(AUDIO)
+    us = download_recordings(client, "bank", tmp_path, entries=entries).recordings[0]
+    persist_translation(
+        read_recording(us.reference),
+        TranslationResult(
+            "russian",
+            us.sense_id,
+            "Cambridge",
+            (
+                TranslationOption("money", ("банк",), "money", "noun"),
+                TranslationOption("river", ("берег",), "river", "noun"),
+            ),
+            selected_id="money",
+        ),
+    )
+    if prior_source == "User":
+        edit_translation(read_recording(us.reference), "russian", "старый личный перевод")
+    prepared = TranslationResult(
+        "russian",
+        entries[0].sense_id,
+        "User",
+        (TranslationOption("personal", ("мой банк",), matched=True),),
+    )
+    client.translation_options = Mock(side_effect=AssertionError("No lookup needed"))
+    result = download_recordings(
+        client,
+        "bank",
+        tmp_path,
+        "uk",
+        entries=entries,
+        translation="russian",
+        prepared_translation=prepared,
+    )
+    assert result.translations == ("мой банк",)
+
+
+@pytest.mark.parametrize("late_action,expected", [("edit", "поздняя правка"), ("choose", "банк2")])
+def test_prepared_translation_does_not_replace_a_choice_made_during_audio_download(
+    client, tmp_path, monkeypatch, late_action, expected
+):
+    from cambridge_audio.translations import (
+        TranslationOption,
+        TranslationResult,
+        persist_translation,
+        select_translation,
+    )
+
+    entries = bank()
+    entries = (
+        replace(
+            entries[0],
+            pronunciations=entries[0].pronunciations
+            + (Pronunciation("uk", "https://dictionary.cambridge.org/media/uk.mp3", "bæŋk"),),
+        ),
+    )
+    client.session.get.return_value = response(AUDIO)
+    us = download_recordings(client, "bank", tmp_path, entries=entries).recordings[0]
+    persist_translation(
+        read_recording(us.reference),
+        TranslationResult(
+            "russian",
+            us.sense_id,
+            "Cambridge",
+            (
+                TranslationOption("first", ("банк",), "money"),
+                TranslationOption("second", ("банк2",), "money"),
+            ),
+            selected_id="first",
+        ),
+    )
+    prepared = TranslationResult(
+        "russian",
+        entries[0].sense_id,
+        "User",
+        (TranslationOption("draft", ("черновик",), matched=True),),
+    )
+    download = client.download
+
+    def change_during_download(*args, **kwargs):
+        if late_action == "edit":
+            edit_translation(read_recording(us.reference), "russian", expected)
+        else:
+            select_translation(read_recording(us.reference), "russian", "second")
+        return download(*args, **kwargs)
+
+    monkeypatch.setattr(client, "download", change_during_download)
+    client.translation_options = Mock(side_effect=AssertionError("Must use the saved choice"))
+    result = download_recordings(
+        client,
+        "bank",
+        tmp_path,
+        "uk",
+        entries=entries,
+        translation="russian",
+        prepared_translation=prepared,
+    )
+    assert result.translations == (expected,)
+    for saved in scan_recordings(tmp_path):
+        assert cached_translation(saved, "russian").texts == (expected,)

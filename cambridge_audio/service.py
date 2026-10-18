@@ -115,6 +115,7 @@ def download_recordings(
     audio_id: str | None = None,
     select_only: bool = False,
     audio_cache_dir: Path | None = None,
+    prepared_translation=None,
 ) -> DownloadResult:
     from hashlib import sha256
     from uuid import uuid4
@@ -371,21 +372,83 @@ def download_recordings(
         if on_recording:
             on_recording(record)
     translations, translation_error, results = (), "", []
-    if translation:
+    if translation or prepared_translation is not None:
         from .library import read_recording
-        from .translations import persist_translation, resolve_translation
+        from .translations import (
+            TranslationResult,
+            cached_translation,
+            edit_translation,
+            persist_translation,
+            resolve_translation,
+            select_translation,
+        )
 
+        language = translation or prepared_translation.language
         for record in recordings:
             if check_cancelled:
                 check_cancelled()
-            saved = read_recording(record.reference)
-            result = resolve_translation(
-                client, saved, translation, directory=dictionary_dir, offline=offline_translation
-            )
+            with _METADATA_LOCK:
+                saved = read_recording(record.reference)
+                prepared = prepared_translation
+                current = cached_translation(saved, language)
+                # A draft is a new user action. An inherited choice must not hide it,
+                # while edits made during the audio request must still win.
+                baseline = [
+                    replace(value, sense_id=record.sense_id)
+                    for item in saved_records
+                    if item.recording.word == record.word
+                    and (
+                        item.recording.meaning_key == record.meaning_key
+                        or item.recording.id == record.id
+                    )
+                    if (value := cached_translation(item, language)) is not None
+                ]
+                explicit_draft = prepared is not None and (
+                    prepared.source == "User" or bool(prepared.selected_id)
+                )
+                newer_choice = (
+                    current is not None
+                    and (current.source == "User" or bool(current.selected_id))
+                    and current not in baseline
+                )
+                if (
+                    prepared is not None
+                    and prepared.language == language
+                    and prepared.sense_id in {record.sense_id, record.source_sense_id}
+                    and (
+                        current is None
+                        or (
+                            explicit_draft
+                            and not newer_choice
+                            and (prepared.source == "User" or current.source != "User")
+                        )
+                        or (not current.texts and not current.selected_id)
+                    )
+                ):
+                    if prepared.source == "User" and prepared.texts:
+                        saved = edit_translation(saved, language, "; ".join(prepared.texts))
+                    else:
+                        saved = persist_translation(
+                            saved, replace(prepared, sense_id=record.sense_id)
+                        )
+                        if prepared.selected_id:
+                            saved = select_translation(saved, language, prepared.selected_id)
+            # Hiding translations must not discard the prepared result, or
+            # trigger new translation/network work while saving the audio.
+            result = (
+                resolve_translation(
+                    client, saved, language, directory=dictionary_dir, offline=offline_translation
+                )
+                if translation
+                else cached_translation(saved, language)
+            ) or TranslationResult(language, record.sense_id, "Cambridge", status="absent")
             results.append(result)
-            persist_translation(saved, result)
+            if translation or result.options:
+                persist_translation(saved, result)
         translations = results[0].texts if results else ()
-        translation_error = "\n".join(dict.fromkeys(r.error for r in results if r.error))
+        translation_error = (
+            "\n".join(dict.fromkeys(r.error for r in results if r.error)) if translation else ""
+        )
     return DownloadResult(tuple(recordings), translations, translation_error, tuple(results))
 
 

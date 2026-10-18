@@ -91,17 +91,41 @@ requests for a usable cache. CLI: `--translation russian` enables translation;
 before network access. Existing foreign-language caches and personal edits remain
 in JSON with their original language and source; they are not relabeled or deleted.
 
-WikDict source senses are not asserted to match a Cambridge definition. The result
-shows the source's part of speech and gloss and explicitly marks unverified sense
-alignment. If several source senses remain, choose one before exporting.
+Translations are resolved against the selected English definition and part of
+speech before saving. Matching ignores punctuation, spacing and case. Distinctive
+shared words and phrases can also resolve differently worded noun definitions,
+provided there is no close competing translation or conflicting negation. Other
+parts of speech require a normalized exact definition or an explicit choice:
+word overlap cannot establish the direction of an action such as paying versus
+receiving. This is a conservative lexical comparison, not a semantic model;
+some paraphrases remain unresolved.
+Cambridge and installed WikDict use the same matching rules. Dictionary sense IDs
+from different pages are not assumed to identify the same meaning.
 
-GUI: **Edit translation**, **Reset translation**, **Choose translation sense**.
-TUI: **Ctrl+T** opens editing, reset and source-sense choices. The detail panel
-shows numbered source senses and localized parts of speech, with source and
-alignment notes in a subdued style. Internal source IDs remain in storage and CLI
-output; they are not displayed in the GUI or terminal panel. GUI source senses
-use bullet points, with translations, localized parts of speech and source glosses. **F2** or **About** in Help
-opens the installed version, repository link and code/data license information.
+GUI/TUI previews show the resolved translation next to the English meaning.
+**Save meaning** saves that translation together with the audio, without another
+translation request. Several Russian formulations for the same matched meaning
+are kept together. When no match is reliable, the main panel says so and hides
+other source meanings. Saving English and audio remains available. GUI:
+**Find translation** opens source candidates; **Edit translation** accepts personal
+text. TUI: **Ctrl+T** offers the same optional choices, including before saving.
+Hiding the translation before saving preserves any prepared translation or
+personal text; it does not start another translation request.
+Technical source IDs remain available in CLI output and storage.
+
+Confirmed source choices, resolved translations and personal edits are reused
+across pronunciations of the same meaning. Personal edits take priority; a late
+lookup cannot replace an explicit choice. New personal text takes priority over
+an inherited source choice, while edits made during a download are retained.
+Among dictionary results, explicit choices precede automatic matches and
+unresolved candidates. Unresolved Cambridge caches can use installed WikDict
+without repeating the Cambridge request. Old caches with source glosses are
+re-evaluated when read without rewriting existing files or personal choices.
+Legacy flat translations without source-sense metadata retain their old behaviour.
+Unresolved choices still need confirmation before Anki export.
+
+**F2** or **About** in Help opens the installed version, repository link and
+code/data license information.
 CLI examples, without any audio download:
 
 ```sh

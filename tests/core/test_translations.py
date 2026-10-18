@@ -44,7 +44,8 @@ def test_cambridge_absent_or_unavailable_uses_local_fallback(
     client.translation_options.return_value = ()
     result = resolve_translation(client, recording(tmp_path), "russian", directory=directory)
     assert result.source == "WikDict"
-    assert result.texts == ("привет",)
+    assert not result.texts  # Local gloss is not evidence for this Cambridge sense.
+    assert result.alignment == "unmatched"
     assert "Cambridge match unverified" in result.display
     assert (str(error) in result.error) if error else not result.error
 
@@ -249,3 +250,221 @@ def test_changed_sense_cannot_reuse_flat_translation_or_delete_old_edit(tmp_path
     restarted = read_recording(changed.path)
     assert cached_translation(restarted, "russian").texts == ("new dictionary",)
     assert any(t.source == "User" and t.sense_id == "greeting" for t in restarted.translation_cache)
+
+
+def test_lexical_alignment_requires_distinctive_evidence_and_rejects_conflicts():
+    from cambridge_audio.translations import align_translation
+
+    def aligned(definition, options, part="noun"):
+        return align_translation(
+            TranslationResult("russian", "s", "Cambridge", options), definition, part
+        )
+
+    definition = "a place where people can borrow money"
+    finance = TranslationOption("f", ("банк",), "an organization to borrow money", "noun")
+    # Two shared content words alone, a different POS, or negation are insufficient.
+    for gloss, part in [
+        ("a place to keep money", "noun"),
+        ("a place where people can borrow money", "verb"),
+        ("a place where people cannot borrow money", "noun"),
+    ]:
+        result = aligned(definition, (TranslationOption("x", ("wrong",), gloss, part),))
+        assert not result.texts
+        assert result.alignment == "unmatched"
+    # Equally strong alternative translations are not silently resolved.
+    one = TranslationOption("1", ("первый",), "a place to borrow money", "noun")
+    two = TranslationOption("2", ("второй",), "a place to borrow money", "noun")
+    assert not aligned(definition, (one, two)).texts
+    # Exact corresponding definitions may contain several legitimate translations.
+    a = TranslationOption("a", ("банк",), definition, "noun")
+    b = TranslationOption("b", ("банковское учреждение",), definition, "noun")
+    assert aligned(definition, (a, b, finance)).texts == ("банк", "банковское учреждение")
+
+
+def test_old_unverified_cache_is_realigned_without_rewriting_personal_choices(tmp_path):
+    from dataclasses import replace
+
+    from tests.helpers import BANK_FINANCIAL_DEFINITION
+
+    saved = recording(tmp_path)
+    record = replace(saved.recording, definition=BANK_FINANCIAL_DEFINITION, part_of_speech="noun")
+    save_metadata(record)
+    options = (
+        TranslationOption(
+            "money",
+            ("банк",),
+            "an organization or place where you can borrow money, save money, etc",
+            "noun",
+        ),
+        TranslationOption("river", ("берег",), "the land along the side of a river", "noun"),
+    )
+    saved = persist_translation(
+        read_recording(record.path),
+        TranslationResult("russian", record.sense_id, "Cambridge", options),
+    )
+    before = record.reference.read_bytes()
+    result = cached_translation(saved, "russian")
+    assert result.texts == ("банк",)
+    assert record.reference.read_bytes() == before
+    # A previously explicit selection is authoritative, even if a heuristic disagrees.
+    selected = persist_translation(saved, replace(result, options=options, selected_id="river"))
+    assert cached_translation(selected, "russian").texts == ("берег",)
+    edit_translation(selected, "russian", "мой перевод")
+    assert cached_translation(read_recording(record.path), "russian").texts == ("мой перевод",)
+
+
+def test_explicit_source_choice_is_shared_between_accents_and_survives_late_lookup(tmp_path):
+    from dataclasses import replace
+
+    first = recording(tmp_path)
+    uk = replace(first.recording, accent="uk", path=tmp_path / "hello.uk.mp3")
+    uk.path.write_bytes(b"ID3saved")
+    save_metadata(uk)
+    result = TranslationResult(
+        "russian",
+        first.recording.sense_id,
+        "Cambridge",
+        (
+            TranslationOption("one", ("привет",), "a greeting"),
+            TranslationOption("two", ("алло",), "answering the phone"),
+        ),
+    )
+    first = persist_translation(first, result)
+    select_translation(first, "russian", "two")
+    for record in (first.recording, uk):
+        # A concurrent automatic refresh must not erase the confirmed choice.
+        updated = persist_translation(read_recording(record.reference), result)
+        assert cached_translation(updated, "russian").texts == ("алло",)
+
+
+def test_unmatched_cambridge_can_use_a_matched_local_dictionary(tmp_path, monkeypatch):
+    from dataclasses import replace
+
+    saved = recording(tmp_path)
+    client = Mock()
+    client.translation_options.return_value = (
+        TranslationOption("phone", ("алло",), "answering the phone", "noun"),
+    )
+    monkeypatch.setattr(
+        translations,
+        "lookup",
+        Mock(
+            return_value=(TranslationOption("local", ("привет",), "a greeting", "noun", "wikdict"),)
+        ),
+    )
+    result = resolve_translation(client, saved, "russian")
+    assert result.texts == ("привет",) and result.source == "WikDict"
+    # A network failure is still recorded independently from a successful match.
+    client.translation_options.side_effect = CambridgeError("offline")
+    result = resolve_translation(client, saved, "russian")
+    assert result.texts == ("привет",) and result.status == "network_error"
+    assert result.alignment == "matched" and result.error == "offline"
+    import json
+
+    assert TranslationResult.from_dict(json.loads(json.dumps(result.to_dict()))) == result
+    legacy = replace(result, alignment="").to_dict()
+    legacy.pop("alignment")
+    assert TranslationResult.from_dict(json.loads(json.dumps(legacy))).alignment == ""
+
+
+def test_unmatched_cache_must_not_block_a_matching_installed_dictionary(tmp_path, monkeypatch):
+    saved = recording(tmp_path)
+    saved = persist_translation(
+        saved,
+        TranslationResult(
+            "russian",
+            "greeting",
+            "Cambridge",
+            (TranslationOption("phone", ("алло",), "answering the phone"),),
+        ),
+    )
+    lookup = Mock(
+        return_value=(TranslationOption("greet", ("привет",), "a greeting", origin="WikDict"),)
+    )
+    monkeypatch.setattr(translations, "lookup", lookup)
+    result = resolve_translation(Mock(), saved, "russian", offline=True)
+    assert result.texts == ("привет",)
+    lookup.assert_called_once()
+
+
+def test_explicit_wikdict_choice_must_beat_unmatched_cambridge_cache(tmp_path):
+    saved = recording(tmp_path)
+    saved = persist_translation(
+        saved,
+        TranslationResult(
+            "russian",
+            "greeting",
+            "Cambridge",
+            (TranslationOption("phone", ("алло",), "answering the phone"),),
+        ),
+    )
+    saved = persist_translation(
+        saved,
+        TranslationResult(
+            "russian",
+            "greeting",
+            "WikDict",
+            (TranslationOption("greet", ("привет",), "a greeting", origin="WikDict"),),
+        ),
+    )
+    selected = select_translation(saved, "russian", "greet")
+    result = cached_translation(selected, "russian")
+    assert result.texts == ("привет",)
+    assert result.source == "WikDict"
+
+
+def test_late_personal_cache_snapshot_cannot_replace_a_newer_edit(tmp_path):
+    saved = edit_translation(recording(tmp_path), "russian", "old")
+    snapshot = cached_translation(saved, "russian")
+    edit_translation(saved, "russian", "new")
+    saved = persist_translation(saved, snapshot)
+    assert cached_translation(saved, "russian").texts == ("new",)
+
+
+def test_most_recent_explicit_source_choice_wins_over_source_preference(tmp_path):
+    saved = recording(tmp_path)
+    for source, option_id, text in (("Cambridge", "phone", "алло"), ("WikDict", "greet", "привет")):
+        saved = persist_translation(
+            saved,
+            TranslationResult(
+                "russian",
+                "greeting",
+                source,
+                (TranslationOption(option_id, (text,), "different wording"),),
+                selected_id=option_id,
+            ),
+        )
+    assert cached_translation(saved, "russian").texts == ("привет",)
+    saved = select_translation(saved, "russian", "phone")
+    assert cached_translation(saved, "russian").texts == ("алло",)
+
+
+@pytest.mark.parametrize("part", ["verb", "phrasal verb"])
+@pytest.mark.parametrize(
+    "definition,gloss",
+    [
+        (
+            "to pay money to use something for a short period",
+            "to receive money for letting someone use something for a short period",
+        ),
+        (
+            "to make someone pay money for using a thing",
+            "to make someone receive money for using a thing",
+        ),
+        ("to give someone permission to borrow money", "to give someone permission to lend money"),
+    ],
+)
+def test_action_direction_cannot_be_confirmed_by_shared_words(part, definition, gloss):
+    from cambridge_audio.translations import align_translation
+
+    result = align_translation(
+        TranslationResult(
+            "russian",
+            "sense",
+            "Cambridge",
+            (TranslationOption("opposite", ("wrong",), gloss, part),),
+        ),
+        definition,
+        part,
+    )
+    assert result.alignment == "unmatched" and not result.texts

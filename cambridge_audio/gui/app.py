@@ -132,6 +132,7 @@ class MainWindow(QMainWindow):
         self._worker: DownloadWorker | None = None
         self._translation_worker: TranslationWorker | None = None
         self._translation_errors: dict[tuple[Path, str], str] = {}
+        self._translation_attempts: set[tuple[Path, str]] = set()
         self._closing = False
         self._dictionary_worker = None
         self._pending_selection = None
@@ -375,7 +376,7 @@ class MainWindow(QMainWindow):
         translation_actions = QHBoxLayout()
         self.edit_translation_button = QPushButton(self._t("Edit translation"))
         self.reset_translation_button = QPushButton(self._t("Reset translation"))
-        self.select_translation_button = QPushButton(self._t("Refine translation"))
+        self.select_translation_button = QPushButton(self._t("Find translation"))
         self.select_translation_button.hide()
         for button in (
             self.edit_translation_button,
@@ -458,7 +459,7 @@ class MainWindow(QMainWindow):
             (self.dictionary_button, "Install WikDict"),
             (self.edit_translation_button, "Edit translation"),
             (self.reset_translation_button, "Reset translation"),
-            (self.select_translation_button, "Refine translation"),
+            (self.select_translation_button, "Find translation"),
             (self.variant_button, "Choose meaning"),
             (self.export_button, "Export to Anki"),
         ):
@@ -580,6 +581,7 @@ class MainWindow(QMainWindow):
         self.settings.setValue("translation", checked)
         if checked and (record := self.selected_recording()):
             self._translation_errors.pop((record.reference, self.translation_language), None)
+            self._translation_attempts.discard((record.reference, self.translation_language))
         if self._lookup_entries:
             self._show_choice()
         else:
@@ -609,9 +611,14 @@ class MainWindow(QMainWindow):
         self.translation_label.setText(self._format_translation(result))
         if not visible:
             return
-        if result:
+        key = (record.reference, self.translation_language)
+        if result and (
+            result.texts
+            or key in self._translation_attempts
+            or not package_path(self.dictionary_dir, PACKAGE).is_file()
+        ):
             return
-        elif (record.reference, self.translation_language) in self._translation_errors:
+        elif key in self._translation_errors:
             raw = self._translation_errors[(record.reference, self.translation_language)]
             self._set_error_details("Translation", raw)
             self.translation_label.setText(
@@ -620,6 +627,7 @@ class MainWindow(QMainWindow):
         else:
             self.translation_label.setText(self._t("Loading translation..."))
             if self._translation_worker is None and self._worker is None and not self._closing:
+                self._translation_attempts.add(key)
                 worker = TranslationWorker(saved, self.language, self)
                 self._translation_worker = worker
                 worker.completed.connect(self._translation_completed)
@@ -669,10 +677,17 @@ class MainWindow(QMainWindow):
         return read_recording(record.reference) if record else None
 
     def edit_selected_translation(self):
-        saved = self._selected_saved()
-        if not saved:
+        if self._worker is not None:
             return
-        result = cached_translation(saved, self.translation_language)
+        saved = self._selected_saved()
+        choice = self._current_choice() if self._lookup_entries else None
+        if not saved and not choice:
+            return
+        result = (
+            cached_translation(saved, self.translation_language)
+            if saved
+            else self._preview_translations.get(choice.entry.sense_id)
+        )
         text, accepted = QInputDialog.getMultiLineText(
             self,
             self._t("Edit translation"),
@@ -681,13 +696,29 @@ class MainWindow(QMainWindow):
         )
         if accepted:
             try:
-                edit_translation(saved, self.translation_language, text)
+                if saved:
+                    edit_translation(saved, self.translation_language, text)
+                elif text.strip():
+                    from ..dictionary import stable_id
+                    from ..translations import TranslationOption
+
+                    self._preview_translations[choice.entry.sense_id] = TranslationResult(
+                        self.translation_language,
+                        choice.entry.sense_id,
+                        "User",
+                        (TranslationOption(stable_id(text), (text.strip(),), matched=True),),
+                    )
                 self._update_translation()
             except (OSError, ValueError) as exc:
                 self._status("Error: {error}", severity="error", error=exc)
 
     def reset_selected_translation(self):
+        if self._worker is not None:
+            return
         saved = self._selected_saved()
+        if not saved and self._lookup_entries and (choice := self._current_choice()):
+            self._preview_translations.pop(choice.entry.sense_id, None)
+            self._show_choice()
         if saved:
             try:
                 edit_translation(saved, self.translation_language, None)
@@ -696,14 +727,23 @@ class MainWindow(QMainWindow):
                 self._status("Error: {error}", severity="error", error=exc)
 
     def choose_translation_sense(self):
+        if self._worker is not None:
+            return
         saved = self._selected_saved()
-        result = cached_translation(saved, self.translation_language) if saved else None
+        choice = self._current_choice() if self._lookup_entries else None
+        result = (
+            cached_translation(saved, self.translation_language)
+            if saved
+            else self._preview_translations.get(choice.entry.sense_id)
+            if choice
+            else None
+        )
         if not result or not result.options:
             return
         options = [o.label_for(self.language) for o in result.options]
         dialog = ChoiceDialog(
             self,
-            self._t("Refine translation"),
+            self._t("Find translation"),
             self._t("Choose which translation matches the selected English meaning."),
             options,
         )
@@ -712,9 +752,13 @@ class MainWindow(QMainWindow):
         if dialog.exec() == ChoiceDialog.DialogCode.Accepted:
             text = dialog.textValue()
             try:
-                select_translation(
-                    saved, self.translation_language, result.options[options.index(text)].id
-                )
+                option_id = result.options[options.index(text)].id
+                if saved:
+                    select_translation(saved, self.translation_language, option_id)
+                else:
+                    self._preview_translations[choice.entry.sense_id] = replace(
+                        result, selected_id=option_id
+                    )
                 self._update_translation()
             except (OSError, ValueError) as exc:
                 self._status("Error: {error}", severity="error", error=exc)
@@ -791,6 +835,7 @@ class MainWindow(QMainWindow):
         self.dictionary_button.setEnabled(True)
         self._update_dictionary_status()
         self._translation_errors.clear()
+        self._translation_attempts.clear()
         if self._closing:
             if self._worker is None and self._translation_worker is None:
                 self.close()
@@ -920,9 +965,8 @@ class MainWindow(QMainWindow):
             bool(
                 self.translation_check.isChecked()
                 and result
-                and len(result.options) > 1
-                and (not result.selected_id or any(not option.matched for option in result.options))
-                and self._selected_saved()
+                and result.options
+                and not result.texts
             )
         )
         self._set_error_details(
@@ -1172,11 +1216,11 @@ class MainWindow(QMainWindow):
         self.translation_label.setText("")
         self._set_error_details("Translation", "")
         self.translation_label.setVisible(self.translation_check.isChecked())
-        for button in (self.edit_translation_button, self.reset_translation_button):
-            button.setEnabled(existing is not None)
-        self.select_translation_button.setEnabled(existing is not None)
+        self.edit_translation_button.setEnabled(self._worker is None)
+        self.select_translation_button.setEnabled(self._worker is None)
         result = cached_translation(existing, self.translation_language) if existing else None
         result = result or self._preview_translations.get(entry.sense_id)
+        self.reset_translation_button.setEnabled(self._worker is None and bool(existing or result))
         if result:
             self.translation_label.setText(self._format_translation(result))
             item = self.meaning_list.currentItem()
@@ -1196,6 +1240,7 @@ class MainWindow(QMainWindow):
                 source_url=entry.source_url,
                 lemma=entry.lemma,
             )
+            self.translation_label.setText(self._t("Loading translation..."))
             worker = TranslationWorker(SavedRecording(preview), self.language, self)
             self._translation_worker = worker
             worker.completed.connect(self._preview_translation_completed)
@@ -1213,7 +1258,9 @@ class MainWindow(QMainWindow):
                 status="error",
             )
         if isinstance(result, TranslationResult):
-            self._preview_translations[saved.recording.sense_id] = result
+            current = self._preview_translations.get(saved.recording.sense_id)
+            if not current or (current.source != "User" and not current.selected_id):
+                self._preview_translations[saved.recording.sense_id] = result
 
     def save_choice(self):
         choice = self._current_choice()
@@ -1227,6 +1274,7 @@ class MainWindow(QMainWindow):
                     self.translation_check.isChecked(),
                     variant_id=choice.id,
                     entries=self._lookup_entries,
+                    prepared_translation=self._preview_translations.get(choice.entry.sense_id),
                     target=getattr(self, "_lookup_target", None),
                     preview_dir=Path(self._preview_cache.name),
                     dictionary_dir=self.dictionary_dir,

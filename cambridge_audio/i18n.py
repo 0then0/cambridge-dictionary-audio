@@ -1,6 +1,13 @@
 """English application messages and their Russian translations."""
 
 RUSSIAN = {
+    "No automatic translation match for this meaning.": (
+        "Не удалось автоматически подобрать перевод этого значения."
+    ),
+    "Find translation": "Подобрать перевод",
+    "Ctrl+T: choose or enter a translation (optional).": (
+        "Ctrl+T: подобрать или ввести перевод (необязательно)."
+    ),
     "Refine translation": "Уточнить перевод",
     "Choose the English meaning of the word in Cambridge.": (
         "Выберите английское значение слова в Cambridge."

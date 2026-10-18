@@ -441,3 +441,53 @@ def test_concurrent_clients_space_requests_without_blocking_inflight_response(
         finally:
             release.set()
     assert times == [1000, 1001]
+
+
+def test_bank_financial_definition_resolves_only_financial_translation(client):
+    from tests.helpers import BANK_BILINGUAL_HTML, BANK_FINANCIAL_DEFINITION
+
+    client.session.get.return_value = response(BANK_BILINGUAL_HTML)
+    options = client.translation_options("bank", "russian", BANK_FINANCIAL_DEFINITION, "noun")
+    assert len(options) == 1
+    assert options[0].texts == ("банк",)
+    assert options[0].matched
+
+
+@pytest.mark.parametrize(
+    "definition,part",
+    [
+        ("a large pile of snow sand or soil", "noun"),
+        ("A LARGE PILE OF SNOW, sand, or soil :", "noun"),
+    ],
+)
+def test_gloss_normalization_ignores_case_spacing_and_punctuation(client, definition, part):
+    from tests.helpers import BANK_BILINGUAL_HTML
+
+    client.session.get.return_value = response(BANK_BILINGUAL_HTML)
+    options = client.translation_options("bank", "russian", definition, part)
+    assert len(options) == 1 and options[0].texts == ("занос, нанос",)
+    assert options[0].matched
+
+
+def test_lexical_overlap_must_not_confirm_the_opposite_rent_meaning(client, tmp_path, mp3):
+    from cambridge_audio.library import read_recording, save_metadata
+    from cambridge_audio.service import Recording
+    from cambridge_audio.translations import resolve_translation
+
+    definition = "to pay money to use something for a short period"
+    client.session.get.return_value = response("""
+    <div class="entry-body__el"><span class="pos">verb</span>
+    <div class="def-block"><div class="def ddef_d">
+      to receive money for letting someone use something for a short period</div>
+    <div class="def-body"><span class="trans">сдавать в аренду</span></div></div>
+    <div class="def-block"><div class="def ddef_d">
+      to obtain temporary use of a property in exchange for payment</div>
+    <div class="def-body"><span class="trans">арендовать</span></div></div></div>""")
+    path = tmp_path / "rent.us.mp3"
+    path.write_bytes(mp3)
+    record = Recording("rent", "us", path, "", definition, part_of_speech="verb", sense_id="tenant")
+    save_metadata(record)
+    result = resolve_translation(client, read_recording(record.reference), "russian")
+    assert result.alignment == "unmatched"
+    assert not result.texts
+    assert not any(option.matched for option in result.options)

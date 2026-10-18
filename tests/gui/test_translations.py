@@ -234,7 +234,7 @@ def test_wikdict_install_confirmation_shows_megabytes(window, monkeypatch, langu
 
 
 @pytest.mark.parametrize("language", ["en", "ru"])
-def test_new_translation_displays_readable_senses_without_ids(
+def test_unmatched_translation_candidates_are_only_shown_in_explicit_picker(
     window, app, monkeypatch, client, html, mp3, language
 ):
     from cambridge_audio.library import read_recording
@@ -254,9 +254,9 @@ def test_new_translation_displays_readable_senses_without_ids(
     window.start_download()
     wait_until(app, lambda: window._worker is None and window._translation_worker is None)
     text = window.translation_label.text()
-    assert "• привет" in text and "• алло" in text
-    assert "a greeting" in text and "answering the phone" in text
-    assert ("междометие" if language == "ru" else "exclamation") in text
+    assert "привет" not in text and "алло" not in text
+    assert window._t("No automatic translation match for this meaning.") in text
+    assert window.select_translation_button.isVisible()
     assert "unspecified sense" not in text
     result = cached_translation(read_recording(window.selected_recording().path), "russian")
     assert all(option.id not in text for option in result.options)
@@ -425,10 +425,10 @@ def test_russian_translation_block_keyboard_focus_follows_layout(window, app):
 
 
 @pytest.mark.parametrize(
-    "language,title", [("en", "Refine translation"), ("ru", "Уточнить перевод")]
+    "language,title", [("en", "Find translation"), ("ru", "Подобрать перевод")]
 )
 @pytest.mark.parametrize("count", [0, 1, 2])
-def test_refine_translation_only_shown_for_ambiguous_saved_translation(
+def test_find_translation_only_shown_for_unresolved_saved_translation(
     window, mp3, language, title, count
 ):
     from cambridge_audio.library import read_recording, save_metadata
@@ -527,3 +527,53 @@ def test_translation_actions_refresh_selected_inline_meaning(
     assert cached_translation(read_recording(first.reference), "russian").texts == ("банк",)
     assert window.definition_label.text() == "river"
     assert client.session.get.call_count == 1
+
+
+def test_unmatched_saved_cache_uses_installed_wikdict_without_repeating_cambridge(
+    window, app, monkeypatch, client, wikdict_package, tmp_path, mp3
+):
+    from functools import partial
+
+    from cambridge_audio import translations, wikdict
+    from cambridge_audio.library import read_recording, save_metadata
+    from cambridge_audio.translations import (
+        TranslationOption,
+        TranslationResult,
+        cached_translation,
+        persist_translation,
+    )
+    from tests.helpers import download_session
+
+    spec, content = wikdict_package
+    directory = tmp_path / "dictionary"
+    wikdict.install_dictionary(directory, package=spec, session=download_session(content))
+    lookup = Mock(wraps=partial(wikdict.lookup, package=spec))
+    monkeypatch.setattr(translations, "lookup", lookup)
+    monkeypatch.setattr(workers, "CambridgeClient", lambda **kw: client)
+    client.translation_options = Mock(
+        side_effect=AssertionError("Unmatched cache already has Cambridge candidates")
+    )
+    window.dictionary_dir = directory
+    window.output_dir.mkdir()
+    path = window.output_dir / "hello.us.mp3"
+    path.write_bytes(mp3)
+    record = Recording("hello", "us", path, "", "greeting", sense_id="greeting")
+    save_metadata(record)
+    persist_translation(
+        read_recording(path),
+        TranslationResult(
+            "russian",
+            "greeting",
+            "Cambridge",
+            (TranslationOption("phone", ("алло",), "answering the phone"),),
+        ),
+    )
+    window.refresh_library()
+    window.translation_check.setChecked(True)
+    wait_until(app, lambda: window._translation_worker is None)
+    assert "привет" in window.translation_label.text()
+    assert cached_translation(read_recording(path), "russian").source == "WikDict"
+    window._update_translation()
+    app.processEvents()
+    lookup.assert_called_once()
+    client.translation_options.assert_not_called()

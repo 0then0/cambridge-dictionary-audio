@@ -7,6 +7,20 @@ release dates are included only where a published release can be verified.
 
 ## Unreleased
 
+- Resolve Russian translations against the selected English definition and part
+  of speech, including conservative matching of differently worded definitions.
+  GUI/TUI show the matched translation before saving and keep unrelated source
+  senses behind an optional picker. Translation choice and editing also work
+  before saving; the preview is saved without another translation request.
+- Avoid confirming verb paraphrases from word overlap, preserve prepared
+  translations when their display is disabled, and apply new personal drafts
+  over inherited source choices without overwriting newer edits. Prefer explicit
+  and resolved cached translations over unmatched sources; old unresolved
+  Cambridge caches can use installed WikDict without another network request.
+- Reuse resolved translations and explicit choices across pronunciations of one
+  meaning, re-evaluate old gloss-bearing caches on read, and preserve personal
+  choices against late dictionary responses.
+
 ## 0.4.0 (2026-10-17)
 
 - Allow `uv sync` on Windows with Python 3.15 without Visual C++ Build Tools by

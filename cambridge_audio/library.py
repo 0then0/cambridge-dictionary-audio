@@ -240,7 +240,7 @@ def save_metadata(
             if record.sense_id and (
                 previous_saved is None or previous_saved.recording.sense_id != record.sense_id
             ):
-                # A newly saved accent/pronunciation shares existing sense-level edits.
+                # A newly saved accent/pronunciation shares resolved sense translations.
                 for related in scan_recordings(record.path.parent):
                     if (
                         related.recording.word != record.word
@@ -249,10 +249,10 @@ def save_metadata(
                         continue
                     for result in related.translation_cache:
                         if (
-                            result.source == "User"
+                            (result.source == "User" or result.selected_id or result.texts)
                             and result.sense_id == related.recording.sense_id
                             and not any(
-                                t.source == "User"
+                                t.source == result.source
                                 and t.language == result.language
                                 and t.sense_id == record.sense_id
                                 for t in cache

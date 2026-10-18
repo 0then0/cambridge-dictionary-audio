@@ -23,8 +23,11 @@ def render_translation(result: TranslationResult, language: str) -> Text:
         result = replace(
             result, error=friendly_error(result.error, language, context="translation")
         )
-    if not result.options:
-        return Text(result.format(language))
+    if not result.options or not result.texts:
+        text = Text(result.format(language, show_ids=False))
+        if result.options and not result.texts:
+            text.append("\n" + t("Ctrl+T: choose or enter a translation (optional)."), style="dim")
+        return text
     text = Text()
     text.append(t("Translation"), style="bold")
     text.append(" · " + t(result.source), style="dim")
@@ -44,7 +47,7 @@ def render_translation(result: TranslationResult, language: str) -> Text:
             text.append("\n" + ("   " if ambiguous else "") + option.definition, style="dim")
     if ambiguous:
         text.append("\n\n" + t("Ctrl+T: choose a meaning or edit the translation."), style="dim")
-    if not all(option.matched for option in options):
+    if not result.selected_id and not all(option.matched for option in options):
         text.append(
             ("\n" if ambiguous else "\n\n") + t("Sense match with Cambridge is unverified."),
             style="dim",

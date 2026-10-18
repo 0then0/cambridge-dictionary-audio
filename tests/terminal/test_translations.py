@@ -271,13 +271,14 @@ def test_translation_senses_are_readable_and_selection_keeps_internal_ids(
         async with app.run_test(size=size) as pilot:
             widget = app.query_one("#translation", Static)
             text = widget.render()
-            assert "1. привет! здравствуй(те)!" in text.plain
-            assert "2. алло!" in text.plain
+            assert "привет! здравствуй(те)!" not in text.plain
+            assert "алло!" not in text.plain
+            assert app.t("No automatic translation match for this meaning.") in text.plain
             assert "Ctrl+T" in text.plain
             assert "unspecified sense" not in text.plain
             for option in result.options:
                 assert option.id not in text.plain
-            assert ("междометие" if language == "ru" else "exclamation") in text.plain
+            assert "exclamation" not in text.plain
             assert any(getattr(span.style, "dim", False) for span in text.spans)
             await pilot.press("ctrl+t")
             await wait_for_ui(
@@ -299,5 +300,61 @@ def test_translation_senses_are_readable_and_selection_keeps_internal_ids(
                 read_recording(record.path).translation_cache[-1].selected_id
                 == result.options[1].id
             )
+
+    asyncio.run(scenario())
+
+
+def test_unmatched_saved_cache_uses_installed_wikdict_without_repeating_cambridge(
+    tmp_path, monkeypatch, client, wikdict_package
+):
+    from dataclasses import replace
+    from functools import partial
+
+    from cambridge_audio import translations, wikdict
+    from cambridge_audio.translations import (
+        TranslationOption,
+        TranslationResult,
+        cached_translation,
+        persist_translation,
+    )
+    from tests.helpers import download_session
+
+    spec, content = wikdict_package
+    directory = tmp_path / "dictionary"
+    wikdict.install_dictionary(directory, package=spec, session=download_session(content))
+    lookup = Mock(wraps=partial(wikdict.lookup, package=spec))
+    monkeypatch.setattr(translations, "lookup", lookup)
+    monkeypatch.setattr(terminal, "CambridgeClient", lambda *a, **kw: client)
+    client.translation_options = Mock(
+        side_effect=AssertionError("Unmatched Cambridge cache is reusable")
+    )
+    record = replace(saved(tmp_path), definition="greeting")
+    save_metadata(record, translation_cache=())
+    persist_translation(
+        read_recording(record.reference),
+        TranslationResult(
+            "russian",
+            record.sense_id,
+            "Cambridge",
+            (TranslationOption("phone", ("алло",), "answering the phone"),),
+        ),
+    )
+
+    async def scenario():
+        app = CambridgeApp(
+            Options(tmp_path, play=False, translation="russian", dictionary_dir=directory)
+        )
+        async with app.run_test(size=(110, 40)) as pilot:
+            await wait_for_ui(
+                pilot, lambda: "привет" in app.query_one("#translation", Static).render().plain
+            )
+            await finish_download(app, pilot)
+            assert (
+                cached_translation(read_recording(record.reference), "russian").source == "WikDict"
+            )
+            app.update_translation()
+            await pilot.pause()
+            lookup.assert_called_once()
+            client.translation_options.assert_not_called()
 
     asyncio.run(scenario())

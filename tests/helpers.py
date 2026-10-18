@@ -31,3 +31,19 @@ def download_session(content, failure=None):
     session = Mock()
     session.get.return_value = response
     return session
+
+
+BANK_FINANCIAL_DEFINITION = (
+    "an organization where people and businesses can invest or borrow money, "
+    "change it to foreign money, etc., or a building where these services are offered"
+)
+BANK_BILINGUAL_HTML = """
+<div class="entry-body__el"><span class="pos">noun</span>
+<div class="def-block"><div class="def ddef_d">
+  an organization or place where you can borrow money , save money , etc
+</div><div class="def-body"><span class="trans">банк</span></div></div>
+<div class="def-block"><div class="def ddef_d">the land along the side of a river</div>
+<div class="def-body"><span class="trans">берег</span></div></div>
+<div class="def-block"><div class="def ddef_d">a large pile of snow, sand, or soil</div>
+<div class="def-body"><span class="trans">занос, нанос</span></div></div></div>
+"""

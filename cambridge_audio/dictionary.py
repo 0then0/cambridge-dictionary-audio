@@ -427,7 +427,7 @@ class CambridgeClient:
             raise CambridgeBlockedError("Cambridge returned a blocking page.")
 
     def translation_options(self, word: str, language: str, definition: str = "", part: str = ""):
-        from .translations import TranslationOption
+        from .translations import TranslationOption, match_options
 
         # Keep translations() as the public text lookup and permit existing client adapters.
         self._translation_html = None
@@ -450,11 +450,6 @@ class CambridgeClient:
             sense = block.find_parent(class_="def-block") or block
             tag = sense.select_one(".def.ddef_d")
             gloss = tag.get_text(" ", strip=True).removesuffix(":").rstrip() if tag else ""
-            matched = bool(
-                definition
-                and gloss.casefold() == definition.casefold()
-                and (not part or pos.casefold() == part.casefold())
-            )
             options.append(
                 TranslationOption(
                     stable_id(pos, gloss, *texts),
@@ -462,14 +457,9 @@ class CambridgeClient:
                     gloss,
                     pos,
                     dictionary_url(word, f"english-{language}"),
-                    matched,
                 )
             )
-        matches = tuple(o for o in options if o.matched)
-        same_part = tuple(
-            o for o in options if part and o.part_of_speech.casefold() == part.casefold()
-        )
-        return matches or tuple({o.id: o for o in same_part or options}.values())
+        return match_options(tuple({o.id: o for o in options}.values()), definition, part)
 
     def translations(self, word: str, language: str) -> tuple[str, ...]:
         response = self._get(

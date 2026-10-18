@@ -40,6 +40,7 @@ class DownloadRequest:
     preview_choice: object = None
     preview_dir: Path | None = None
     sense_id: str | None = None
+    prepared_translation: object = None
 
 
 class DownloadWorker(QThread):
@@ -104,6 +105,7 @@ class DownloadWorker(QThread):
                     check_cancelled=self._check_cancelled,
                     select_only=request.select_only,
                     audio_cache_dir=request.preview_dir,
+                    prepared_translation=request.prepared_translation,
                 )
             for record in result.recordings:
                 self._save_metadata(

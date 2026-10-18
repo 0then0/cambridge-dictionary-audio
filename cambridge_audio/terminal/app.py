@@ -38,7 +38,7 @@ from ..translations import (
     resolve_translation,
     select_translation,
 )
-from ..wikdict import PACKAGE, install_dictionary
+from ..wikdict import PACKAGE, install_dictionary, package_path
 from .dialogs import About, ChooseOption, ConfirmReplace, ErrorDetails, Help, Settings
 from .messages import (
     DictionaryFinished,
@@ -139,6 +139,7 @@ class CambridgeApp(App[None]):
         self.dictionary_busy = False
         self.translation_pending: SavedRecording | None = None
         self.translation_errors: dict[tuple[Path, str], str] = {}
+        self.translation_attempts: set[tuple[Path, str]] = set()
 
     def t(self, message: str, **values) -> str:
         return translate(message, self.options.language, **values)
@@ -401,6 +402,9 @@ class CambridgeApp(App[None]):
         changed = bool(self.options.translation) != enabled
         self.options = replace(self.options, translation="russian" if enabled else None)
         if self.selected and enabled:
+            self.translation_attempts.discard(
+                (self.selected.recording.reference, self.options.translation or "russian")
+            )
             self.translation_errors.pop(
                 (self.selected.recording.reference, self.options.translation or "russian"), None
             )
@@ -431,6 +435,17 @@ class CambridgeApp(App[None]):
         if result:
             self._set_error_details("Translation", result.error)
             widget.update(render_translation(result, self.options.language))
+            if (
+                not result.texts
+                and key not in self.translation_attempts
+                and package_path(self.options.dictionary_dir, PACKAGE).is_file()
+                and not self.busy
+                and self.translation_pending is None
+                and not self.quit_pending
+            ):
+                self.translation_attempts.add(key)
+                self.translation_pending = saved
+                self.fetch_translation(saved, self.options)
         elif key in self.translation_errors:
             raw = self.translation_errors[key]
             self._set_error_details("Translation", raw)
@@ -486,8 +501,10 @@ class CambridgeApp(App[None]):
                     status="error",
                 )
             if message.result:
-                self._preview_translations[record.sense_id] = message.result
-            if self._lookup_entries:
+                current = self._preview_translations.get(record.sense_id)
+                if not current or (current.source != "User" and not current.selected_id):
+                    self._preview_translations[record.sense_id] = message.result
+            if self._lookup_entries and not isinstance(self.screen, ModalScreen):
                 self.show_choice()
             return
         if message.error or not message.result or not message.result.options:
@@ -632,8 +649,18 @@ class CambridgeApp(App[None]):
         self.cancel_download.clear()
         self.update_controls()
         self.status(self.t("Downloading '{word}' · Ctrl+C to cancel", word=word))
+        choice = self.current_choice() if entries and self._lookup_entries else None
+        prepared = self._preview_translations.get(choice.entry.sense_id) if choice else None
         self.download(
-            word, accent, self.options, overwrite, variant_id, entries, target, select_only
+            word,
+            accent,
+            self.options,
+            overwrite,
+            variant_id,
+            entries,
+            target,
+            select_only,
+            prepared,
         )
 
     @work(thread=True, group="download", exit_on_error=False)
@@ -647,6 +674,7 @@ class CambridgeApp(App[None]):
         entries=None,
         target=None,
         select_only=False,
+        prepared_translation=None,
     ) -> None:
         warnings = []
 
@@ -690,6 +718,7 @@ class CambridgeApp(App[None]):
                     check_cancelled=cancelled,
                     select_only=select_only,
                     audio_cache_dir=Path(self._preview_cache.name),
+                    prepared_translation=prepared_translation,
                 )
             for i, record in enumerate(result.recordings):
                 store(record, () if result.translation_results else result.translations)
@@ -828,7 +857,13 @@ class CambridgeApp(App[None]):
         self._set_error_details(
             "Translation", result.error if result and self.options.translation else ""
         )
-        widget.update(render_translation(result, self.options.language) if result else "")
+        widget.update(
+            render_translation(result, self.options.language)
+            if result
+            else self.t("Loading translation...")
+            if self.options.translation
+            else ""
+        )
         if self.options.translation and not result and self.translation_pending is None:
             preview = Recording(
                 entry.word,
@@ -869,9 +904,10 @@ class CambridgeApp(App[None]):
             self.status(exc, error=True)
 
     def action_edit_translation(self):
-        if not self.selected or self.quit_pending or isinstance(self.screen, ModalScreen):
+        if self.busy or self.quit_pending or isinstance(self.screen, ModalScreen):
             return
         saved = self.selected
+        preview_choice = None
         if self._lookup_entries and (choice := self.current_choice()):
             saved = next(
                 (
@@ -883,9 +919,15 @@ class CambridgeApp(App[None]):
                 None,
             )
             if saved is None:
-                return
+                preview_choice = choice
+        if saved is None and preview_choice is None:
+            return
         language = self.options.translation or "russian"
-        result = cached_translation(read_recording(saved.recording.reference) or saved, language)
+        result = (
+            cached_translation(read_recording(saved.recording.reference) or saved, language)
+            if saved
+            else self._preview_translations.get(preview_choice.entry.sense_id)
+        )
         choices = [(self.t("Edit translation"), "edit"), (self.t("Reset translation"), "reset")]
         if result:
             choices += [
@@ -903,9 +945,29 @@ class CambridgeApp(App[None]):
 
         def apply(answer):
             if answer is None:
+                if self._lookup_entries:
+                    self.show_choice()
                 return
             try:
                 mode, text = answer
+                if saved is None:
+                    from ..dictionary import stable_id
+                    from ..translations import TranslationOption, TranslationResult
+
+                    key = preview_choice.entry.sense_id
+                    if mode == "edit" and text.strip():
+                        self._preview_translations[key] = TranslationResult(
+                            language,
+                            key,
+                            "User",
+                            (TranslationOption(stable_id(text), (text.strip(),), matched=True),),
+                        )
+                    elif mode == "reset":
+                        self._preview_translations.pop(key, None)
+                    elif result and any(o.id == mode for o in result.options):
+                        self._preview_translations[key] = replace(result, selected_id=mode)
+                    self.show_choice()
+                    return
                 if mode in {"edit", "reset"}:
                     updated = edit_translation(saved, language, text if mode == "edit" else None)
                 else:
@@ -1018,6 +1080,7 @@ class CambridgeApp(App[None]):
     def on_dictionary_finished(self, message):
         self.dictionary_busy = False
         self.translation_errors.clear()
+        self.translation_attempts.clear()
         self.status(message.error or self.t("WikDict installed."), error=bool(message.error))
         self.update_translation()
         if (
