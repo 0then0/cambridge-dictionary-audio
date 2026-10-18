@@ -1,126 +1,126 @@
 {
-  "tag_name": "v0.4.1",
+  "tag_name": "v0.4.2",
   "draft": false,
   "prerelease": false,
   "assets": [
     {
-      "name": "cambridge-audio-chrome-0.4.1.zip",
+      "name": "cambridge-audio-chrome-0.4.2.zip",
       "size": 22808,
-      "browser_download_url": "https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.4.1/cambridge-audio-chrome-0.4.1.zip",
+      "browser_download_url": "https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.4.2/cambridge-audio-chrome-0.4.2.zip",
       "state": "uploaded"
     },
     {
-      "name": "cambridge-audio-firefox-0.4.1.zip",
+      "name": "cambridge-audio-firefox-0.4.2.zip",
       "size": 22908,
-      "browser_download_url": "https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.4.1/cambridge-audio-firefox-0.4.1.zip",
+      "browser_download_url": "https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.4.2/cambridge-audio-firefox-0.4.2.zip",
       "state": "uploaded"
     },
     {
-      "name": "cambridge-dictionary-audio-0.4.1-1.x86_64.rpm",
-      "size": 95255980,
-      "browser_download_url": "https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.4.1/cambridge-dictionary-audio-0.4.1-1.x86_64.rpm",
+      "name": "cambridge-dictionary-audio-0.4.2-1.x86_64.rpm",
+      "size": 95265850,
+      "browser_download_url": "https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.4.2/cambridge-dictionary-audio-0.4.2-1.x86_64.rpm",
       "state": "uploaded"
     },
     {
-      "name": "cambridge-dictionary-audio-0.4.1-linux-x86_64-portable.tar.gz",
-      "size": 95153887,
-      "browser_download_url": "https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.4.1/cambridge-dictionary-audio-0.4.1-linux-x86_64-portable.tar.gz",
+      "name": "cambridge-dictionary-audio-0.4.2-linux-x86_64-portable.tar.gz",
+      "size": 95157085,
+      "browser_download_url": "https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.4.2/cambridge-dictionary-audio-0.4.2-linux-x86_64-portable.tar.gz",
       "state": "uploaded"
     },
     {
-      "name": "cambridge-dictionary-audio-0.4.1-macos-arm64.dmg",
-      "size": 58143063,
-      "browser_download_url": "https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.4.1/cambridge-dictionary-audio-0.4.1-macos-arm64.dmg",
+      "name": "cambridge-dictionary-audio-0.4.2-macos-arm64.dmg",
+      "size": 57734293,
+      "browser_download_url": "https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.4.2/cambridge-dictionary-audio-0.4.2-macos-arm64.dmg",
       "state": "uploaded"
     },
     {
-      "name": "cambridge-dictionary-audio-0.4.1-macos-arm64.pkg",
-      "size": 49734976,
-      "browser_download_url": "https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.4.1/cambridge-dictionary-audio-0.4.1-macos-arm64.pkg",
+      "name": "cambridge-dictionary-audio-0.4.2-macos-arm64.pkg",
+      "size": 49731794,
+      "browser_download_url": "https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.4.2/cambridge-dictionary-audio-0.4.2-macos-arm64.pkg",
       "state": "uploaded"
     },
     {
-      "name": "cambridge-dictionary-audio-0.4.1-macos-arm64.tar.gz",
-      "size": 49580595,
-      "browser_download_url": "https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.4.1/cambridge-dictionary-audio-0.4.1-macos-arm64.tar.gz",
+      "name": "cambridge-dictionary-audio-0.4.2-macos-arm64.tar.gz",
+      "size": 49583611,
+      "browser_download_url": "https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.4.2/cambridge-dictionary-audio-0.4.2-macos-arm64.tar.gz",
       "state": "uploaded"
     },
     {
-      "name": "cambridge-dictionary-audio-0.4.1-macos-x86_64.dmg",
-      "size": 61855188,
-      "browser_download_url": "https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.4.1/cambridge-dictionary-audio-0.4.1-macos-x86_64.dmg",
+      "name": "cambridge-dictionary-audio-0.4.2-macos-x86_64.dmg",
+      "size": 61857550,
+      "browser_download_url": "https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.4.2/cambridge-dictionary-audio-0.4.2-macos-x86_64.dmg",
       "state": "uploaded"
     },
     {
-      "name": "cambridge-dictionary-audio-0.4.1-macos-x86_64.pkg",
-      "size": 53310854,
-      "browser_download_url": "https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.4.1/cambridge-dictionary-audio-0.4.1-macos-x86_64.pkg",
+      "name": "cambridge-dictionary-audio-0.4.2-macos-x86_64.pkg",
+      "size": 53304317,
+      "browser_download_url": "https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.4.2/cambridge-dictionary-audio-0.4.2-macos-x86_64.pkg",
       "state": "uploaded"
     },
     {
-      "name": "cambridge-dictionary-audio-0.4.1-macos-x86_64.tar.gz",
-      "size": 53058677,
-      "browser_download_url": "https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.4.1/cambridge-dictionary-audio-0.4.1-macos-x86_64.tar.gz",
+      "name": "cambridge-dictionary-audio-0.4.2-macos-x86_64.tar.gz",
+      "size": 53060547,
+      "browser_download_url": "https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.4.2/cambridge-dictionary-audio-0.4.2-macos-x86_64.tar.gz",
       "state": "uploaded"
     },
     {
-      "name": "cambridge-dictionary-audio-0.4.1-windows-x86_64-portable.zip",
-      "size": 66774592,
-      "browser_download_url": "https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.4.1/cambridge-dictionary-audio-0.4.1-windows-x86_64-portable.zip",
+      "name": "cambridge-dictionary-audio-0.4.2-windows-x86_64-portable.zip",
+      "size": 66777506,
+      "browser_download_url": "https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.4.2/cambridge-dictionary-audio-0.4.2-windows-x86_64-portable.zip",
       "state": "uploaded"
     },
     {
-      "name": "cambridge-dictionary-audio-0.4.1-windows-x86_64-setup.exe",
-      "size": 46670072,
-      "browser_download_url": "https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.4.1/cambridge-dictionary-audio-0.4.1-windows-x86_64-setup.exe",
+      "name": "cambridge-dictionary-audio-0.4.2-windows-x86_64-setup.exe",
+      "size": 46661114,
+      "browser_download_url": "https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.4.2/cambridge-dictionary-audio-0.4.2-windows-x86_64-setup.exe",
       "state": "uploaded"
     },
     {
-      "name": "cambridge-dictionary-audio_0.4.1_amd64.deb",
-      "size": 76722918,
-      "browser_download_url": "https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.4.1/cambridge-dictionary-audio_0.4.1_amd64.deb",
+      "name": "cambridge-dictionary-audio_0.4.2_amd64.deb",
+      "size": 76788602,
+      "browser_download_url": "https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.4.2/cambridge-dictionary-audio_0.4.2_amd64.deb",
       "state": "uploaded"
     },
     {
-      "name": "cambridge_dictionary_audio-0.4.1-py3-none-any.whl",
-      "size": 80010,
-      "browser_download_url": "https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.4.1/cambridge_dictionary_audio-0.4.1-py3-none-any.whl",
+      "name": "cambridge_dictionary_audio-0.4.2-py3-none-any.whl",
+      "size": 82667,
+      "browser_download_url": "https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.4.2/cambridge_dictionary_audio-0.4.2-py3-none-any.whl",
       "state": "uploaded"
     },
     {
-      "name": "cambridge_dictionary_audio-0.4.1.tar.gz",
-      "size": 118717,
-      "browser_download_url": "https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.4.1/cambridge_dictionary_audio-0.4.1.tar.gz",
+      "name": "cambridge_dictionary_audio-0.4.2.tar.gz",
+      "size": 123315,
+      "browser_download_url": "https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.4.2/cambridge_dictionary_audio-0.4.2.tar.gz",
       "state": "uploaded"
     },
     {
       "name": "ffmpeg-lame-sources-linux-x86_64.tar.gz",
-      "size": 13572656,
-      "browser_download_url": "https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.4.1/ffmpeg-lame-sources-linux-x86_64.tar.gz",
+      "size": 13572673,
+      "browser_download_url": "https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.4.2/ffmpeg-lame-sources-linux-x86_64.tar.gz",
       "state": "uploaded"
     },
     {
       "name": "ffmpeg-lame-sources-macos-arm64.tar.gz",
-      "size": 13574774,
-      "browser_download_url": "https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.4.1/ffmpeg-lame-sources-macos-arm64.tar.gz",
+      "size": 13574786,
+      "browser_download_url": "https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.4.2/ffmpeg-lame-sources-macos-arm64.tar.gz",
       "state": "uploaded"
     },
     {
       "name": "ffmpeg-lame-sources-macos-x86_64.tar.gz",
-      "size": 13574789,
-      "browser_download_url": "https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.4.1/ffmpeg-lame-sources-macos-x86_64.tar.gz",
+      "size": 13574778,
+      "browser_download_url": "https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.4.2/ffmpeg-lame-sources-macos-x86_64.tar.gz",
       "state": "uploaded"
     },
     {
       "name": "ffmpeg-lame-sources-windows-x86_64.tar.gz",
-      "size": 13580704,
-      "browser_download_url": "https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.4.1/ffmpeg-lame-sources-windows-x86_64.tar.gz",
+      "size": 13580699,
+      "browser_download_url": "https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.4.2/ffmpeg-lame-sources-windows-x86_64.tar.gz",
       "state": "uploaded"
     },
     {
       "name": "SHA256SUMS.txt",
       "size": 2145,
-      "browser_download_url": "https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.4.1/SHA256SUMS.txt",
+      "browser_download_url": "https://github.com/0then0/cambridge-dictionary-audio/releases/download/v0.4.2/SHA256SUMS.txt",
       "state": "uploaded"
     }
   ]
