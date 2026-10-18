@@ -7,6 +7,18 @@ release dates are included only where a published release can be verified.
 
 ## Unreleased
 
+- Collapse sources and license attribution under a small Source disclosure on
+  Anki cards and the deck overview. With note updates enabled, reimporting a fresh
+  package updates Source even when Anki retains an older template and custom styling.
+
+- Restore GUI translation actions after saving a meaning, so unresolved phrases
+  such as `good morning` can be translated and exported to Anki without restarting.
+
+- Verify an Anki 26.09.3 backend round-trip on macOS, including scheduler-created
+  review history, repeated imports, content and media updates, custom note/template
+  edits and a transition from actual TSV imports. Document how note and note-type
+  import options control replacement of personal contents, CSS and templates.
+
 ## 0.4.1 (2026-10-18)
 
 - Resolve Russian translations against the selected English definition and part
@@ -52,7 +64,8 @@ release dates are included only where a published release can be verified.
 - Export ready Anki `.apkg` packages with stable GUIDs, a single light/dark template,
   shared media and source/license attribution. TSV remains available. Explicit TSV
   transition reads original GUIDs and note types from an Anki-exported package;
-  real Anki import and review-history retention have not been tested here.
+  real Anki import and review-history retention had not yet been tested at this
+  release. See the current [verification results](docs/collection.md#verified-anki-round-trip).
 
 ## 0.3.0 (2026-10-16)
 

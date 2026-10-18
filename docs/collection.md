@@ -2,6 +2,8 @@
 
 The CLI, terminal workspace and desktop app use the same recording, translation
 and export services. The browser extensions remain independent pronunciation downloaders.
+This guide describes the current source tree. Features listed under **Unreleased**
+in the [changelog](../CHANGELOG.md) are not yet included in published downloads.
 
 ## Choose a meaning and audio
 
@@ -109,6 +111,11 @@ are kept together. When no match is reliable, the main panel says so and hides
 other source meanings. Saving English and audio remains available. GUI:
 **Find translation** opens source candidates; **Edit translation** accepts personal
 text. TUI: **Ctrl+T** offers the same optional choices, including before saving.
+For a saved entry, these actions remain available without downloading the audio
+again. If Anki export asks for a translation choice, open that entry and use
+**Find translation** to confirm a source candidate or **Edit translation** to
+provide personal text, then export again. For example, an unresolved `good morning`
+can be given the personal translation `доброе утро`.
 Hiding the translation before saving preserves any prepared translation or
 personal text; it does not start another translation request.
 Technical source IDs remain available in CLI output and storage.
@@ -213,17 +220,47 @@ cambridge-audio --output-dir downloads --export-anki exports/tsv --export-format
 The package contains one note per selected collection entry, a fixed note type,
 one card template and deduplicated MP3 media. The front shows the word. The back
 shows the chosen translation, definition, part of speech, IPA, accent and audio,
-followed by sources and data-license attribution. The template defines light and
-Anki night-mode colours. Text is HTML-escaped, including user translations.
+followed by a small **Source** disclosure, closed by default, containing sources
+and data-license attribution. The disclosure is stored in the Source field, so
+exporting a fresh package and reimporting it also updates cards whose existing
+template displays `{{Source}}`, with note updates enabled in Anki. There is no need
+to edit that template manually. An old package does not gain this change: export
+a new package from the updated application first. The deck overview uses the same
+compact, closed Source disclosure for its description.
+The template defines light and Anki night-mode colours. Text is HTML-escaped,
+including user translations and the text inside the Source disclosure.
 
 The note type, field IDs, template ID/ordinal and note GUIDs are stable. GUIDs use
 the permanent local collection ID, not editable fields or storage paths. Reimport
-into the same Anki collection updates matching notes when the incoming version is
-newer; Anki 23.10+ also provides update controls. Keep the note type's fields and
-single card template intact. Existing card scheduling is retained by Anki's note
-update mechanism. This utility does not export study progress or reverse cards.
-Edits to the exported note fields in Anki may be replaced on update. Other notes
-are not matched by their word or translation.
+into the same Anki collection matches these identities, rather than the word or
+translation. Keep the note type's fields and single card template intact.
+Existing card scheduling and review history are retained when matching notes are
+updated; see the verified scenario below. This utility does not export study
+progress or reverse cards.
+
+### Reimport and personal edits
+
+Anki's import options control updates to **notes** and **note types** separately.
+The following behaviour was verified in Anki 26.09.3:
+
+- **If newer** for notes: a more recent Anki edit survives an older package, but a
+  newer export replaces the note's exported fields, including personal edits in
+  Anki. This is not a field-by-field merge.
+- **Always** for notes: matching notes receive the exported contents even if the
+  Anki edit is newer.
+- **Never** for notes: personal contents in Anki remain, but Cambridge updates to
+  translation, definition, Audio and Source do not apply to those notes.
+- **If newer** for note types: the export's fixed older note-type timestamp lets
+  newer custom CSS and template edits in Anki survive. **Never** explicitly keeps
+  the existing note type. **Always** can replace custom CSS and templates with the
+  exported versions.
+
+For ordinary updates, keep **If newer** for notes. Use **Never** for note types
+when you want to retain an existing layout, including an older template that
+renders `{{Source}}`. To keep a personal translation through future exports, edit
+it in the Cambridge collection, which supplies the exported contents. Editing it
+only in Anki does not guarantee preservation on the next import. Import option
+labels may differ by Anki version or interface language.
 
 Missing/damaged MP3s or unresolved translation choices fail the export before
 replacing the previous package. Existing files are replaced only if recognized as
@@ -272,9 +309,34 @@ the mapped count with the old notes you intend to move. Store the generated
 does not rewrite the reference package, delete notes or touch review history.
 Collections with extra fields or multiple card templates should keep using TSV.
 
-Package structure and identity mapping are covered by automated tests. Real Anki
-import, repeated import and retention of review history were not exercised in this
-environment because Anki was unavailable; these tests do not establish actual
-importer compatibility on every Anki version. Import rules are described in the
+### Verified Anki round-trip
+
+On 2026-10-18, the current source tree was checked against **Anki 26.09.3
+(29bb700b) on macOS**, through its Python backend in two isolated collections:
+
+- Import three meanings, including two `bank` meanings sharing an MP3: three
+  notes/cards, two media files, correct translation, definition and IPA.
+- Answer three cards through Anki's scheduler with Good, Easy and Good: two cards
+  enter Learning, one enters Review, and three real review-history rows are created.
+- Import the same package and a fresh unchanged export: no duplicates; note/card
+  identities, scheduling and review history remain unchanged.
+- Change a translation and definition, replace one recording, export and reimport:
+  the intended fields and audio update; the other meaning and shared audio remain
+  unchanged, with card identities and history retained.
+- Edit note contents, CSS and a template in Anki: confirm the distinct import-option
+  outcomes described above.
+- Import actual TSV through Anki's importer, study one card, export a reference
+  from Anki, run `--anki-reference` and reimport: three notes/cards remain, with
+  original identities, custom CSS, scheduling and the review-history row retained.
+
+Both collections were closed and reopened to verify the persisted state. History
+was created through the scheduler, not SQL inserts. Imported audio was decoded and
+played to EOF by Anki's bundled mpv, including CoreAudio playback at volume zero.
+The MP3 fixtures used locally synthesized speech; listening quality, GUI clicks,
+sync, mobile clients and other Anki versions were not checked in this scenario.
+
+Package structure, escaping, media deduplication and identity mapping also have
+automated tests; these are separate from the manual backend integration check.
+Import rules are described in the
 [Anki package manual](https://docs.ankiweb.net/manual/importing/packaged-decks)
 and [text import manual](https://docs.ankiweb.net/manual/importing/text-files).

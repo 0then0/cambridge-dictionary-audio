@@ -123,12 +123,17 @@ See the [collection guide](docs/collection.md) for meaning and pronunciation sel
 Russian translations, local WikDict installation and Anki export in the GUI, TUI
 and CLI. [Data sources and licenses](docs/data-sources.md) covers dictionary
 attribution and licensing separately from the application code.
+Documentation describes the current source tree; check **Unreleased** in the
+[changelog](CHANGELOG.md) for changes not yet included in published downloads.
 
 Meanings remain separate collection entries and Anki notes, while meanings sharing
 the same source recording reuse one verified MP3. Old local/export IDs and personal
 translations are retained; old duplicate media are not removed automatically.
 
 **Export to Anki** saves one ready `.apkg` with a template, audio and sources.
+In the current source tree, sources and license notices are behind a small,
+closed **Source** disclosure on cards and the deck overview. Export a fresh package
+and reimport with note updates enabled to apply this to existing cards.
 TSV remains available as an additional format:
 
 ```sh
@@ -139,8 +144,18 @@ cambridge-audio --output-dir downloads --export-anki tsv-export --export-format 
 Existing TSV imports need explicit GUID mapping before switching to packages;
 otherwise duplicate notes are possible. The [transition instructions](docs/collection.md#existing-notes-imported-from-tsv)
 use a copy exported by Anki and preserve original identities. Users with modified
-note schemas can continue TSV updates. Actual Anki import and review-history
-retention have not been tested in this environment.
+note schemas can continue TSV updates.
+
+Anki controls updates to notes and note types separately. **If newer** for notes
+can replace edits made only in Anki when the export is newer; **Never** preserves
+those edits but blocks content updates. **If newer** for note types retains newer
+custom CSS and templates, while **Always** can replace them. Keep personal
+translations in the Cambridge collection if they must survive future exports.
+
+A backend round-trip on Anki **26.09.3 for macOS** verified real scheduler answers,
+reimports, content/audio updates, import-option behaviour and a transition from
+actual TSV imports without duplicate cards or lost review history. See the
+[verified scenario and its limits](docs/collection.md#verified-anki-round-trip).
 
 ## Browser extension
 
