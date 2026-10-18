@@ -7,6 +7,8 @@ release dates are included only where a published release can be verified.
 
 ## Unreleased
 
+## 0.4.2 (2026-10-18)
+
 - Collapse sources and license attribution under a small Source disclosure on
   Anki cards and the deck overview. With note updates enabled, reimporting a fresh
   package updates Source even when Anki retains an older template and custom styling.
