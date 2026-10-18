@@ -7,6 +7,8 @@ release dates are included only where a published release can be verified.
 
 ## Unreleased
 
+## 0.4.1 (2026-10-18)
+
 - Resolve Russian translations against the selected English definition and part
   of speech, including conservative matching of differently worded definitions.
   GUI/TUI show the matched translation before saving and keep unrelated source
