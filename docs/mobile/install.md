@@ -123,19 +123,24 @@ or verification registration.
 
 Full Xcode is required, including device and simulator SDKs. Command Line Tools
 alone cannot build an iOS app. Open `mobile/iosApp/CambridgeAudio.xcodeproj`, select
-the CambridgeAudio scheme and an iPhone simulator. Install Java 17 and pkgconf.
+the CambridgeAudio scheme and an iPhone simulator. Install Java 17, pkgconf and
+Python 3.12+. Set `CDA_PYTHON` to that interpreter's absolute path: Xcode puts its
+own older Python ahead of the normal shell PATH. Both iOS workflows select a
+managed Python explicitly, so local Xcode installation is unnecessary for CI.
 The build phase runs Gradle's standard framework integration and compiles the
 pinned LAME source for the selected architectures. No server is involved.
 
 ```sh
 export DEVELOPER_DIR=/Applications/Xcode_26.4.1.app/Contents/Developer
+uv python install 3.15
+export CDA_PYTHON="$(uv python find 3.15)"
 xcodebuild -project mobile/iosApp/CambridgeAudio.xcodeproj -scheme CambridgeAudio \
   -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 17' \
   -derivedDataPath build/ios-simulator CODE_SIGNING_ALLOWED=NO test
 xcodebuild -project mobile/iosApp/CambridgeAudio.xcodeproj -scheme CambridgeAudio \
   -configuration Release -destination 'generic/platform=iOS' \
   -derivedDataPath build/ios-device CODE_SIGNING_ALLOWED=NO build
-python3 scripts/package_mobile.py ios --output dist/mobile
+"$CDA_PYTHON" scripts/package_mobile.py ios --output dist/mobile
 ```
 
 Artifacts have distinct meanings:

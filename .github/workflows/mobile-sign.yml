@@ -63,6 +63,14 @@ jobs:
       DEVELOPER_DIR: /Applications/Xcode_26.4.1.app/Contents/Developer
     steps:
       - uses: actions/checkout@v7.0.1
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          version: '0.13.1'
+          python-version: '3.15'
+      - name: Select Python for Xcode build scripts
+        run: |
+          uv python install 3.15
+          echo "CDA_PYTHON=$(uv python find 3.15)" >> "$GITHUB_ENV"
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -76,7 +84,7 @@ jobs:
           IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
           IOS_PROFILE_NAME: ${{ secrets.IOS_PROFILE_NAME }}
           IOS_SIGNING_IDENTITY: ${{ secrets.IOS_SIGNING_IDENTITY }}
-        run: python3 scripts/sign_mobile_ios.py --output dist/mobile
+        run: '"$CDA_PYTHON" scripts/sign_mobile_ios.py --output dist/mobile'
       - uses: actions/upload-artifact@v7.0.2
         with:
           name: ios-ad-hoc-registered-devices

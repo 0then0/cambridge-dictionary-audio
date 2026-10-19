@@ -13,6 +13,9 @@ release dates are included only where a published release can be verified.
   the pinned Gradle distribution checksum, and stop requesting the removed Android
   SDK `tools` package in mobile build/signing workflows. Enable Debug testability
   for the iOS application module used by XCTest.
+- Read shared contract fixtures explicitly as UTF-8 on Windows/Python 3.10 and
+  use a selected modern Python for native Xcode build scripts instead of Apple's
+  older bundled interpreter, retaining safe archive extraction.
 - Keep collection identities intact when accepting incoming records: retire only
   unreferenced media of replaced entries, retain shared audio and independent MP3s,
   and allow verified backups to restore missing or corrupt local audio.

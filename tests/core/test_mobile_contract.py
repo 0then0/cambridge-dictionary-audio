@@ -1,6 +1,7 @@
 """Python consumes the same vectors used by the Kotlin common domain tests."""
 
 import json
+import runpy
 from dataclasses import asdict
 from pathlib import Path
 
@@ -13,7 +14,7 @@ from cambridge_audio.translations import TranslationOption, match_options
 from scripts.mobile_contracts import TARGET, render
 
 ROOT = Path(__file__).resolve().parents[2] / "contracts"
-GOLDEN = json.loads((ROOT / "golden.json").read_text())
+GOLDEN = json.loads((ROOT / "golden.json").read_text(encoding="utf-8"))
 
 
 def test_python_normalization_and_identity_vectors():
@@ -33,7 +34,7 @@ def test_python_normalization_and_identity_vectors():
 
 def test_python_parser_and_translation_vectors():
     for case in GOLDEN["parsers"]:
-        actual = parse_entries((ROOT / case["file"]).read_text(), case["url"])
+        actual = parse_entries((ROOT / case["file"]).read_text(encoding="utf-8"), case["url"])
         assert json.loads(json.dumps([asdict(e) for e in actual])) == case["entries"]
     for case in GOLDEN["matching"]:
         options = [TranslationOption(**(o | {"texts": tuple(o["texts"])})) for o in case["options"]]
@@ -42,9 +43,22 @@ def test_python_parser_and_translation_vectors():
 
 
 def test_mobile_anki_constants_are_exactly_the_python_contract():
-    contract = json.loads((ROOT / "anki.json").read_text())
+    contract = json.loads((ROOT / "anki.json").read_text(encoding="utf-8"))
     assert contract["model"] == anki._model().to_json(1700000000, anki.DECK_ID)
     assert contract["deck_id"] == anki.DECK_ID
     assert contract["columns"] == list(anki.COLUMNS)
     assert contract["sources"] == anki.SOURCES
-    assert TARGET.read_text() == render()
+    assert TARGET.read_text(encoding="utf-8") == render()
+
+
+def test_contracts_do_not_depend_on_windows_default_encoding(monkeypatch):
+    read_text = Path.read_text
+
+    def windows_read_text(path, encoding=None, errors=None):
+        return read_text(path, encoding=encoding or "cp1252", errors=errors)
+
+    monkeypatch.setattr(Path, "read_text", windows_read_text)
+    namespace = runpy.run_path(__file__)
+    namespace["test_python_normalization_and_identity_vectors"]()
+    namespace["test_python_parser_and_translation_vectors"]()
+    namespace["test_mobile_anki_constants_are_exactly_the_python_contract"]()
