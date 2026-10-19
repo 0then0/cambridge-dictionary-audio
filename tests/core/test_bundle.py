@@ -3,6 +3,7 @@
 import json
 import os
 from dataclasses import replace
+from pathlib import Path
 from zipfile import ZipFile
 
 import pytest
@@ -37,6 +38,27 @@ def collection(client, directory):
         )
     )
     return records
+
+
+def test_transfer_flushes_writable_descriptors_as_required_on_windows(
+    client, tmp_path, monkeypatch
+):
+    records = collection(client, tmp_path / "source")
+    native_fsync = bundle.os.fsync
+
+    def windows_fsync(descriptor):
+        # Windows _commit rejects read-only handles. A zero-byte write exercises
+        # the same access restriction on POSIX without changing the file contents.
+        os.write(descriptor, b"")
+        native_fsync(descriptor)
+
+    monkeypatch.setattr(bundle.os, "fsync", windows_fsync)
+    archive = export_bundle(tmp_path / "source", tmp_path / "backup.cda")
+    target = tmp_path / "target"
+    apply_import(preview_import(archive, target))
+    restored = scan_recordings(target)
+    assert {s.recording.id for s in restored} == {r.id for r in records}
+    assert all(bundle.valid_audio(s.recording) for s in restored)
 
 
 def test_file_transfer_round_trip_idempotence_and_unknown_data(client, tmp_path):
@@ -212,7 +234,7 @@ def test_import_never_overwrites_unowned_file_or_changes_original_on_publish_fai
     original_replace = bundle.os.replace
 
     def fail_publication(source, destination):
-        if str(source).endswith("/collection"):
+        if Path(source).name == "collection":
             raise OSError("disk full during publication")
         return original_replace(source, destination)
 
@@ -287,7 +309,7 @@ def test_failed_publication_rolls_back_and_keeps_original(client, tmp_path, monk
     original = os.replace
 
     def fail(source, dest):
-        if str(source).endswith("/collection"):
+        if Path(source).name == "collection":
             raise OSError("disk full / interrupted rename")
         return original(source, dest)
 

@@ -9,6 +9,10 @@ release dates are included only where a published release can be verified.
 
 ### 1.0 development (not released; acceptance incomplete)
 
+- Fix Windows collection transfer flushes by using writable file handles, correct
+  the pinned Gradle distribution checksum, and stop requesting the removed Android
+  SDK `tools` package in mobile build/signing workflows. Enable Debug testability
+  for the iOS application module used by XCTest.
 - Keep collection identities intact when accepting incoming records: retire only
   unreferenced media of replaced entries, retain shared audio and independent MP3s,
   and allow verified backups to restore missing or corrupt local audio.

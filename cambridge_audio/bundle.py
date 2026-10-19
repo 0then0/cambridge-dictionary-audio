@@ -172,7 +172,7 @@ def export_bundle(directory: Path, destination: Path) -> Path:
                     archive.writestr(name, content)
             # Validate our output before replacing even an existing backup.
             _load_bundle(temporary)
-            with temporary.open("rb") as stream:
+            with temporary.open("r+b") as stream:
                 os.fsync(stream.fileno())
             os.replace(temporary, destination)
         finally:
@@ -479,7 +479,7 @@ def apply_import(preview: ImportPreview, decisions: dict[str, str] | None = None
             # Flush every staged regular file. Never dereference copied symlinks.
             for path in staging.iterdir():
                 if path.is_file() and not path.is_symlink():
-                    with path.open("rb") as stream:
+                    with path.open("r+b") as stream:
                         os.fsync(stream.fileno())
             backup = directory.parent / f".{directory.name}.backup-{uuid4().hex}"
             had_previous = directory.exists()
