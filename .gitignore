@@ -151,6 +151,9 @@ activemq-data/
 
 # Environments
 .env
+.env.*
+!.env.example
+!.env.*.example
 .envrc
 .venv
 env/
@@ -224,3 +227,33 @@ __marimo__/
 
 # Browser extension dependencies
 node_modules/
+
+# Android / Kotlin generated state (keep Gradle wrapper and source fixtures)
+.gradle/
+.kotlin/
+.cxx/
+.externalNativeBuild/
+local.properties
+captures/
+*.apk
+*.aab
+
+# Apple / Swift generated state (keep shared schemes and Package.resolved)
+.build/
+.swiftpm/
+DerivedData/
+*.xcarchive/
+*.xcresult/
+*.dSYM/
+*.ipa
+*.xcuserstate
+xcuserdata/
+
+# Private signing material; public certificates and license files stay visible
+*.keystore
+*.jks
+*.p12
+*.pfx
+*.p8
+*.mobileprovision
+*.provisionprofile

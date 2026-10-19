@@ -4,6 +4,11 @@ on:
   push:
     tags: ['v*']
   workflow_dispatch:
+    inputs:
+      publish_pypi:
+        description: 'Also publish the CLI to PyPI (explicit opt-in; select an existing release tag)'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -148,8 +153,8 @@ jobs:
           if-no-files-found: error
 
   publish-pypi:
-    name: Publish CLI to PyPI
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    name: Publish CLI to PyPI (manual opt-in)
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_pypi && startsWith(github.ref, 'refs/tags/v')
     needs: [python, desktop, extension]
     runs-on: ubuntu-latest
     environment:
@@ -166,9 +171,12 @@ jobs:
         with:
           attestations: true
 
+  mobile:
+    uses: ./.github/workflows/mobile.yml
+
   github-release:
     name: Publish GitHub release
-    needs: [python, publish-pypi]
+    needs: [python, desktop, extension, mobile]
     runs-on: ubuntu-latest
     permissions:
       contents: write

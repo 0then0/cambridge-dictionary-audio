@@ -49,6 +49,11 @@ exclude = [
 packages = ["cambridge_audio"]
 
 [tool.hatch.build.targets.sdist]
+# Repository-only cross-language tests inspect mobile generated sources.
+exclude = [
+    "cambridge_audio/gui", "cambridge_audio/desktop.py",
+    "tests/core/test_mobile_contract.py",
+]
 only-include = [
     "cambridge_audio", "pyproject.toml", "docs/cli.md", "docs/collection.md", "docs/data-sources.md",
     "LICENSE", "LICENSE-MIT", "NOTICE", "main.py",

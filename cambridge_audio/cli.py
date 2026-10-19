@@ -8,6 +8,7 @@ from pathlib import Path
 
 from .anki import adopt_anki_identities, export_anki, export_apkg
 from .audio import play_audio
+from .bundle import apply_import, export_bundle, preview_import
 from .console import Output, is_terminal
 from .dictionary import (
     CambridgeClient,
@@ -387,11 +388,75 @@ def main(argv: list[str] | None = None) -> int:
         "--choose-translation",
         help=translate("Select a source sense by its displayed translation ID.", language),
     )
+    transfers = options.add_mutually_exclusive_group()
+    transfers.add_argument(
+        "--export-collection",
+        type=Path,
+        help=translate("Export a checksummed collection bundle.", language),
+    )
+    transfers.add_argument(
+        "--import-collection",
+        type=Path,
+        help=translate("Preview a collection bundle import.", language),
+    )
+    options.add_argument(
+        "--apply-import",
+        action="store_true",
+        help=translate("Apply the displayed collection import.", language),
+    )
+    options.add_argument(
+        "--resolve-conflict",
+        action="append",
+        default=[],
+        metavar="ID=CHOICE",
+        help=translate("Resolve an import conflict: existing or incoming.", language),
+    )
     args = parser.parse_args(argv)
     if (
         args.list_variants or args.variant or args.sense or args.audio or args.preview
     ) and not args.word:
         parser.error("--list-variants and --variant require a word argument.")
+    if args.apply_import or args.resolve_conflict:
+        if not args.import_collection:
+            parser.error("--apply-import / --resolve-conflict require --import-collection.")
+    if args.export_collection or args.import_collection:
+        if args.word or args.recording or args.export_anki or args.anki_reference:
+            parser.error("Collection transfer uses --output-dir and no word/recording/Anki action.")
+        try:
+            if args.export_collection:
+                print(export_bundle(args.output_dir, args.export_collection))
+            else:
+                import json
+
+                preview = preview_import(args.import_collection, args.output_dir)
+                print(
+                    json.dumps(
+                        {
+                            "added": preview.added,
+                            "unchanged": preview.unchanged,
+                            "conflicts": preview.conflicts,
+                        },
+                        ensure_ascii=False,
+                        indent=2,
+                    )
+                )
+                if args.apply_import:
+                    decisions = {}
+                    for value in args.resolve_conflict:
+                        identity, separator, choice = value.partition("=")
+                        if not separator or choice not in {"existing", "incoming"}:
+                            raise ValueError("Use --resolve-conflict ID=existing or ID=incoming.")
+                        decisions[identity] = choice
+                    backup = apply_import(preview, decisions)
+                    print(
+                        translate(
+                            "Collection imported. Backup: {path}", args.lang, path=backup or "-"
+                        )
+                    )
+            return 0
+        except (OSError, ValueError) as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
     if args.dictionary_info or args.install_dictionary:
         print(PACKAGE.description)
         print(PACKAGE.url)

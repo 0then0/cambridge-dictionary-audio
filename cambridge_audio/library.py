@@ -152,6 +152,10 @@ def _read_recording(path: Path) -> SavedRecording | None:
 
 
 def scan_recordings(directory: Path) -> list[SavedRecording]:
+    from .bundle import recover_import
+
+    with _METADATA_LOCK:
+        recover_import(directory)
     if not directory.exists():
         return []
     records, referenced = [], set()
@@ -288,7 +292,8 @@ def save_metadata(
                 SavedRecording(record, translation_cache=cache), translation_language
             )
             translations = active.texts if active else ()
-        data = asdict(record)
+        # Preserve fields added by compatible clients, including source provenance.
+        data = previous | asdict(record)
         data.pop("path")
         data.pop("metadata_path")
         data.update(
@@ -297,7 +302,7 @@ def save_metadata(
             separate_metadata=record.metadata_path is not None,
             translations=translations,
             translation_language=translation_language,
-            translation_cache=[t.to_dict() for t in cache],
+            translation_cache=_merge_cache_extensions(previous.get("translation_cache", []), cache),
         )
         temporary = None
         try:
@@ -313,6 +318,42 @@ def save_metadata(
         finally:
             if temporary is not None:
                 temporary.unlink(missing_ok=True)
+
+
+def _merge_cache_extensions(previous, cache):
+    """Retain unmodelled attributes without resurrecting intentionally removed edits."""
+    result = []
+    previous = previous if isinstance(previous, list) else []
+    for translation in cache:
+        key = (translation.language, translation.sense_id, translation.source)
+        old = next(
+            (
+                item
+                for item in previous
+                if isinstance(item, dict)
+                and tuple(item.get(k) for k in ("language", "sense_id", "source")) == key
+            ),
+            {},
+        )
+        data = old | translation.to_dict()
+        options = old.get("options", [])
+        options = options if isinstance(options, list) else []
+        data["options"] = [
+            next(
+                (o for o in options if isinstance(o, dict) and o.get("id") == option["id"]),
+                {},
+            )
+            | option
+            for option in data["options"]
+        ]
+        result.append(data)
+    # Opaque future-language payloads cannot be edited by this version.
+    result.extend(
+        item
+        for item in previous
+        if isinstance(item, dict) and TranslationResult.from_dict(item) is None
+    )
+    return result
 
 
 def valid_audio(record: Recording) -> bool:

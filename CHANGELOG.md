@@ -7,6 +7,57 @@ release dates are included only where a published release can be verified.
 
 ## Unreleased
 
+### 1.0 development (not released; acceptance incomplete)
+
+- Keep collection identities intact when accepting incoming records: retire only
+  unreferenced media of replaced entries, retain shared audio and independent MP3s,
+  and allow verified backups to restore missing or corrupt local audio.
+- Restore synthesized phrases with their saved pronunciation plan and selections,
+  preserving personal translations and the permanent ID without a new word lookup.
+- Verify local WikDict status in mobile Settings and before installation; distinguish
+  missing, verified and damaged packages and ask explicitly before downloading again.
+  Keep verification off the UI thread and preserve the existing package on failure.
+- Show three translation choices initially on Android and iOS, with expandable
+  alternatives that collapse after selection; keep the chosen translation visible.
+- Fit the Android shield inside the adaptive icon's safe circle so launcher,
+  app-info and system splash masks no longer crop its top corners.
+- Replace the cramped Android license alert with a full-screen reader, component
+  summaries and separate offline Apache/MIT/NOTICE documents. Reflow printed text
+  into readable paragraphs without changing bundled licenses. Structure iOS
+  license information into native sections and expandable full texts.
+- Show three compact search meanings initially, with expandable alternatives that
+  collapse after selection. Open saved word details inside Collection, retaining
+  the Search selection and unsaved translation draft on return.
+- Add an independent pure-black OLED switch for the active dark theme, including
+  system appearance, and migrate the former standalone black mode without resetting
+  preferences. Keep the desktop red accent on Android and iOS.
+- Apply Android manual accents to the complete colour scheme, including selected
+  chips, switches, navigation and surfaces, instead of retaining Material's default
+  purple roles. Distinguish the active system palette from manual colour selection.
+  Adapt iOS accent colours for light and dark appearance.
+- Prepare playback inline instead of briefly inserting the global operation toolbar.
+- Pin ktfmt and official swift-format with shared mobile settings, source checks
+  before builds/signing, cached verified tools and locked Swift formatter dependencies.
+
+- Add standalone Kotlin Multiplatform business logic, Android Compose Material 3
+  presentation and native iOS SwiftUI presentation. Implement Cambridge search,
+  pronunciation choice, persistent collections, personal/dictionary translations,
+  explicit WikDict installation, native playback and independent APKG/TSV export.
+- Build real MP3 phrases on device using platform decoders and pinned source-built
+  LAME. Supply source/build/relink materials alongside mobile artifacts.
+- Add versioned, checksummed `.cda` collection transfer to desktop GUI/CLI and
+  mobile, explicit conflict decisions, stale-preview protection, staged import,
+  retained backups and recovery. Preserve unknown sidecar/cache fields on edits.
+- Add shared Python/Kotlin fixtures and Anki identity contracts. Verify real Anki
+  scheduler history across Python/Kotlin and Android exports; distinguish these
+  checks from unperformed iOS runtime acceptance.
+- Add Android/iOS CI and protected owner-signing workflows. Keep GitHub release
+  independent of optional PyPI publication; restore the existing PyPI job behind
+  an explicit manual `publish_pypi` input, default false.
+- Document installation/signing limits, storage migration and measured acceptance.
+  Mobile builds remain 1.0.0-dev. Python and extensions remain 0.4.2; iOS full build,
+  device signing and accessibility gates have not passed on this host.
+
 ## 0.4.2 (2026-10-19)
 
 - Collapse sources and license attribution under a small Source disclosure on

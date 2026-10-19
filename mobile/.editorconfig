@@ -1,0 +1,8 @@
+# Inherit common settings from the repository root.
+
+[*.{kt,kts}]
+indent_size = 4
+ij_continuation_indent_size = 4
+
+[*.swift]
+indent_size = 2

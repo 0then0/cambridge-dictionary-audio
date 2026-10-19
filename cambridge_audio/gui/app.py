@@ -49,6 +49,7 @@ except ModuleNotFoundError as exc:
 
 from ..anki import export_anki, export_apkg
 from ..audio import ffmpeg_executable
+from ..bundle import apply_import, export_bundle, preview_import
 from ..desktop import APPLICATION_NAME, launch_macos_bundle
 from ..dictionary import (
     audio_filename,
@@ -394,6 +395,8 @@ class MainWindow(QMainWindow):
         export_actions.addWidget(self.variant_button)
         export_actions.addWidget(self.export_button)
         layout.addLayout(export_actions)
+        self.transfer_button = QPushButton(self._t("Back up / transfer collection"))
+        layout.addWidget(self.transfer_button)
         layout.addStretch()
 
     def _connect_ui(self):
@@ -417,6 +420,7 @@ class MainWindow(QMainWindow):
         self.reset_translation_button.clicked.connect(self.reset_selected_translation)
         self.select_translation_button.clicked.connect(self.choose_translation_sense)
         self.export_button.clicked.connect(self.export_collection)
+        self.transfer_button.clicked.connect(self.transfer_collection)
         self.variant_button.clicked.connect(lambda: self.start_download(choose_variant=True))
         self.meaning_list.currentRowChanged.connect(self._meaning_selected)
         self.audio_combo.currentIndexChanged.connect(self._show_choice)
@@ -462,6 +466,7 @@ class MainWindow(QMainWindow):
             (self.select_translation_button, "Find translation"),
             (self.variant_button, "Choose meaning"),
             (self.export_button, "Export to Anki"),
+            (self.transfer_button, "Back up / transfer collection"),
         ):
             button.setText(self._t(title))
         self.variant_button.setToolTip(
@@ -853,6 +858,77 @@ class MainWindow(QMainWindow):
                 QApplication.instance().quit()
         else:
             self._update_translation()
+
+    def transfer_collection(self):
+        if self._worker is not None or self._translation_worker is not None:
+            self._status("Wait for the current operation or cancel it first.", severity="error")
+            return
+        choices = [self._t("Export collection bundle"), self._t("Import collection bundle")]
+        dialog = ChoiceDialog(self, self._t("Collection transfer"), self._t("Action"), choices)
+        if dialog.exec() != ChoiceDialog.DialogCode.Accepted:
+            return
+        try:
+            if dialog.textValue() == choices[0]:
+                path, _ = QFileDialog.getSaveFileName(
+                    self,
+                    choices[0],
+                    str(self.output_dir.parent / "cambridge-collection.cda"),
+                    "Cambridge collection (*.cda)",
+                )
+                if path:
+                    export_bundle(self.output_dir, Path(path))
+                    self._status("Collection bundle saved: {path}", path=path)
+                return
+            path, _ = QFileDialog.getOpenFileName(
+                self, choices[1], "", "Cambridge collection (*.cda)"
+            )
+            if not path:
+                return
+            preview = preview_import(Path(path), self.output_dir)
+            decisions = {}
+            from ..bundle import _load_bundle
+
+            _, incoming, _ = _load_bundle(Path(path))
+            current = {s.recording.id: s for s in scan_recordings(self.output_dir)}
+            for identity in preview.conflicts:
+                old = current.get(identity)
+                data = incoming.get(identity, {})
+                old_translation = cached_translation(old, "russian") if old else None
+                context = (
+                    data.get("word", identity)
+                    + "\n"
+                    + data.get("definition", "")
+                    + "\n"
+                    + self._t("Current personal data:")
+                    + "\n"
+                    + str(old_translation.texts if old_translation else ())
+                    + "\n"
+                    + self._t("Incoming personal data:")
+                    + "\n"
+                    + str(data.get("translation_cache", []))
+                )
+                options = [self._t("Keep current"), self._t("Use incoming")]
+                choice = ChoiceDialog(self, self._t("Import conflict"), context, options)
+                if choice.exec() != ChoiceDialog.DialogCode.Accepted:
+                    return
+                decisions[identity] = "existing" if choice.textValue() == options[0] else "incoming"
+            summary = self._t(
+                "New: {added}; unchanged: {unchanged}; conflicts: {conflicts}. "
+                "Previous data will be backed up before replacement.",
+                added=len(preview.added),
+                unchanged=len(preview.unchanged),
+                conflicts=len(preview.conflicts),
+            )
+            if (
+                QMessageBox.question(self, self._t("Import preview"), summary)
+                != QMessageBox.StandardButton.Yes
+            ):
+                return
+            backup = apply_import(preview, decisions)
+            self.refresh_library()
+            self._status("Collection imported. Backup: {path}", path=backup or "-")
+        except (OSError, ValueError) as exc:
+            self._status("Collection transfer: {error}", severity="error", error=exc)
 
     def export_collection(self):
         choices = [self._t("Selected recording"), self._t("Whole collection")]

@@ -1,0 +1,9 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="320" android:viewportHeight="320">
+<!-- Keep the entire shield inside the central 66dp adaptive-icon safe circle. -->
+<group android:scaleX="0.7" android:scaleY="0.7" android:translateX="70.4" android:translateY="70.4">
+<path android:pathData="M48,28h160v100c0,47 -36,79 -80,100 -44,-21 -80,-53 -80,-100Z" android:fillColor="#b6384b" android:strokeColor="#263646" android:strokeWidth="8" android:strokeLineJoin="round"/>
+<path android:pathData="M68,77c20,-10 40,-10 60,0 20,-10 40,-10 60,0v58c-20,-10 -40,-10 -60,0 -20,-10 -40,-10 -60,0Z" android:fillColor="#fffaf0" android:strokeColor="#263646" android:strokeWidth="5" android:strokeLineJoin="round"/>
+<path android:pathData="M128,77v58M82,94h29M82,110h23" android:strokeColor="#263646" android:strokeWidth="5" android:strokeLineCap="round"/>
+<path android:pathData="M148,96v16M160,88v32M172,99v10" android:strokeColor="#b6384b" android:strokeWidth="6" android:strokeLineCap="round"/>
+<path android:pathData="M128,151v35m-16,-16 16,16 16,-16M103,191v10h50v-10" android:strokeColor="#f0c56e" android:strokeWidth="7" android:strokeLineCap="round" android:strokeLineJoin="round"/>
+</group></vector>

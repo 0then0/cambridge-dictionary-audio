@@ -21,6 +21,20 @@ Download English pronunciation recordings from
 A desktop app and CLI provide US and UK audio, IPA transcriptions, English
 definitions and optional dictionary translations.
 
+## Mobile development and collection transfer
+
+The working tree adds standalone Android (Kotlin/Compose Material 3) and iOS
+(SwiftUI) applications with a shared Kotlin core. Current mobile status is
+**1.0.0-dev**, not a published stable release or completed RC. Android requires
+9+; iOS targets 17+. See [build/install/signing instructions](docs/mobile/install.md)
+and the [acceptance record and remaining gates](docs/mobile/readiness.md).
+The stable download links below still point to the published desktop/CLI/extension
+version. Mobile tools are not required to install the Python CLI.
+
+Desktop GUI and CLI now support versioned `.cda` collection backups, including
+personal translations, shared media and permanent Anki identities. Import previews
+conflicts and retains a backup. See [portable storage](docs/mobile/storage.md).
+
 ## Desktop app
 
 <!-- downloads:start -->
@@ -353,6 +367,17 @@ access. They cover downloads, cancellation, cache recovery, translation language
 keyboard interaction, GUI settings and release packaging. FFmpeg-dependent integration tests run when both `ffmpeg` and `ffprobe` are
 available and otherwise report a skip. Update dependencies explicitly with
 `uv lock --upgrade`, then run the checks above.
+
+[Dependabot](.github/dependabot.yml) checks uv, extension npm dependencies, mobile
+Gradle dependencies and GitHub Actions monthly at 09:00 Europe/Moscow. Normal
+updates allow only minor/patch releases at least 14 days old, grouped into one
+open PR per ecosystem, with automatic rebasing disabled. Python updates change
+only `uv.lock` within existing manifest constraints. Major upgrades, exact Python
+pins, Xcode/SDK versions, Swift Xcode references and custom source/formatter
+checksums require manual updates. Security updates, when enabled on GitHub, are
+grouped separately and are not delayed by the monthly schedule or cooldown.
+The configuration takes effect when it reaches the default branch; it does not
+enable automatic merging.
 
 To run without development tools, use `uv run --no-dev -m cambridge_audio hello`.
 

@@ -492,6 +492,41 @@ RUSSIAN[
 )
 
 
+RUSSIAN.update(
+    {
+        "Back up / transfer collection": "Резервная копия / перенос коллекции",
+        "Collection transfer": "Перенос коллекции",
+        "Export collection bundle": "Экспорт коллекции в файл",
+        "Import collection bundle": "Импорт коллекции из файла",
+        "Collection bundle saved: {path}": "Коллекция сохранена: {path}",
+        "Collection imported. Backup: {path}": "Коллекция импортирована. Резервная копия: {path}",
+        "Collection transfer: {error}": "Перенос коллекции: {error}",
+        "Wait for the current operation or cancel it first.": (
+            "Дождитесь текущей операции или отмените её."
+        ),
+        "Current personal data:": "Текущие личные данные:",
+        "Incoming personal data:": "Входящие личные данные:",
+        "Keep current": "Оставить текущие",
+        "Use incoming": "Принять входящие",
+        "Import conflict": "Конфликт импорта",
+        "Import preview": "Предварительный импорт",
+        (
+            "New: {added}; unchanged: {unchanged}; conflicts: {conflicts}. "
+            "Previous data will be backed up before replacement."
+        ): (
+            "Новых: {added}; без изменений: {unchanged}; конфликтов: {conflicts}. "
+            "Перед заменой будет сохранена резервная копия прежних данных."
+        ),
+        "Export a checksummed collection bundle.": "Экспорт коллекции с контрольными суммами.",
+        "Preview a collection bundle import.": "Предварительный просмотр импорта коллекции.",
+        "Apply the displayed collection import.": "Применить показанный импорт коллекции.",
+        "Resolve an import conflict: existing or incoming.": (
+            "Решить конфликт импорта: existing или incoming."
+        ),
+    }
+)
+
+
 def translate(message: str, language: str = "en", **values) -> str:
     if language == "ru":
         message = RUSSIAN.get(message, message)

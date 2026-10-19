@@ -1,0 +1,82 @@
+name: Sign mobile artifacts (owner credentials)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    uses: ./.github/workflows/mobile-format.yml
+
+  android:
+    needs: format
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    environment: mobile-signing
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - run: sudo apt-get update && sudo apt-get install -y pkgconf
+      - run: sdkmanager 'platforms;android-37.0' 'build-tools;36.0.0' 'ndk;28.2.13676358' 'cmake;3.22.1'
+      - run: |
+          python3 scripts/build_mobile_codec.py android-arm64-v8a
+          python3 scripts/build_mobile_codec.py android-armeabi-v7a
+          python3 scripts/build_mobile_codec.py android-x86_64
+      - name: Import owner keystore and build release APK
+        env:
+          OWNER_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$OWNER_KEYSTORE" && test -n "$ANDROID_KEY_ALIAS"
+          export ANDROID_KEYSTORE="$RUNNER_TEMP/owner-release.jks"
+          trap 'rm -f "$ANDROID_KEYSTORE"' EXIT
+          printf '%s' "$OWNER_KEYSTORE" | base64 --decode > "$ANDROID_KEYSTORE"
+          chmod 600 "$ANDROID_KEYSTORE"
+          cd mobile
+          ./gradlew :androidApp:assembleRelease
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs androidApp/build/outputs/apk/release/androidApp-release.apk > ../build/android-signature.txt
+          cd ..
+          python3 scripts/package_mobile.py android --require-signed --output dist/mobile
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: android-owner-signed
+          path: dist/mobile/*
+          if-no-files-found: error
+
+  ios:
+    needs: format
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    runs-on: macos-26
+    environment: mobile-signing
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.4.1.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - run: brew install pkgconf
+      - name: Archive and export Ad Hoc IPA for registered devices
+        env:
+          IOS_P12_BASE64: ${{ secrets.IOS_P12_BASE64 }}
+          IOS_P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
+          IOS_PROFILE_BASE64: ${{ secrets.IOS_PROFILE_BASE64 }}
+          IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+          IOS_PROFILE_NAME: ${{ secrets.IOS_PROFILE_NAME }}
+          IOS_SIGNING_IDENTITY: ${{ secrets.IOS_SIGNING_IDENTITY }}
+        run: python3 scripts/sign_mobile_ios.py --output dist/mobile
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: ios-ad-hoc-registered-devices
+          path: dist/mobile/*
+          if-no-files-found: error

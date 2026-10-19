@@ -1,0 +1,12 @@
+Cambridge Dictionary Audio
+
+This project is a modified fork of:
+https://github.com/astrosander/cambridge-dictionary-audio
+
+Original project:
+Copyright (c) 2023 Aliaksandr Melnichenka
+Licensed under the MIT License, reproduced in LICENSE-MIT.
+
+This fork and its modifications are distributed under the Apache License,
+Version 2.0 (see LICENSE), subject to the retained MIT terms for material
+inherited from the original project.

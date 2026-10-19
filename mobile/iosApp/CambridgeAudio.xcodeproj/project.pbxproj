@@ -1,0 +1,515 @@
+// !$*UTF8*$!
+{
+"archiveVersion" = "1";
+"classes" = {
+};
+"objectVersion" = "60";
+"objects" = {
+"ACDA00000000000000000003" = {
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "folder";
+"path" = "CambridgeAudioTests/Fixtures";
+"sourceTree" = "<group>";
+};
+"ACDA00000000000000000004" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "ACDA00000000000000000003";
+};
+"ACDA00000000000000000001" = {
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "folder.assetcatalog";
+"path" = "CambridgeAudio/Assets.xcassets";
+"sourceTree" = "<group>";
+};
+"ACDA00000000000000000002" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "ACDA00000000000000000001";
+};
+"3A2594CAA8E20B819DD93E48" = {
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"path" = "CambridgeAudio/CambridgeAudioApp.swift";
+"sourceTree" = "<group>";
+};
+"4AE4A885EF26CC9F4DA548B8" = {
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"path" = "CambridgeAudio/AppModel.swift";
+"sourceTree" = "<group>";
+};
+"5F5EB0916B64A84DCD5A2F04" = {
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"path" = "CambridgeAudio/IOSPlatform.swift";
+"sourceTree" = "<group>";
+};
+"D061F60AF2B575D74177D705" = {
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.c.c";
+"path" = "../native/phrase_codec.c";
+"sourceTree" = "<group>";
+};
+"0398CCD0F49298B10A3D76A4" = {
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "text";
+"path" = "../../LICENSE";
+"sourceTree" = "<group>";
+};
+"449E649C3B71C0E0EFB38F4A" = {
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "text";
+"path" = "../../LICENSE-MIT";
+"sourceTree" = "<group>";
+};
+"FE71871083CA490E6BC0DA33" = {
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "text";
+"path" = "../../NOTICE";
+"sourceTree" = "<group>";
+};
+"709FC48492163BEE8772469B" = {
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"path" = "CambridgeAudioTests/CoreIntegrationTests.swift";
+"sourceTree" = "<group>";
+};
+"560DA8908EFC21B430A3D15F" = {
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "sourcecode.swift";
+"path" = "CambridgeAudioUITests/NavigationTests.swift";
+"sourceTree" = "<group>";
+};
+"CB8CFE374858420247580A06" = {
+"isa" = "PBXFileReference";
+"lastKnownFileType" = "wrapper.framework";
+"name" = "CambridgeCore.framework";
+"path" = "CambridgeCore.framework";
+"sourceTree" = "BUILT_PRODUCTS_DIR";
+};
+"3545353DECCD82C804AC4360" = {
+"isa" = "XCRemoteSwiftPackageReference";
+"repositoryURL" = "https://github.com/weichsel/ZIPFoundation";
+"requirement" = {
+"kind" = "exactVersion";
+"version" = "0.9.20";
+};
+};
+"672520AED988AE6C3049A0D7" = {
+"isa" = "XCSwiftPackageProductDependency";
+"package" = "3545353DECCD82C804AC4360";
+"productName" = "ZIPFoundation";
+};
+"604BC19671E432AB4CA3D926" = {
+"isa" = "PBXFileReference";
+"explicitFileType" = "wrapper.application";
+"path" = "CambridgeAudio.app";
+"sourceTree" = "BUILT_PRODUCTS_DIR";
+"includeInIndex" = "0";
+};
+"744ACDA7B7731098BA3D41BB" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "3A2594CAA8E20B819DD93E48";
+};
+"B9832A939A189CBE085D1D2C" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "4AE4A885EF26CC9F4DA548B8";
+};
+"BC244967216463089B5B7C6E" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "5F5EB0916B64A84DCD5A2F04";
+};
+"4222740F2D891D1D3704D3DD" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "D061F60AF2B575D74177D705";
+};
+"B3156521F4306D4272D67712" = {
+"isa" = "PBXSourcesBuildPhase";
+"buildActionMask" = "2147483647";
+"files" = ("744ACDA7B7731098BA3D41BB","B9832A939A189CBE085D1D2C","BC244967216463089B5B7C6E","4222740F2D891D1D3704D3DD");
+"runOnlyForDeploymentPostprocessing" = "0";
+};
+"39F184931757E569A753C310" = {
+"isa" = "PBXBuildFile";
+"productRef" = "672520AED988AE6C3049A0D7";
+};
+"6D8193BB764AAFA2C7916AFE" = {
+"isa" = "PBXFrameworksBuildPhase";
+"buildActionMask" = "2147483647";
+"files" = ("39F184931757E569A753C310");
+"runOnlyForDeploymentPostprocessing" = "0";
+};
+"C96268BA6147A42A695BA2C0" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "0398CCD0F49298B10A3D76A4";
+};
+"2F7BAC41978F62900A69AC22" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "449E649C3B71C0E0EFB38F4A";
+};
+"4669414E92A62A322A042BD2" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "FE71871083CA490E6BC0DA33";
+};
+"93074E3F03ACA7778F0DA17A" = {
+"isa" = "PBXResourcesBuildPhase";
+"buildActionMask" = "2147483647";
+"files" = ("ACDA00000000000000000002","C96268BA6147A42A695BA2C0","2F7BAC41978F62900A69AC22","4669414E92A62A322A042BD2");
+"runOnlyForDeploymentPostprocessing" = "0";
+};
+"29A46C0C9F338016EEC8163E" = {
+"isa" = "PBXShellScriptBuildPhase";
+"name" = "Build shared core and LAME";
+"buildActionMask" = "2147483647";
+"shellPath" = "/bin/bash";
+"shellScript" = "\"$SRCROOT/../../scripts/build_mobile_apple.sh\"\n";
+"runOnlyForDeploymentPostprocessing" = "0";
+"alwaysOutOfDate" = "1";
+"files" = ();
+"inputPaths" = ();
+"outputPaths" = ();
+};
+"CC60F17842BA6962706A076B" = {
+"isa" = "XCBuildConfiguration";
+"name" = "Debug";
+"buildSettings" = {
+"IPHONEOS_DEPLOYMENT_TARGET" = "17.0";
+"SWIFT_VERSION" = "5.0";
+"CLANG_ENABLE_MODULES" = "YES";
+"SDKROOT" = "iphoneos";
+"TARGETED_DEVICE_FAMILY" = "1,2";
+"CODE_SIGN_STYLE" = "Automatic";
+"ENABLE_USER_SCRIPT_SANDBOXING" = "NO";
+"PRODUCT_NAME" = "CambridgeAudio";
+"ASSETCATALOG_COMPILER_APPICON_NAME" = "AppIcon";
+"PRODUCT_BUNDLE_IDENTIFIER" = "org.cambridgeaudio.app";
+"INFOPLIST_FILE" = "CambridgeAudio/Info.plist";
+"SWIFT_OBJC_BRIDGING_HEADER" = "CambridgeAudio/Bridge.h";
+"FRAMEWORK_SEARCH_PATHS" = ("$(inherited)","$(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)");
+"HEADER_SEARCH_PATHS" = ("$(inherited)","$(SRCROOT)/../../build/mobile-codec/ios-$(PLATFORM_NAME)/include/lame");
+"LIBRARY_SEARCH_PATHS" = ("$(inherited)","$(SRCROOT)/../../build/mobile-codec/ios-$(PLATFORM_NAME)");
+"OTHER_LDFLAGS" = ("$(inherited)","-framework","CambridgeCore","-lmp3lame","-lsqlite3","-lc++");
+"LD_RUNPATH_SEARCH_PATHS" = ("$(inherited)","@executable_path/Frameworks");
+"GENERATE_INFOPLIST_FILE" = "NO";
+"SWIFT_OPTIMIZATION_LEVEL" = "-Onone";
+"DEBUG_INFORMATION_FORMAT" = "dwarf";
+"SWIFT_ACTIVE_COMPILATION_CONDITIONS" = "DEBUG";
+};
+};
+"EA1307C3310B9D6A1814F9B4" = {
+"isa" = "XCBuildConfiguration";
+"name" = "Release";
+"buildSettings" = {
+"IPHONEOS_DEPLOYMENT_TARGET" = "17.0";
+"SWIFT_VERSION" = "5.0";
+"CLANG_ENABLE_MODULES" = "YES";
+"SDKROOT" = "iphoneos";
+"TARGETED_DEVICE_FAMILY" = "1,2";
+"CODE_SIGN_STYLE" = "Automatic";
+"ENABLE_USER_SCRIPT_SANDBOXING" = "NO";
+"PRODUCT_NAME" = "CambridgeAudio";
+"ASSETCATALOG_COMPILER_APPICON_NAME" = "AppIcon";
+"PRODUCT_BUNDLE_IDENTIFIER" = "org.cambridgeaudio.app";
+"INFOPLIST_FILE" = "CambridgeAudio/Info.plist";
+"SWIFT_OBJC_BRIDGING_HEADER" = "CambridgeAudio/Bridge.h";
+"FRAMEWORK_SEARCH_PATHS" = ("$(inherited)","$(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)");
+"HEADER_SEARCH_PATHS" = ("$(inherited)","$(SRCROOT)/../../build/mobile-codec/ios-$(PLATFORM_NAME)/include/lame");
+"LIBRARY_SEARCH_PATHS" = ("$(inherited)","$(SRCROOT)/../../build/mobile-codec/ios-$(PLATFORM_NAME)");
+"OTHER_LDFLAGS" = ("$(inherited)","-framework","CambridgeCore","-lmp3lame","-lsqlite3","-lc++");
+"LD_RUNPATH_SEARCH_PATHS" = ("$(inherited)","@executable_path/Frameworks");
+"GENERATE_INFOPLIST_FILE" = "NO";
+"SWIFT_OPTIMIZATION_LEVEL" = "-O";
+"DEBUG_INFORMATION_FORMAT" = "dwarf-with-dsym";
+"SWIFT_ACTIVE_COMPILATION_CONDITIONS" = "";
+};
+};
+"12BA9DB8ECDD79B6DE1973CA" = {
+"isa" = "XCConfigurationList";
+"buildConfigurations" = ("CC60F17842BA6962706A076B","EA1307C3310B9D6A1814F9B4");
+"defaultConfigurationIsVisible" = "0";
+"defaultConfigurationName" = "Release";
+};
+"4B1567ED55CB28AF12A78C82" = {
+"isa" = "PBXNativeTarget";
+"name" = "CambridgeAudio";
+"productName" = "CambridgeAudio";
+"productType" = "com.apple.product-type.application";
+"productReference" = "604BC19671E432AB4CA3D926";
+"buildConfigurationList" = "12BA9DB8ECDD79B6DE1973CA";
+"buildPhases" = ("29A46C0C9F338016EEC8163E","B3156521F4306D4272D67712","6D8193BB764AAFA2C7916AFE","93074E3F03ACA7778F0DA17A");
+"buildRules" = ();
+"dependencies" = ();
+"packageProductDependencies" = ("672520AED988AE6C3049A0D7");
+};
+"B844ACF43CB4057EF1D1A801" = {
+"isa" = "PBXFileReference";
+"explicitFileType" = "wrapper.cfbundle";
+"path" = "CambridgeAudioTests.xctest";
+"sourceTree" = "BUILT_PRODUCTS_DIR";
+"includeInIndex" = "0";
+};
+"9B5F3AECDC909787064B1D29" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "709FC48492163BEE8772469B";
+};
+"230B7BC7340B9DAD623DF770" = {
+"isa" = "PBXSourcesBuildPhase";
+"buildActionMask" = "2147483647";
+"files" = ("9B5F3AECDC909787064B1D29");
+"runOnlyForDeploymentPostprocessing" = "0";
+};
+"7877BA1BC3AE4B9810E5E06E" = {
+"isa" = "PBXFrameworksBuildPhase";
+"buildActionMask" = "2147483647";
+"files" = ();
+"runOnlyForDeploymentPostprocessing" = "0";
+};
+"0E60ECA9AF7E18745A12476F" = {
+"isa" = "PBXResourcesBuildPhase";
+"buildActionMask" = "2147483647";
+"files" = ("ACDA00000000000000000004");
+"runOnlyForDeploymentPostprocessing" = "0";
+};
+"046D6BFB83868ABF34B4A122" = {
+"isa" = "PBXContainerItemProxy";
+"containerPortal" = "98F54143AB4E86B28C3AFEE0";
+"proxyType" = "1";
+"remoteGlobalIDString" = "4B1567ED55CB28AF12A78C82";
+"remoteInfo" = "CambridgeAudio";
+};
+"0D85F3A4E3AE8DD50E595AA5" = {
+"isa" = "PBXTargetDependency";
+"target" = "4B1567ED55CB28AF12A78C82";
+"targetProxy" = "046D6BFB83868ABF34B4A122";
+};
+"DBD7B301A0479CDE83B92C4E" = {
+"isa" = "XCBuildConfiguration";
+"name" = "Debug";
+"buildSettings" = {
+"IPHONEOS_DEPLOYMENT_TARGET" = "17.0";
+"SWIFT_VERSION" = "5.0";
+"CLANG_ENABLE_MODULES" = "YES";
+"SDKROOT" = "iphoneos";
+"TARGETED_DEVICE_FAMILY" = "1,2";
+"CODE_SIGN_STYLE" = "Automatic";
+"ENABLE_USER_SCRIPT_SANDBOXING" = "NO";
+"PRODUCT_NAME" = "CambridgeAudioTests";
+"PRODUCT_BUNDLE_IDENTIFIER" = "org.cambridgeaudio.cambridgeaudiotests";
+"GENERATE_INFOPLIST_FILE" = "YES";
+"FRAMEWORK_SEARCH_PATHS" = ("$(inherited)","$(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)");
+"TEST_HOST" = "$(BUILT_PRODUCTS_DIR)/CambridgeAudio.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/CambridgeAudio";
+"BUNDLE_LOADER" = "$(TEST_HOST)";
+"SWIFT_OPTIMIZATION_LEVEL" = "-Onone";
+"DEBUG_INFORMATION_FORMAT" = "dwarf";
+"SWIFT_ACTIVE_COMPILATION_CONDITIONS" = "DEBUG";
+};
+};
+"AD21C25C9A30EC40B3CAC961" = {
+"isa" = "XCBuildConfiguration";
+"name" = "Release";
+"buildSettings" = {
+"IPHONEOS_DEPLOYMENT_TARGET" = "17.0";
+"SWIFT_VERSION" = "5.0";
+"CLANG_ENABLE_MODULES" = "YES";
+"SDKROOT" = "iphoneos";
+"TARGETED_DEVICE_FAMILY" = "1,2";
+"CODE_SIGN_STYLE" = "Automatic";
+"ENABLE_USER_SCRIPT_SANDBOXING" = "NO";
+"PRODUCT_NAME" = "CambridgeAudioTests";
+"PRODUCT_BUNDLE_IDENTIFIER" = "org.cambridgeaudio.cambridgeaudiotests";
+"GENERATE_INFOPLIST_FILE" = "YES";
+"FRAMEWORK_SEARCH_PATHS" = ("$(inherited)","$(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)");
+"TEST_HOST" = "$(BUILT_PRODUCTS_DIR)/CambridgeAudio.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/CambridgeAudio";
+"BUNDLE_LOADER" = "$(TEST_HOST)";
+"SWIFT_OPTIMIZATION_LEVEL" = "-O";
+"DEBUG_INFORMATION_FORMAT" = "dwarf-with-dsym";
+"SWIFT_ACTIVE_COMPILATION_CONDITIONS" = "";
+};
+};
+"864BA7923C55C08A5577BCE2" = {
+"isa" = "XCConfigurationList";
+"buildConfigurations" = ("DBD7B301A0479CDE83B92C4E","AD21C25C9A30EC40B3CAC961");
+"defaultConfigurationIsVisible" = "0";
+"defaultConfigurationName" = "Release";
+};
+"7546423AD46E47DA2A174210" = {
+"isa" = "PBXNativeTarget";
+"name" = "CambridgeAudioTests";
+"productName" = "CambridgeAudioTests";
+"productType" = "com.apple.product-type.bundle.unit-test";
+"productReference" = "B844ACF43CB4057EF1D1A801";
+"buildConfigurationList" = "864BA7923C55C08A5577BCE2";
+"buildPhases" = ("230B7BC7340B9DAD623DF770","7877BA1BC3AE4B9810E5E06E","0E60ECA9AF7E18745A12476F");
+"buildRules" = ();
+"dependencies" = ("0D85F3A4E3AE8DD50E595AA5");
+"packageProductDependencies" = ();
+};
+"B2DB0ABDD916BBA8F6E78F5B" = {
+"isa" = "PBXFileReference";
+"explicitFileType" = "wrapper.cfbundle";
+"path" = "CambridgeAudioUITests.xctest";
+"sourceTree" = "BUILT_PRODUCTS_DIR";
+"includeInIndex" = "0";
+};
+"3506FF0CDA18644034419031" = {
+"isa" = "PBXBuildFile";
+"fileRef" = "560DA8908EFC21B430A3D15F";
+};
+"6A3CEBEA983D2AAC98ACFD13" = {
+"isa" = "PBXSourcesBuildPhase";
+"buildActionMask" = "2147483647";
+"files" = ("3506FF0CDA18644034419031");
+"runOnlyForDeploymentPostprocessing" = "0";
+};
+"BA7ED53A6CFA3D8284017C28" = {
+"isa" = "PBXFrameworksBuildPhase";
+"buildActionMask" = "2147483647";
+"files" = ();
+"runOnlyForDeploymentPostprocessing" = "0";
+};
+"8FB6246BF72878B9F64E128F" = {
+"isa" = "PBXResourcesBuildPhase";
+"buildActionMask" = "2147483647";
+"files" = ();
+"runOnlyForDeploymentPostprocessing" = "0";
+};
+"2DB2EF74E4BC914045FE8C5F" = {
+"isa" = "PBXContainerItemProxy";
+"containerPortal" = "98F54143AB4E86B28C3AFEE0";
+"proxyType" = "1";
+"remoteGlobalIDString" = "4B1567ED55CB28AF12A78C82";
+"remoteInfo" = "CambridgeAudio";
+};
+"C458555EBF3CA2284F3A34E9" = {
+"isa" = "PBXTargetDependency";
+"target" = "4B1567ED55CB28AF12A78C82";
+"targetProxy" = "2DB2EF74E4BC914045FE8C5F";
+};
+"7E5D245B09454A54D57565E6" = {
+"isa" = "XCBuildConfiguration";
+"name" = "Debug";
+"buildSettings" = {
+"IPHONEOS_DEPLOYMENT_TARGET" = "17.0";
+"SWIFT_VERSION" = "5.0";
+"CLANG_ENABLE_MODULES" = "YES";
+"SDKROOT" = "iphoneos";
+"TARGETED_DEVICE_FAMILY" = "1,2";
+"CODE_SIGN_STYLE" = "Automatic";
+"ENABLE_USER_SCRIPT_SANDBOXING" = "NO";
+"PRODUCT_NAME" = "CambridgeAudioUITests";
+"PRODUCT_BUNDLE_IDENTIFIER" = "org.cambridgeaudio.cambridgeaudiouitests";
+"GENERATE_INFOPLIST_FILE" = "YES";
+"FRAMEWORK_SEARCH_PATHS" = ("$(inherited)","$(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)");
+"TEST_TARGET_NAME" = "CambridgeAudio";
+"SWIFT_OPTIMIZATION_LEVEL" = "-Onone";
+"DEBUG_INFORMATION_FORMAT" = "dwarf";
+"SWIFT_ACTIVE_COMPILATION_CONDITIONS" = "DEBUG";
+};
+};
+"48A9AB790A701721FF8DE31D" = {
+"isa" = "XCBuildConfiguration";
+"name" = "Release";
+"buildSettings" = {
+"IPHONEOS_DEPLOYMENT_TARGET" = "17.0";
+"SWIFT_VERSION" = "5.0";
+"CLANG_ENABLE_MODULES" = "YES";
+"SDKROOT" = "iphoneos";
+"TARGETED_DEVICE_FAMILY" = "1,2";
+"CODE_SIGN_STYLE" = "Automatic";
+"ENABLE_USER_SCRIPT_SANDBOXING" = "NO";
+"PRODUCT_NAME" = "CambridgeAudioUITests";
+"PRODUCT_BUNDLE_IDENTIFIER" = "org.cambridgeaudio.cambridgeaudiouitests";
+"GENERATE_INFOPLIST_FILE" = "YES";
+"FRAMEWORK_SEARCH_PATHS" = ("$(inherited)","$(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)");
+"TEST_TARGET_NAME" = "CambridgeAudio";
+"SWIFT_OPTIMIZATION_LEVEL" = "-O";
+"DEBUG_INFORMATION_FORMAT" = "dwarf-with-dsym";
+"SWIFT_ACTIVE_COMPILATION_CONDITIONS" = "";
+};
+};
+"FCD1E80A5619B2DFD871A791" = {
+"isa" = "XCConfigurationList";
+"buildConfigurations" = ("7E5D245B09454A54D57565E6","48A9AB790A701721FF8DE31D");
+"defaultConfigurationIsVisible" = "0";
+"defaultConfigurationName" = "Release";
+};
+"FE81E50763FD4E303F7A82B9" = {
+"isa" = "PBXNativeTarget";
+"name" = "CambridgeAudioUITests";
+"productName" = "CambridgeAudioUITests";
+"productType" = "com.apple.product-type.bundle.ui-testing";
+"productReference" = "B2DB0ABDD916BBA8F6E78F5B";
+"buildConfigurationList" = "FCD1E80A5619B2DFD871A791";
+"buildPhases" = ("6A3CEBEA983D2AAC98ACFD13","BA7ED53A6CFA3D8284017C28","8FB6246BF72878B9F64E128F");
+"buildRules" = ();
+"dependencies" = ("C458555EBF3CA2284F3A34E9");
+"packageProductDependencies" = ();
+};
+"FBDC4F23F93125BBEEAE800C" = {
+"isa" = "PBXGroup";
+"name" = "Products";
+"sourceTree" = "<group>";
+"children" = ("604BC19671E432AB4CA3D926","B844ACF43CB4057EF1D1A801","B2DB0ABDD916BBA8F6E78F5B");
+};
+"B28B7AF69320201D1CF206EB" = {
+"isa" = "PBXGroup";
+"sourceTree" = "<group>";
+"children" = ("ACDA00000000000000000003","ACDA00000000000000000001","3A2594CAA8E20B819DD93E48","4AE4A885EF26CC9F4DA548B8","5F5EB0916B64A84DCD5A2F04","D061F60AF2B575D74177D705","0398CCD0F49298B10A3D76A4","449E649C3B71C0E0EFB38F4A","FE71871083CA490E6BC0DA33","709FC48492163BEE8772469B","560DA8908EFC21B430A3D15F","FBDC4F23F93125BBEEAE800C");
+};
+"89E1FD6268CC0F221A2BE178" = {
+"isa" = "XCBuildConfiguration";
+"name" = "Debug";
+"buildSettings" = {
+"IPHONEOS_DEPLOYMENT_TARGET" = "17.0";
+"SWIFT_VERSION" = "5.0";
+"CLANG_ENABLE_MODULES" = "YES";
+"SDKROOT" = "iphoneos";
+"TARGETED_DEVICE_FAMILY" = "1,2";
+"CODE_SIGN_STYLE" = "Automatic";
+"ENABLE_USER_SCRIPT_SANDBOXING" = "NO";
+"SWIFT_OPTIMIZATION_LEVEL" = "-Onone";
+"DEBUG_INFORMATION_FORMAT" = "dwarf";
+"SWIFT_ACTIVE_COMPILATION_CONDITIONS" = "DEBUG";
+};
+};
+"E6DE6C99132752C914FEF632" = {
+"isa" = "XCBuildConfiguration";
+"name" = "Release";
+"buildSettings" = {
+"IPHONEOS_DEPLOYMENT_TARGET" = "17.0";
+"SWIFT_VERSION" = "5.0";
+"CLANG_ENABLE_MODULES" = "YES";
+"SDKROOT" = "iphoneos";
+"TARGETED_DEVICE_FAMILY" = "1,2";
+"CODE_SIGN_STYLE" = "Automatic";
+"ENABLE_USER_SCRIPT_SANDBOXING" = "NO";
+"SWIFT_OPTIMIZATION_LEVEL" = "-O";
+"DEBUG_INFORMATION_FORMAT" = "dwarf-with-dsym";
+"SWIFT_ACTIVE_COMPILATION_CONDITIONS" = "";
+};
+};
+"862894B703A6DEDF96A9DD6C" = {
+"isa" = "XCConfigurationList";
+"buildConfigurations" = ("89E1FD6268CC0F221A2BE178","E6DE6C99132752C914FEF632");
+"defaultConfigurationIsVisible" = "0";
+"defaultConfigurationName" = "Release";
+};
+"98F54143AB4E86B28C3AFEE0" = {
+"isa" = "PBXProject";
+"attributes" = {
+"BuildIndependentTargetsInParallel" = "YES";
+"LastUpgradeCheck" = "2640";
+};
+"buildConfigurationList" = "862894B703A6DEDF96A9DD6C";
+"compatibilityVersion" = "Xcode 15.0";
+"developmentRegion" = "en";
+"knownRegions" = ("en","ru","Base");
+"mainGroup" = "B28B7AF69320201D1CF206EB";
+"productRefGroup" = "FBDC4F23F93125BBEEAE800C";
+"projectDirPath" = "";
+"projectRoot" = "";
+"targets" = ("4B1567ED55CB28AF12A78C82","7546423AD46E47DA2A174210","FE81E50763FD4E303F7A82B9");
+"packageReferences" = ("3545353DECCD82C804AC4360");
+};
+};
+"rootObject" = "98F54143AB4E86B28C3AFEE0";
+}

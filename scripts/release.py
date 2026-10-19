@@ -37,6 +37,7 @@ CLI_MODULES = {
     "translations.py",
     "wikdict.py",
     "anki.py",
+    "bundle.py",
 }
 
 

@@ -1,0 +1,104 @@
+version: 2
+
+# Normal version updates run monthly, mature for 14 days, and need manual review.
+# Security updates are grouped separately; their timing is not delayed here.
+# Swift Xcode references, custom formatter/source hashes and SDK pins stay manual.
+updates:
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: monthly
+      time: "09:00"
+      timezone: Europe/Moscow
+    cooldown:
+      default-days: 14
+    open-pull-requests-limit: 1
+    rebase-strategy: disabled
+    # Preserve tested Python/Qt bounds and exact release-tool pins in pyproject.toml.
+    versioning-strategy: lockfile-only
+    allow:
+      - dependency-name: "*"
+        update-types: [version-update:semver-minor, version-update:semver-patch]
+    groups:
+      python-dependencies:
+        applies-to: version-updates
+        patterns: ["*"]
+      python-security:
+        applies-to: security-updates
+        patterns: ["*"]
+    commit-message:
+      prefix: chore
+      include: scope
+
+  - package-ecosystem: npm
+    directory: /extension
+    schedule:
+      interval: monthly
+      time: "09:00"
+      timezone: Europe/Moscow
+    cooldown:
+      default-days: 14
+    open-pull-requests-limit: 1
+    rebase-strategy: disabled
+    allow:
+      - dependency-name: "*"
+        update-types: [version-update:semver-minor, version-update:semver-patch]
+    groups:
+      extension-dependencies:
+        applies-to: version-updates
+        patterns: ["*"]
+      extension-security:
+        applies-to: security-updates
+        patterns: ["*"]
+    commit-message:
+      prefix: chore
+      include: scope
+
+  - package-ecosystem: gradle
+    directory: /mobile
+    schedule:
+      interval: monthly
+      time: "09:00"
+      timezone: Europe/Moscow
+    cooldown:
+      default-days: 14
+    open-pull-requests-limit: 1
+    rebase-strategy: disabled
+    allow:
+      - dependency-name: "*"
+        update-types: [version-update:semver-minor, version-update:semver-patch]
+    # Keep Kotlin/Compose/AGP and shared Android/core updates in the same review.
+    groups:
+      mobile-dependencies:
+        applies-to: version-updates
+        patterns: ["*"]
+      mobile-security:
+        applies-to: security-updates
+        patterns: ["*"]
+    commit-message:
+      prefix: chore
+      include: scope
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+      time: "09:00"
+      timezone: Europe/Moscow
+    cooldown:
+      default-days: 14
+    open-pull-requests-limit: 1
+    rebase-strategy: disabled
+    allow:
+      - dependency-name: "*"
+        update-types: [version-update:semver-minor, version-update:semver-patch]
+    groups:
+      actions-dependencies:
+        applies-to: version-updates
+        patterns: ["*"]
+      actions-security:
+        applies-to: security-updates
+        patterns: ["*"]
+    commit-message:
+      prefix: chore
+      include: scope

@@ -1,0 +1,561 @@
+{
+  "version": 1,
+  "normalization": [
+    {
+      "input": "  Good\t Morning ",
+      "normalized": "good morning",
+      "filename": "good morning.us.mp3"
+    },
+    {
+      "input": "DON'T",
+      "normalized": "don't",
+      "filename": "don't.us.mp3"
+    },
+    {
+      "input": "Mother-In-Law",
+      "normalized": "mother-in-law",
+      "filename": "mother-in-law.us.mp3"
+    },
+    {
+      "input": "con",
+      "normalized": "con",
+      "filename": "_con.us.mp3"
+    },
+    {
+      "input": "com9",
+      "normalized": "com9",
+      "filename": "_com9.us.mp3"
+    },
+    {
+      "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "normalized": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "filename": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa--2f3d335432c70b580af0e8e1.us.mp3"
+    },
+    {
+      "input": "hello world",
+      "normalized": "hello world",
+      "filename": "hello world.us.mp3"
+    },
+    {
+      "input": "Straße",
+      "invalid": true
+    },
+    {
+      "input": "https://example.com",
+      "invalid": true
+    },
+    {
+      "input": "a/b",
+      "invalid": true
+    },
+    {
+      "input": "",
+      "invalid": true
+    },
+    {
+      "input": " Hello!",
+      "invalid": true
+    },
+    {
+      "input": "one  two",
+      "normalized": "one two",
+      "filename": "one two.us.mp3"
+    }
+  ],
+  "parsers": [
+    {
+      "file": "fixtures/conftest-html.html",
+      "url": "https://dictionary.cambridge.org/us/dictionary/english/hello",
+      "entries": [
+        {
+          "word": "hello",
+          "definition": "used when meeting someone",
+          "pronunciations": [
+            {
+              "accent": "us",
+              "url": "https://dictionary.cambridge.org/us/media/hello-us.mp3",
+              "ipa": "heˈloʊ"
+            },
+            {
+              "accent": "uk",
+              "url": "https://dictionary.cambridge.org/us/media/hello-uk.mp3",
+              "ipa": "heˈləʊ"
+            }
+          ],
+          "part_of_speech": "",
+          "entry_id": "0d5ce702c2ab8dcf7cf5b570",
+          "sense_id": "ec8ac26bf8693bd45b8bdd3a",
+          "source_url": "https://dictionary.cambridge.org/us/dictionary/english/hello",
+          "lemma": "hello",
+          "legacy_ids": [
+            "234afc1c441c9ae787080d9e",
+            "5b21289d57834a040275130f"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "fixtures/test_shared_audio-bank.html",
+      "url": "https://dictionary.cambridge.org/us/dictionary/english/bank",
+      "entries": [
+        {
+          "word": "bank",
+          "definition": "money",
+          "pronunciations": [
+            {
+              "accent": "us",
+              "url": "https://dictionary.cambridge.org/media/bank.mp3",
+              "ipa": "bæŋk"
+            }
+          ],
+          "part_of_speech": "noun",
+          "entry_id": "179d66599de51e47a0fc7692",
+          "sense_id": "3b2d5818111a7a17a940a7fe",
+          "source_url": "https://dictionary.cambridge.org/us/dictionary/english/bank",
+          "lemma": "bank",
+          "legacy_ids": [
+            "c8b0512ed48b37143f0b9a38"
+          ]
+        },
+        {
+          "word": "bank",
+          "definition": "river",
+          "pronunciations": [
+            {
+              "accent": "us",
+              "url": "https://dictionary.cambridge.org/media/bank.mp3",
+              "ipa": "bæŋk"
+            }
+          ],
+          "part_of_speech": "noun",
+          "entry_id": "179d66599de51e47a0fc7692",
+          "sense_id": "1c4d83c03e0e6fc3310e4bae",
+          "source_url": "https://dictionary.cambridge.org/us/dictionary/english/bank",
+          "lemma": "bank",
+          "legacy_ids": [
+            "79d475b85d4b552b73ac9f11"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "fixtures/lead-multiple.html",
+      "url": "https://dictionary.cambridge.org/us/dictionary/english/lead",
+      "entries": [
+        {
+          "word": "lead",
+          "definition": "a metal",
+          "pronunciations": [
+            {
+              "accent": "us",
+              "url": "https://dictionary.cambridge.org/media/lead-metal.mp3",
+              "ipa": "led"
+            }
+          ],
+          "part_of_speech": "noun",
+          "entry_id": "1e8ecac9e73cc9f0ab2a53d8",
+          "sense_id": "44ec26756bd94ba6c1e5d984",
+          "source_url": "https://dictionary.cambridge.org/us/dictionary/english/lead",
+          "lemma": "lead",
+          "legacy_ids": [
+            "73f9c469bcada7d85dfea51b"
+          ]
+        },
+        {
+          "word": "lead",
+          "definition": "to guide",
+          "pronunciations": [
+            {
+              "accent": "us",
+              "url": "https://dictionary.cambridge.org/media/lead-guide.mp3",
+              "ipa": "liːd"
+            },
+            {
+              "accent": "us",
+              "url": "https://dictionary.cambridge.org/media/lead-guide-alt.mp3",
+              "ipa": "lid"
+            }
+          ],
+          "part_of_speech": "verb",
+          "entry_id": "9c0cb9093f2154d4993ca98b",
+          "sense_id": "9b17a76f02d71f15e32d0bb4",
+          "source_url": "https://dictionary.cambridge.org/us/dictionary/english/lead",
+          "lemma": "lead",
+          "legacy_ids": [
+            "9a1593b13c8d3f49e4fcb453",
+            "cb1f1a7a793f5b40b53aa273"
+          ]
+        },
+        {
+          "word": "lead",
+          "definition": "to be first",
+          "pronunciations": [
+            {
+              "accent": "us",
+              "url": "https://dictionary.cambridge.org/media/lead-guide.mp3",
+              "ipa": "liːd"
+            },
+            {
+              "accent": "us",
+              "url": "https://dictionary.cambridge.org/media/lead-guide-alt.mp3",
+              "ipa": "lid"
+            }
+          ],
+          "part_of_speech": "verb",
+          "entry_id": "9c0cb9093f2154d4993ca98b",
+          "sense_id": "9c62b0bc8d61cc1a08e1c6c7",
+          "source_url": "https://dictionary.cambridge.org/us/dictionary/english/lead",
+          "lemma": "lead",
+          "legacy_ids": [
+            "2487c19ee0329110478ccd28",
+            "86fa48b2571ab63199733247"
+          ]
+        }
+      ]
+    }
+  ],
+  "identities": [
+    {
+      "values": [
+        "cambridge-audio",
+        "us",
+        "https://dictionary.cambridge.org/media/bank.mp3"
+      ],
+      "id": "ac9b9f95eba9b531fd929cd9"
+    },
+    {
+      "values": [
+        "legacy",
+        "hello",
+        "us",
+        "recording"
+      ],
+      "id": "d737ba84e4c65a7c3663325e"
+    },
+    {
+      "values": [
+        "variant",
+        "older-id"
+      ],
+      "id": "bd3dec2cb51015cc12df8cd4"
+    }
+  ],
+  "matching": [
+    {
+      "definition": "an organization where people and businesses can invest or borrow money, change it to foreign money, etc., or a building where these services are offered",
+      "part": "noun",
+      "options": [
+        {
+          "id": "0",
+          "texts": [
+            "result0"
+          ],
+          "definition": "an organization or place where you can borrow money , save money , etc",
+          "part_of_speech": "noun",
+          "origin": "",
+          "matched": false
+        },
+        {
+          "id": "1",
+          "texts": [
+            "result1"
+          ],
+          "definition": "the land along the side of a river",
+          "part_of_speech": "noun",
+          "origin": "",
+          "matched": false
+        },
+        {
+          "id": "2",
+          "texts": [
+            "result2"
+          ],
+          "definition": "to pay money for something",
+          "part_of_speech": "verb",
+          "origin": "",
+          "matched": false
+        },
+        {
+          "id": "3",
+          "texts": [
+            "result3"
+          ],
+          "definition": "to receive money for something",
+          "part_of_speech": "verb",
+          "origin": "",
+          "matched": false
+        },
+        {
+          "id": "4",
+          "texts": [
+            "result4"
+          ],
+          "definition": "a large pile of snow, sand, or soil",
+          "part_of_speech": "noun",
+          "origin": "",
+          "matched": false
+        }
+      ],
+      "expected": [
+        {
+          "id": "0",
+          "texts": [
+            "result0"
+          ],
+          "definition": "an organization or place where you can borrow money , save money , etc",
+          "part_of_speech": "noun",
+          "origin": "",
+          "matched": true
+        }
+      ]
+    },
+    {
+      "definition": "to pay money for something",
+      "part": "verb",
+      "options": [
+        {
+          "id": "0",
+          "texts": [
+            "result0"
+          ],
+          "definition": "an organization or place where you can borrow money , save money , etc",
+          "part_of_speech": "noun",
+          "origin": "",
+          "matched": false
+        },
+        {
+          "id": "1",
+          "texts": [
+            "result1"
+          ],
+          "definition": "the land along the side of a river",
+          "part_of_speech": "noun",
+          "origin": "",
+          "matched": false
+        },
+        {
+          "id": "2",
+          "texts": [
+            "result2"
+          ],
+          "definition": "to pay money for something",
+          "part_of_speech": "verb",
+          "origin": "",
+          "matched": false
+        },
+        {
+          "id": "3",
+          "texts": [
+            "result3"
+          ],
+          "definition": "to receive money for something",
+          "part_of_speech": "verb",
+          "origin": "",
+          "matched": false
+        },
+        {
+          "id": "4",
+          "texts": [
+            "result4"
+          ],
+          "definition": "a large pile of snow, sand, or soil",
+          "part_of_speech": "noun",
+          "origin": "",
+          "matched": false
+        }
+      ],
+      "expected": [
+        {
+          "id": "2",
+          "texts": [
+            "result2"
+          ],
+          "definition": "to pay money for something",
+          "part_of_speech": "verb",
+          "origin": "",
+          "matched": true
+        }
+      ]
+    },
+    {
+      "definition": "to pay money to a person",
+      "part": "verb",
+      "options": [
+        {
+          "id": "0",
+          "texts": [
+            "result0"
+          ],
+          "definition": "an organization or place where you can borrow money , save money , etc",
+          "part_of_speech": "noun",
+          "origin": "",
+          "matched": false
+        },
+        {
+          "id": "1",
+          "texts": [
+            "result1"
+          ],
+          "definition": "the land along the side of a river",
+          "part_of_speech": "noun",
+          "origin": "",
+          "matched": false
+        },
+        {
+          "id": "2",
+          "texts": [
+            "result2"
+          ],
+          "definition": "to pay money for something",
+          "part_of_speech": "verb",
+          "origin": "",
+          "matched": false
+        },
+        {
+          "id": "3",
+          "texts": [
+            "result3"
+          ],
+          "definition": "to receive money for something",
+          "part_of_speech": "verb",
+          "origin": "",
+          "matched": false
+        },
+        {
+          "id": "4",
+          "texts": [
+            "result4"
+          ],
+          "definition": "a large pile of snow, sand, or soil",
+          "part_of_speech": "noun",
+          "origin": "",
+          "matched": false
+        }
+      ],
+      "expected": [
+        {
+          "id": "2",
+          "texts": [
+            "result2"
+          ],
+          "definition": "to pay money for something",
+          "part_of_speech": "verb",
+          "origin": "",
+          "matched": false
+        },
+        {
+          "id": "3",
+          "texts": [
+            "result3"
+          ],
+          "definition": "to receive money for something",
+          "part_of_speech": "verb",
+          "origin": "",
+          "matched": false
+        }
+      ]
+    },
+    {
+      "definition": "a place with no money",
+      "part": "noun",
+      "options": [
+        {
+          "id": "0",
+          "texts": [
+            "result0"
+          ],
+          "definition": "an organization or place where you can borrow money , save money , etc",
+          "part_of_speech": "noun",
+          "origin": "",
+          "matched": false
+        },
+        {
+          "id": "1",
+          "texts": [
+            "result1"
+          ],
+          "definition": "the land along the side of a river",
+          "part_of_speech": "noun",
+          "origin": "",
+          "matched": false
+        },
+        {
+          "id": "2",
+          "texts": [
+            "result2"
+          ],
+          "definition": "to pay money for something",
+          "part_of_speech": "verb",
+          "origin": "",
+          "matched": false
+        },
+        {
+          "id": "3",
+          "texts": [
+            "result3"
+          ],
+          "definition": "to receive money for something",
+          "part_of_speech": "verb",
+          "origin": "",
+          "matched": false
+        },
+        {
+          "id": "4",
+          "texts": [
+            "result4"
+          ],
+          "definition": "a large pile of snow, sand, or soil",
+          "part_of_speech": "noun",
+          "origin": "",
+          "matched": false
+        }
+      ],
+      "expected": [
+        {
+          "id": "0",
+          "texts": [
+            "result0"
+          ],
+          "definition": "an organization or place where you can borrow money , save money , etc",
+          "part_of_speech": "noun",
+          "origin": "",
+          "matched": false
+        },
+        {
+          "id": "1",
+          "texts": [
+            "result1"
+          ],
+          "definition": "the land along the side of a river",
+          "part_of_speech": "noun",
+          "origin": "",
+          "matched": false
+        },
+        {
+          "id": "4",
+          "texts": [
+            "result4"
+          ],
+          "definition": "a large pile of snow, sand, or soil",
+          "part_of_speech": "noun",
+          "origin": "",
+          "matched": false
+        }
+      ]
+    }
+  ],
+  "guids": [
+    {
+      "id": "0123456789abcdef01234567",
+      "guid": "U+E0y2X*8"
+    },
+    {
+      "id": "ffffffffffffffffffffffff",
+      "guid": "LGFu#!$SUX"
+    },
+    {
+      "id": "d1e597c796c684319532ce17",
+      "guid": "O?Dxch.,Ro"
+    }
+  ]
+}
