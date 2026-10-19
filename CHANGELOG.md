@@ -9,6 +9,8 @@ release dates are included only where a published release can be verified.
 
 ### 1.0 development (not released; acceptance incomplete)
 
+- Grant the CI Android emulator access to KVM and build iOS Debug targets for the
+  selected simulator architecture, matching their Swift package dependencies.
 - Fix Windows collection transfer flushes by using writable file handles, correct
   the pinned Gradle distribution checksum, and stop requesting the removed Android
   SDK `tools` package in mobile build/signing workflows. Enable Debug testability

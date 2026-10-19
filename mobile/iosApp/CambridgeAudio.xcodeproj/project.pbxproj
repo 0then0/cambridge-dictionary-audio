@@ -460,6 +460,7 @@
 "isa" = "XCBuildConfiguration";
 "name" = "Debug";
 "buildSettings" = {
+"ONLY_ACTIVE_ARCH" = "YES";
 "IPHONEOS_DEPLOYMENT_TARGET" = "17.0";
 "SWIFT_VERSION" = "5.0";
 "CLANG_ENABLE_MODULES" = "YES";
