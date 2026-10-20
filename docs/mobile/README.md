@@ -5,7 +5,7 @@ collection, Russian translations, phrase synthesis and Anki export. They run
 independently of the desktop application and do not require a Python installation.
 
 Android requires **Android 9 or later**; iOS requires **iOS 17 or later**.
-The mobile version is **1.0.0-dev**. For build artifacts, signing requirements and
+The mobile version is **1.0.0**. For build artifacts, signing requirements and
 installation commands, see [Mobile builds and installation](install.md).
 
 ## Search and save

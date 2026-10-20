@@ -4,7 +4,7 @@ This guide covers Android and iOS source builds, CI artifacts, signing and updat
 For application usage, see [Android and iOS](https://github.com/0then0/cambridge-dictionary-audio/blob/main/docs/mobile/README.md); for regression suites,
 see [Mobile testing](https://github.com/0then0/cambridge-dictionary-audio/blob/main/docs/mobile/readiness.md).
 
-The mobile version is **1.0.0-dev**, build **1000001**. Python and browser-extension
+The mobile version is **1.0.0**, build **1000002**. Python and browser-extension
 versions are managed separately. Published downloads are listed on
 [GitHub Releases](https://github.com/0then0/cambridge-dictionary-audio/releases).
 

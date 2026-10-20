@@ -53,7 +53,7 @@ wheels = [
 
 [[package]]
 name = "cambridge-dictionary-audio"
-version = "0.4.2"
+version = "1.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "beautifulsoup4" },

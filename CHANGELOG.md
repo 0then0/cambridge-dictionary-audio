@@ -6,6 +6,8 @@ the corresponding application releases or source history.
 
 ## Unreleased
 
+## 1.0.0 (2026-10-20)
+
 ### Added
 
 - Standalone Android and iOS applications with a shared Kotlin core, native
@@ -28,6 +30,8 @@ the corresponding application releases or source history.
 
 ### Changed
 
+- Run full mobile CI only for relevant source/configuration changes, retaining
+  manual and release builds and cancelling superseded branch/PR runs.
 - Apply Android manual accents to the complete colour scheme, including chips,
   switches, navigation and surfaces. Distinguish system colours from manual
   palettes and adapt iOS accents to light and dark appearance.

@@ -603,7 +603,7 @@ private struct SettingsView: View {
         }
       }.oledRowBackground(model.pureBlack)
       Section(model.t("About", "О приложении")) {
-        Text("1.0.0-dev (1000001) · storage 3 · bundle 1")
+        Text("1.0.0 (1000002) · storage 3 · bundle 1")
         Link(
           model.t("Repository", "Репозиторий"),
           destination: URL(string: "https://github.com/0then0/cambridge-dictionary-audio")!)

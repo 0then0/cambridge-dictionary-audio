@@ -42,19 +42,19 @@ def android(output, require_signed):
     if require_signed and not release_signed:
         raise ValueError("Owner release signing key is required")
     status = "owner-signed" if release_signed else "unsigned-NOT-INSTALLABLE"
-    name = f"cambridge-audio-1.0.0-dev-android-{status}.apk"
+    name = f"cambridge-audio-1.0.0-android-{status}.apk"
     shutil.copyfile(candidate, output / name)
     (output / "android-signature.txt").write_text(result.stdout + result.stderr)
     debug = folder / "debug/androidApp-debug.apk"
     if debug.exists():
-        shutil.copyfile(debug, output / "cambridge-audio-1.0.0-dev-android-debug-TEST-ONLY.apk")
+        shutil.copyfile(debug, output / "cambridge-audio-1.0.0-android-debug-TEST-ONLY.apk")
     return {
         "platform": "android",
         "release_signing": status,
         "release_sha256": checksum(output / name),
         "application_id": "org.cambridgeaudio.app",
-        "version_name": "1.0.0-dev",
-        "version_code": 1000001,
+        "version_name": "1.0.0",
+        "version_code": 1000002,
     }
 
 
@@ -67,9 +67,7 @@ def ios(output):
         ("simulator-NOT-FOR-DEVICE", simulator),
         ("device-unsigned-REQUIRES-SIGNING", device),
     ]:
-        with tarfile.open(
-            output / f"cambridge-audio-1.0.0-dev-ios-{label}.tar.gz", "w:gz"
-        ) as archive:
+        with tarfile.open(output / f"cambridge-audio-1.0.0-ios-{label}.tar.gz", "w:gz") as archive:
             archive.add(source, arcname=source.name)
     return {
         "platform": "ios",

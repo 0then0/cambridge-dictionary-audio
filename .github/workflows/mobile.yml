@@ -2,12 +2,53 @@ name: Mobile checks and artifacts
 
 on:
   push:
+    branches: [main]
+    paths:
+      - 'mobile/**'
+      - 'contracts/**'
+      - 'scripts/*mobile*'
+      - 'packaging/ffmpeg-sources.json'
+      - 'cambridge_audio/anki.py'
+      - 'cambridge_audio/bundle.py'
+      - 'cambridge_audio/library.py'
+      - 'cambridge_audio/dictionary.py'
+      - 'cambridge_audio/translations.py'
+      - 'tests/core/test_mobile_contract.py'
+      - '.github/workflows/mobile*.yml'
+      - '.github/workflows/release.yml'
+      - '.editorconfig'
+      - 'LICENSE'
+      - 'LICENSE-MIT'
+      - 'NOTICE'
+      - '!**/*.md'
   pull_request:
+    paths:
+      - 'mobile/**'
+      - 'contracts/**'
+      - 'scripts/*mobile*'
+      - 'packaging/ffmpeg-sources.json'
+      - 'cambridge_audio/anki.py'
+      - 'cambridge_audio/bundle.py'
+      - 'cambridge_audio/library.py'
+      - 'cambridge_audio/dictionary.py'
+      - 'cambridge_audio/translations.py'
+      - 'tests/core/test_mobile_contract.py'
+      - '.github/workflows/mobile*.yml'
+      - '.github/workflows/release.yml'
+      - '.editorconfig'
+      - 'LICENSE'
+      - 'LICENSE-MIT'
+      - 'NOTICE'
+      - '!**/*.md'
   workflow_dispatch:
   workflow_call:
 
 permissions:
   contents: read
+
+concurrency:
+  group: mobile-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/')) }}
 
 jobs:
   format:

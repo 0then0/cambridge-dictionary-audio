@@ -5,7 +5,9 @@ adapters, and platform interfaces. Use them alongside the Python compatibility
 fixtures when changing collection storage, translations or Anki export.
 
 The [Mobile checks and artifacts workflow](https://github.com/0then0/cambridge-dictionary-audio/actions/workflows/mobile.yml)
-runs on pushes and pull requests. It checks formatting before building Android
+runs for mobile-related changes on `main` and pull requests, and can be started
+manually. Documentation-only changes do not trigger native builds. Release builds
+always include this workflow. It checks formatting before building Android
 and iOS, runs emulator/simulator tests, and uploads packaged artifacts.
 [Build instructions](install.md) describe the required toolchains and signing.
 

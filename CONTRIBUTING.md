@@ -81,6 +81,12 @@ has processed a worker result. Preserve user metadata and stable export identiti
 Mobile applications have their own Gradle and Xcode toolchains. See
 [mobile build instructions](docs/mobile/install.md) for pinned versions and
 [mobile testing](docs/mobile/readiness.md) for native and compatibility checks.
+Full mobile CI runs for relevant changes on `main` and pull requests: mobile
+sources, shared contracts, transfer/Anki compatibility, native source manifests,
+licenses and mobile/release workflows. Documentation-only and unrelated desktop
+changes do not start native builds. New branch/PR commits cancel superseded mobile
+checks. Manual runs remain available, and Release always calls the mobile workflow.
+
 The shared generated Anki contract is checked with:
 
 ```sh

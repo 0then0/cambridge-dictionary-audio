@@ -29,7 +29,7 @@ The [mobile applications](docs/mobile/README.md) offer pronunciation search,
 offline collections, Russian translations, phrase synthesis and Anki export.
 Android uses Kotlin and Compose Material 3; iOS uses SwiftUI with a shared Kotlin
 core. Minimum versions are Android 9 and iOS 17. The mobile version is
-**1.0.0-dev**; see [builds, installation and signing](docs/mobile/install.md).
+**1.0.0**; see [builds, installation and signing](docs/mobile/install.md).
 
 Collections can be backed up and transferred between the desktop and mobile apps
 as `.cda` archives, including personal translations, shared media and permanent
