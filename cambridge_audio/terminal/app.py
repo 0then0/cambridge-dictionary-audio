@@ -814,6 +814,8 @@ class CambridgeApp(App[None]):
 
     @on(Select.Changed, "#other-audio")
     def show_choice(self):
+        if not self.screen_stack or not self.screen_stack[0].query("#other-audio"):
+            return
         choice = self.current_choice()
         if not choice:
             self._set_error_details("Translation", "")

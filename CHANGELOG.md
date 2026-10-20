@@ -48,6 +48,8 @@ the corresponding application releases or source history.
 
 ### Fixed
 
+- Ignore delayed pronunciation-selection events after terminal widgets are removed
+  during shutdown.
 - Avoid briefly inserting global progress controls during playback preparation.
 - Fit the Android adaptive icon within launcher and splash-screen masks.
 - Preserve collection identities, shared audio and independent MP3s when importing

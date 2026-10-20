@@ -13,6 +13,17 @@ from tests.helpers import response
 from tests.terminal.helpers import finish_download, saved
 
 
+def test_late_pronunciation_event_is_ignored_after_widget_removal(tmp_path):
+    async def scenario():
+        app = CambridgeApp(Options(tmp_path, play=False))
+        async with app.run_test() as pilot:
+            await app.query_one("#other-audio").remove()
+            app.show_choice()
+            await pilot.pause()
+
+    asyncio.run(scenario())
+
+
 @pytest.mark.parametrize("quit_requested", [False, True])
 def test_cancel_waits_for_request_and_retains_already_saved_file(
     tmp_path, monkeypatch, client, html, mp3, quit_requested
