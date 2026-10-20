@@ -177,7 +177,9 @@ def test_tui_pronunciation_choice_saves_matching_variant(tmp_path, monkeypatch, 
             )
             selected_id = app.current_choice().id
             app.save_meaning()
-            await wait_for_ui(pilot, lambda: not app.busy and app.selected is not None)
+            # Join the I/O worker before waiting for its UI completion messages.
+            await finish_download(app, pilot)
+            assert app.selected is not None
             record = app.selected.recording
             assert record.definition == "a different sense"
             assert record.ipa == "other-ipa"
@@ -186,7 +188,6 @@ def test_tui_pronunciation_choice_saves_matching_variant(tmp_path, monkeypatch, 
             assert record.path.read_bytes() == b"ID3selected"
             assert read_recording(record.path).recording == record
             assert client.session.get.call_count == 2
-            await finish_download(app, pilot)
 
     asyncio.run(scenario())
 
