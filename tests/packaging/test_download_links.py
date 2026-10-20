@@ -65,7 +65,7 @@ def test_refresh_validation_rejects_missing_assets_and_unpublished_releases():
         other[key] = True
         with pytest.raises(ValueError):
             download_links.assets_for(other)
-    release["assets"].pop(0)
+    release["assets"] = [asset for asset in release["assets"] if asset["name"] != "SHA256SUMS.txt"]
     with pytest.raises(KeyError):
         download_links.assets_for(release)
 
