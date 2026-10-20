@@ -22,6 +22,8 @@ async def finish_download(app, pilot):
         # Textual cancels its remaining workers when a requested quit completes.
         if not app.quit_pending:
             raise
+    # Workers post completion messages; joining their tasks does not dispatch those messages.
+    await wait_for_ui(pilot, lambda: not app.busy and not app.playing)
     await pilot.pause()
 
 

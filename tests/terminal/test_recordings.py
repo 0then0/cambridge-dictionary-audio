@@ -167,7 +167,14 @@ def test_tui_pronunciation_choice_saves_matching_variant(tmp_path, monkeypatch, 
             from textual.widgets import OptionList
 
             app.query_one("#meanings", OptionList).highlighted = 1
-            await pilot.pause()
+            await wait_for_ui(
+                pilot,
+                lambda: (
+                    not app.busy
+                    and app.current_choice() is not None
+                    and app.current_choice().entry.definition == "a different sense"
+                ),
+            )
             selected_id = app.current_choice().id
             app.save_meaning()
             await wait_for_ui(pilot, lambda: not app.busy and app.selected is not None)
