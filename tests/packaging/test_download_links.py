@@ -16,7 +16,7 @@ from scripts import download_links
 def test_both_readmes_have_direct_format_buttons_for_verified_release_assets():
     release = json.loads(download_links.SNAPSHOT.read_text(encoding="utf-8"))
     assets = {url for _, group in download_links.assets_for(release) for _, url in group}
-    assert len(assets) == 16
+    assert len(assets) == 20
     for filename, russian in (("README.md", False), ("README.ru.md", True)):
         text = (download_links.ROOT / filename).read_text(encoding="utf-8")
         block = text.split("<!-- downloads:start -->")[1].split("<!-- downloads:end -->")[0].strip()
@@ -24,8 +24,8 @@ def test_both_readmes_have_direct_format_buttons_for_verified_release_assets():
         assert markdown.render(block) == markdown.render(download_links.render(release, russian))
         urls = set(re.findall(r"\]\((https://github.com/[^)]+)\)", block))
         assert urls == assets
-        assert len(re.findall(r"!\[[^\]]+\]\(https://img.shields.io/", block)) == 16
-        assert len([line for line in block.splitlines() if line.startswith("| ")]) == 9
+        assert len(re.findall(r"!\[[^\]]+\]\(https://img.shields.io/", block)) == 20
+        assert len([line for line in block.splitlines() if line.startswith("| ")]) == 11
         assert release["tag_name"] in block
         assert "/releases/latest" not in block
         rows = [line for line in block.splitlines() if line.startswith("| ")]
@@ -40,6 +40,21 @@ def test_both_readmes_have_direct_format_buttons_for_verified_release_assets():
             "macos-x86_64" in url
             for url in re.findall(r"\]\((https://github.com/[^)]+)\)", rows[4])
         )
+        for platform, filenames in (
+            ("Android 9+", ("-debug-TEST-ONLY.apk", "-unsigned-NOT-INSTALLABLE.apk")),
+            (
+                "iOS 17+",
+                (
+                    "-device-unsigned-REQUIRES-SIGNING.tar.gz",
+                    "-simulator-NOT-FOR-DEVICE.tar.gz",
+                ),
+            ),
+        ):
+            row = next(line for line in rows if line.startswith(f"| {platform} |"))
+            links = re.findall(r"\]\((https://github.com/[^)]+)\)", row)
+            assert len(links) == 2
+            assert all(any(url.endswith(name) for url in links) for name in filenames)
+        assert "docs/mobile/install.md" in block
         assert text.index('src="assets/icon.svg"') < text.index("<!-- downloads:start -->")
 
 

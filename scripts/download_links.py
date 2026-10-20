@@ -51,6 +51,20 @@ def assets_for(release):
             "Chrome / Firefox",
             [f"cambridge-audio-chrome-{version}.zip", f"cambridge-audio-firefox-{version}.zip"],
         ),
+        (
+            "Android 9+",
+            [
+                f"cambridge-audio-{version}-android-debug-TEST-ONLY.apk",
+                f"cambridge-audio-{version}-android-unsigned-NOT-INSTALLABLE.apk",
+            ],
+        ),
+        (
+            "iOS 17+",
+            [
+                f"cambridge-audio-{version}-ios-device-unsigned-REQUIRES-SIGNING.tar.gz",
+                f"cambridge-audio-{version}-ios-simulator-NOT-FOR-DEVICE.tar.gz",
+            ],
+        ),
         ("SHA-256", ["SHA256SUMS.txt"]),
     ]
     assets = {a["name"]: a for a in release["assets"]}
@@ -94,6 +108,8 @@ def render(release, russian=False):
         ("macOS 14+", "Apple Silicon (arm64)", groups[1][1], "555555", "apple"),
         ("macOS 14+", "Intel (x86-64)", groups[2][1], "555555", "apple"),
         ("Linux", "x86-64 · glibc 2.34+", groups[3][1], "FCC624", "linux"),
+        ("Android 9+", "arm64-v8a / armeabi-v7a / x86_64", groups[6][1], "3DDC84", "android"),
+        ("iOS 17+", "arm64", groups[7][1], "555555", "apple"),
         ("Python CLI", any_arch, groups[4][1], "3776AB", "python"),
         ("Chrome", any_arch, groups[5][1][:1], "4285F4", "googlechrome"),
         ("Firefox", any_arch, groups[5][1][1:], "FF7139", "firefoxbrowser"),
@@ -108,7 +124,15 @@ def render(release, russian=False):
         buttons = []
         for name, url in assets:
             label = (
-                "EXE"
+                ("APK для тестирования" if russian else "Test APK")
+                if "-debug-TEST-ONLY.apk" in name
+                else ("APK без подписи" if russian else "Unsigned APK")
+                if "-unsigned-NOT-INSTALLABLE.apk" in name
+                else ("Устройство · нужна подпись" if russian else "Device · signing required")
+                if "-device-unsigned-REQUIRES-SIGNING.tar.gz" in name
+                else ("Только симулятор" if russian else "Simulator only")
+                if "-simulator-NOT-FOR-DEVICE.tar.gz" in name
+                else "EXE"
                 if name.endswith(".exe")
                 else "Portable ZIP"
                 if name.endswith("-portable.zip")
@@ -125,7 +149,23 @@ def render(release, russian=False):
             buttons.append(f"[![{platform} {architecture} {label}]({badge})]({url})")
         lines.append(f"| {platform} | {architecture} | " + " ".join(buttons) + " |")
     checksum = "https://img.shields.io/badge/SHA--256-SHA256SUMS.txt-555555?style=flat-square"
-    lines.extend(["", f"[![SHA-256]({checksum})]({groups[6][1][0][1]})"])
+    lines.extend(["", f"[![SHA-256]({checksum})]({groups[8][1][0][1]})"])
+    lines.extend(
+        [
+            "",
+            (
+                "Android: тестовый APK подписан сертификатом разработчика; APK без подписи "
+                "нужно подписать перед установкой. iOS: архив для устройства требует подписи "
+                "и профиля подготовки; сборка симулятора не устанавливается на iPhone. "
+                "[Установка и подпись](docs/mobile/install.md)."
+                if russian
+                else "Android: the test APK uses a development certificate; the unsigned APK "
+                "requires signing before installation. iOS: the device archive requires signing "
+                "and a provisioning profile; the simulator build cannot be installed on an iPhone. "
+                "[Installation and signing](docs/mobile/install.md)."
+            ),
+        ]
+    )
     return "\n".join(lines)
 
 
