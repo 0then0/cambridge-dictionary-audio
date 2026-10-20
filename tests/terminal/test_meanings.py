@@ -49,7 +49,10 @@ def test_inline_meanings_preview_and_shared_audio(tmp_path, monkeypatch, client)
             assert len({s.recording.path for s in records}) == 1
             assert client.session.get.call_count == 2
             app.query_one("#result-accent", Select).value = "uk"
-            await pilot.pause()
+            await wait_for_ui(
+                pilot,
+                lambda: app.current_choice() is None and app.query_one("#save-meaning").disabled,
+            )
             assert app.current_choice() is None
             assert app.query_one("#save-meaning").disabled
 
