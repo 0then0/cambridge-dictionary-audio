@@ -138,20 +138,20 @@ final class IOSPlatform: NSObject, Platform {
       throw error
     }
   }
-  func validateAudio(path: String) throws -> Bool {
+  func validateAudio(path: String) throws {
     let file = try AVAudioFile(forReading: URL(fileURLWithPath: path))
     guard file.fileFormat.streamDescription.pointee.mFormatID == kAudioFormatMPEGLayer3 else {
-      return false
+      throw fail("audio", "File is not MP3")
     }
     let buffer = AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: 16384)!
     var frames: AVAudioFramePosition = 0
     while file.framePosition < file.length {
       if cancelled() { throw fail("cancelled") }
       try file.read(into: buffer)
-      if buffer.frameLength == 0 { return false }
+      if buffer.frameLength == 0 { throw fail("audio", "MP3 cannot be decoded") }
       frames += AVAudioFramePosition(buffer.frameLength)
     }
-    return frames > 0
+    guard frames > 0 else { throw fail("audio", "MP3 contains no audio frames") }
   }
 
   func synthesize(segments: [String], destination: String) throws {

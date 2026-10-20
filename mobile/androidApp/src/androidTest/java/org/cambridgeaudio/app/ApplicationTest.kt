@@ -370,7 +370,7 @@ class ApplicationTest {
             val repaired = parseObject(restarted.repair(id))
             assertEquals(listOf(secondUrl, firstUrl), requests)
             assertEquals(saved["phrase_selections"], repaired["phrase_selections"])
-            assertTrue(native.validateAudio(restarted.audioPath(id)))
+            native.validateAudio(restarted.audioPath(id))
             val archive = File(folder, "backup.cda").path
             val transfer = CollectionTransfer(restarted)
             transfer.exportBundle(archive)
@@ -385,7 +385,7 @@ class ApplicationTest {
                 val record =
                     Json.parseToJsonElement(restarted.records()).jsonArray.single().jsonObject
                 assertEquals(id, record.str("variant_id"))
-                assertTrue(native.validateAudio(restarted.audioPath(id)))
+                native.validateAudio(restarted.audioPath(id))
                 assertTrue(
                     MobileJson()
                         .cachedTranslationJson(record.toString())

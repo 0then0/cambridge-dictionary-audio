@@ -11,6 +11,8 @@ release dates are included only where a published release can be verified.
 
 - Grant the CI Android emulator access to KVM and build iOS Debug targets for the
   selected simulator architecture, matching their Swift package dependencies.
+- Make native audio validation throw on invalid input instead of returning a
+  throwing primitive Boolean, allowing Swift to implement the shared protocol.
 - Fix Windows collection transfer flushes by using writable file handles, correct
   the pinned Gradle distribution checksum, and stop requesting the removed Android
   SDK `tools` package in mobile build/signing workflows. Enable Debug testability

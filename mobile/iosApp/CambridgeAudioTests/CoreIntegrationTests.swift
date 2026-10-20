@@ -5,6 +5,26 @@ import XCTest
 @testable import CambridgeAudio
 
 final class CoreIntegrationTests: XCTestCase {
+  func testAudioValidationRejectsCorruptInputAndPropagatesCancellation() throws {
+    let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: folder) }
+    let invalid = folder.appendingPathComponent("invalid.mp3")
+    try Data("ID3corrupt audio".utf8).write(to: invalid)
+    let adapter = IOSPlatform()
+    let platform: Platform = adapter
+    XCTAssertThrowsError(try platform.validateAudio(path: invalid.path))
+    let fixture = try XCTUnwrap(Bundle(for: Self.self).resourceURL)
+      .appendingPathComponent("Fixtures/segment-a.mp3")
+    XCTAssertNoThrow(try platform.validateAudio(path: fixture.path))
+    adapter.cancel()
+    XCTAssertThrowsError(try platform.validateAudio(path: fixture.path)) { error in
+      XCTAssertEqual((error as NSError).domain, "CambridgeAudio.cancelled")
+    }
+    adapter.reset()
+    XCTAssertNoThrow(try platform.validateAudio(path: fixture.path))
+  }
+
   func testPersistentLegacyCollectionAndFileTransfer() throws {
     let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
     defer { try? FileManager.default.removeItem(at: folder) }
@@ -52,7 +72,7 @@ final class CoreIntegrationTests: XCTestCase {
       segments: ["segment-a.mp3", "segment-b.mp3"].map {
         fixtures.appendingPathComponent($0).path
       }, destination: phrase.path)
-    XCTAssertTrue(try platform.validateAudio(path: phrase.path))
+    XCTAssertNoThrow(try (platform as Platform).validateAudio(path: phrase.path))
     let decoded = try AVAudioFile(forReading: phrase)
     XCTAssertEqual(Double(decoded.length) / decoded.processingFormat.sampleRate, 1, accuracy: 0.1)
     let engine = Engine(
@@ -129,7 +149,7 @@ final class CoreIntegrationTests: XCTestCase {
         try JSONSerialization.jsonObject(with: Data(engine.records().utf8)) as! [Document]
       XCTAssertEqual(restored.count, 1)
       XCTAssertEqual(restored.first?.text("variant_id"), id)
-      XCTAssertTrue(try IOSPlatform().validateAudio(path: engine.audioPath(identity: id)))
+      XCTAssertNoThrow(try IOSPlatform().validateAudio(path: engine.audioPath(identity: id)))
       XCTAssertTrue(
         MobileJson().cachedTranslationJson(metadataJson: try encodeJSON(restored[0]))
           .contains("backup translation"))

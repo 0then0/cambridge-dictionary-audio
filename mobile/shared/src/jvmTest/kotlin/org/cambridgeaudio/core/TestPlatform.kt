@@ -96,7 +96,9 @@ internal class TestPlatform : Platform {
         }
     }
 
-    override fun validateAudio(path: String): Boolean = isMp3(File(path).readBytes())
+    override fun validateAudio(path: String) {
+        if (!isMp3(File(path).readBytes())) throw MobileError("audio", "MP3 cannot be decoded")
+    }
 
     override fun synthesize(segments: List<String>, destination: String) {
         throw MobileError("test", "Native codec tested separately")

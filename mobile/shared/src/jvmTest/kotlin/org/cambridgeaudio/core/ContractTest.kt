@@ -115,6 +115,43 @@ class ContractTest {
     }
 
     @Test
+    fun failedNativeValidationDoesNotSaveAudioOrLeaveTemporaryFiles() {
+        val tmp = Files.createTempDirectory("cda-validation").toFile()
+        try {
+            val fake = TestPlatform()
+            var checked = false
+            val platform =
+                object : Platform by fake {
+                    override fun validateAudio(path: String) {
+                        checked = true
+                        assertTrue(File(path).exists())
+                        throw MobileError("audio", "Decoder rejected the MP3")
+                    }
+                }
+            val entry =
+                parseEntries(
+                    resource("fixtures/test_shared_audio-bank.html"),
+                    dictionaryUrl("bank"),
+                )[0]
+            fake.responses[entry.pronunciations[0].url] = "ID3bad frames".encodeToByteArray()
+            val root = File(tmp, "collection")
+            val cache = File(tmp, "cache")
+            val engine = Engine(root.path, cache.path, platform)
+            val error =
+                assertFailsWith<MobileError> {
+                    engine.save(json.encodeToString(entry), entry.pronunciations[0].id, false)
+                }
+            assertEquals("audio", error.code)
+            assertTrue(checked)
+            assertTrue(json.parseToJsonElement(engine.records()).jsonArray.isEmpty())
+            assertFalse(root.walkTopDown().any { it.extension == "mp3" })
+            assertFalse(cache.walkTopDown().any { it.name.startsWith("validate-") })
+        } finally {
+            tmp.deleteRecursively()
+        }
+    }
+
+    @Test
     fun cancellationAndLateTranslationNeverOverwritePersonalEdit() {
         val tmp = Files.createTempDirectory("cda-late").toFile()
         try {

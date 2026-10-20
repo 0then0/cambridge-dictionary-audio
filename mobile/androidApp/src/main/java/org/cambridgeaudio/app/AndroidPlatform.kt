@@ -181,7 +181,10 @@ class AndroidPlatform : Platform {
         }
     }
 
-    override fun validateAudio(path: String): Boolean = PhraseAudio.validate(path, ::cancelled)
+    override fun validateAudio(path: String) {
+        if (!PhraseAudio.validate(path, ::cancelled))
+            throw MobileError("audio", "MP3 cannot be decoded")
+    }
 
     override fun synthesize(segments: List<String>, destination: String) {
         PhraseAudio.combine(segments, destination, ::cancelled)

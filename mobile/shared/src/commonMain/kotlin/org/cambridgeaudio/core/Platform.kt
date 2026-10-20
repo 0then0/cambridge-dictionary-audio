@@ -21,7 +21,9 @@ interface Platform {
 
     @Throws(Exception::class) fun synthesize(segments: List<String>, destination: String)
 
-    @Throws(Exception::class) fun validateAudio(path: String): Boolean
+    // Throw on invalid audio. Unit also supports Swift implementations of this ObjC protocol;
+    // Swift cannot export a throwing method whose result is a primitive Boolean.
+    @Throws(Exception::class) fun validateAudio(path: String)
 
     fun randomId(): String
 

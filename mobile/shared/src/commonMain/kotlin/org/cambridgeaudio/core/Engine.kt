@@ -69,8 +69,7 @@ class Engine(val collectionPath: String, val cachePath: String, val platform: Pl
         val path = cache / ("validate-" + platform.randomId() + ".mp3")
         try {
             storage.atomic(path, bytes)
-            if (!platform.validateAudio(path.toString()))
-                throw MobileError("audio", "MP3 cannot be decoded")
+            platform.validateAudio(path.toString())
         } finally {
             storage.fs.delete(path, mustExist = false)
         }
