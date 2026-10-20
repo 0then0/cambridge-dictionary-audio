@@ -47,7 +47,7 @@ Explicitly replacing shared audio affects all entries referencing that file.
 
 ### Storage and existing collections
 
-New collection entries have permanent local IDs and separate JSON v3 metadata.
+Collection entries have permanent local IDs and separate JSON v3 metadata.
 Their `audio_file` may point to the same MP3. Keep JSON files and MP3s together
 when moving or backing up the collection. For CLI selection, use the entry's JSON
 path with `--recording`; an MP3 path is accepted only when it identifies one meaning.
@@ -71,6 +71,33 @@ source selections and unknown translation languages. Failed replacement retains
 the previous JSON; repeating an update is safe. Old duplicate MP3s are not removed
 or consolidated automatically. Deleting one collection entry retains audio used
 by another entry.
+
+## Backups and transfer
+
+Use **Back up / transfer collection** in the desktop GUI to export or import a
+`.cda` archive. Export includes recording metadata, personal translations, shared
+MP3s and Anki identity mappings. Import previews added, unchanged and conflicting
+entries before applying changes. Choose whether to retain the existing or incoming
+version for each conflict; device timestamps do not choose a winner automatically.
+
+The CLI separates preview from applying the import:
+
+```sh
+cambridge-audio --output-dir downloads --export-collection ../backup.cda
+cambridge-audio --output-dir restored --import-collection ../backup.cda
+cambridge-audio --output-dir restored --import-collection ../backup.cda --apply-import
+cambridge-audio --output-dir restored --import-collection ../backup.cda --apply-import \
+  --resolve-conflict ID=existing
+```
+
+Use `ID=incoming` to replace that entry with its archive version. A successful
+import retains the previous collection as a sibling backup directory. Export a
+backup before moving application data or uninstalling an app.
+
+[Android and iOS](mobile/README.md#backups-transfer-and-anki) use the same `.cda`
+format through native file and share controls. The
+[storage specification](mobile/storage.md) describes archive limits, checksums,
+conflict detection and recovery.
 
 ## Translation lookup and editing
 
@@ -224,8 +251,8 @@ followed by a small **Source** disclosure, closed by default, containing sources
 and data-license attribution. The disclosure is stored in the Source field, so
 exporting a fresh package and reimporting it also updates cards whose existing
 template displays `{{Source}}`, with note updates enabled in Anki. There is no need
-to edit that template manually. An old package does not gain this change: export
-a new package from the updated application first. The deck overview uses the same
+to edit that template manually. To update exported content, create
+a new package before reimporting it. The deck overview uses the same
 compact, closed Source disclosure for its description.
 The template defines light and Anki night-mode colours. Text is HTML-escaped,
 including user translations and the text inside the Source disclosure.
@@ -309,34 +336,22 @@ the mapped count with the old notes you intend to move. Store the generated
 does not rewrite the reference package, delete notes or touch review history.
 Collections with extra fields or multiple card templates should keep using TSV.
 
-### Verified Anki round-trip
+<a id="verified-anki-round-trip"></a>
 
-On 2026-10-18, the current source tree was checked against **Anki 26.09.3
-(29bb700b) on macOS**, through its Python backend in two isolated collections:
+### Anki compatibility
 
-- Import three meanings, including two `bank` meanings sharing an MP3: three
-  notes/cards, two media files, correct translation, definition and IPA.
-- Answer three cards through Anki's scheduler with Good, Easy and Good: two cards
-  enter Learning, one enters Review, and three real review-history rows are created.
-- Import the same package and a fresh unchanged export: no duplicates; note/card
-  identities, scheduling and review history remain unchanged.
-- Change a translation and definition, replace one recording, export and reimport:
-  the intended fields and audio update; the other meaning and shared audio remain
-  unchanged, with card identities and history retained.
-- Edit note contents, CSS and a template in Anki: confirm the distinct import-option
-  outcomes described above.
-- Import actual TSV through Anki's importer, study one card, export a reference
-  from Anki, run `--anki-reference` and reimport: three notes/cards remain, with
-  original identities, custom CSS, scheduling and the review-history row retained.
+Package interoperability is checked against the Anki 26.09.3 backend using
+isolated test collections. Checks cover note/card identities, shared media,
+scheduler-created review history, repeated imports, updated fields and audio,
+custom templates and migration from the original TSV format.
 
-Both collections were closed and reopened to verify the persisted state. History
-was created through the scheduler, not SQL inserts. Imported audio was decoded and
-played to EOF by Anki's bundled mpv, including CoreAudio playback at volume zero.
-The MP3 fixtures used locally synthesized speech; listening quality, GUI clicks,
-sync, mobile clients and other Anki versions were not checked in this scenario.
+The compatibility model depends on stable collection IDs and the original nine
+fields with one card template. Anki's import settings determine which contents
+are replaced. Other note layouts should continue using the TSV workflow unless
+an explicit mapping supports their schema. Audio quality, device playback and
+Anki sync are separate from package compatibility checks.
 
-Package structure, escaping, media deduplication and identity mapping also have
-automated tests; these are separate from the manual backend integration check.
-Import rules are described in the
-[Anki package manual](https://docs.ankiweb.net/manual/importing/packaged-decks)
-and [text import manual](https://docs.ankiweb.net/manual/importing/text-files).
+See [mobile testing](mobile/readiness.md#anki-integration) for the cross-platform
+Anki integration script. Anki documents package and text import behaviour in its
+[package manual](https://docs.ankiweb.net/manual/importing/packaged-decks) and
+[text import manual](https://docs.ankiweb.net/manual/importing/text-files).

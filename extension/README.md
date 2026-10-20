@@ -32,7 +32,7 @@ files receive unique names instead of being overwritten. Closing the popup does 
 cancel a download that the browser has started; check the browser's download manager
 for completion or network errors.
 
-## Install a development build
+## Installation
 
 Build locally as described below, or extract the matching ZIP from a GitHub release
 or the `browser-extensions` artifact of a successful Checks workflow.
@@ -46,9 +46,10 @@ Add-on**, and select `extension/dist/firefox/manifest.json`. A temporary add-on 
 removed when Firefox restarts. Permanent installation in standard Firefox requires
 a Mozilla-signed release; the generated ZIP is unsigned.
 
-The manifests target Chrome 102+ and Firefox desktop 140+. Browser API behavior is
-covered by automated tests; manual installation remains part of release verification.
-The Firefox Android manifest requires version 142+, but mobile UI is not a tested target.
+The manifests target Chrome 102+ and Firefox desktop 140+. This guide covers
+desktop installation; Firefox Android is outside the supported desktop workflow.
+Browser API behaviour has automated tests, with installation and download checks
+included in release verification.
 
 ## Build and test
 
@@ -110,3 +111,8 @@ This extension follows the repository's [Apache-2.0 license](../LICENSE), retain
 [MIT notice](../LICENSE-MIT) and [attribution](../NOTICE). It is independent of Cambridge
 University Press & Assessment. Audio remains subject to its owners' rights and
 [Cambridge's website terms](https://dictionary.cambridge.org/terms-of-use).
+
+## Project documentation
+
+See the [documentation index](../docs/README.md) for application guides and
+[Contributing](../CONTRIBUTING.md) for repository conventions and releases.

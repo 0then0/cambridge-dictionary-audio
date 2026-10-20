@@ -1,78 +1,69 @@
 # Mobile builds, installation and updates
 
-Development sources target **1.0.0-dev**, build **1000001**. Python and extensions
-remain 0.4.2 until the acceptance gates pass. These sources are not a declaration
-of stable 1.0 or a completed RC. See [actual evidence](readiness.md).
+This guide covers Android and iOS source builds, CI artifacts, signing and updates.
+For application usage, see [Android and iOS](https://github.com/0then0/cambridge-dictionary-audio/blob/main/docs/mobile/README.md); for regression suites,
+see [Mobile testing](https://github.com/0then0/cambridge-dictionary-audio/blob/main/docs/mobile/readiness.md).
 
-## Build versions
+The mobile version is **1.0.0-dev**, build **1000001**. Python and browser-extension
+versions are managed separately. Published downloads are listed on
+[GitHub Releases](https://github.com/0then0/cambridge-dictionary-audio/releases).
 
-Pinned: Kotlin 2.4.21, Gradle 9.3.1 (wrapper checksum verified), AGP 9.1.1,
-Compose BOM 2026.09.00 with stable Material 3, Java 17, Android compile/target API
-37 (platform package `platforms;android-37.0`), min API **28 / Android 9**.
-NDK 28.2.13676358, CMake 3.22.1. Shared libraries: kotlinx.serialization 1.10.0,
-Okio 3.16.4, Ksoup 0.2.6. Android uses activity-compose 1.12.4 and lifecycle 2.10.0.
-These exact compatible releases are deliberately pinned, not automatic ranges.
+## Toolchains
 
-Apple build configuration: **Xcode 26.4.1**, iOS deployment minimum **17.0**,
-Swift language mode 5 with the selected Xcode toolchain. ZIPFoundation 0.9.20 is
-an exact Swift Package dependency. Normal Objective-C framework export connects
-Kotlin to Swift; experimental Swift export is not used. SwiftUI supplies the iOS
-presentation, independently of Compose. Python is not embedded in either app.
+The repository pins the following build versions:
 
-Version compatibility sources checked on 2026-10-19:
-[Kotlin](https://kotlinlang.org/docs/multiplatform/multiplatform-compatibility-guide.html),
-[AGP](https://developer.android.com/build/releases/agp-9-1-0-release-notes),
-[Compose BOM](https://developer.android.com/develop/ui/compose/bom),
-[Android KMP plugin](https://developer.android.com/kotlin/multiplatform/plugin),
-[Ksoup](https://github.com/fleeksoft/ksoup/releases),
-[GitHub macOS runner](https://github.com/actions/runner-images/blob/main/images/macos/macos-26-arm64-Readme.md).
+- Android: Kotlin 2.4.21, Gradle 9.3.1, Android Gradle Plugin 9.1.1, Compose BOM
+  2026.09.00, Java 17, compile/target API 37 and minimum API 28 (Android 9).
+- Native Android tools: NDK 28.2.13676358, CMake 3.22.1 and build-tools 36.0.0.
+- Shared dependencies: kotlinx.serialization 1.10.0, Okio 3.16.4 and Ksoup 0.2.6.
+- Android UI dependencies: activity-compose 1.12.4 and lifecycle 2.10.0.
+- Apple: Xcode 26.4.1, iOS 17.0 deployment minimum, Swift language mode 5 and
+  ZIPFoundation 0.9.20.
+- Build scripts: Python 3.12 or later, Bash, Make and pkgconf/pkg-config.
+
+The Gradle wrapper verifies its distribution checksum. Kotlin connects to Swift
+through an Objective-C framework; SwiftUI supplies the iOS interface. Neither
+mobile application embeds Python.
 
 ## Source formatting
 
-Use the same commands locally and in CI (Python 3.12+, Java 17 for Kotlin,
-and a Swift 6.2+ compiler for Swift):
+Run these commands from the repository root. Kotlin formatting needs Java 17;
+Swift formatting needs Swift 6.2 or later:
 
 ```sh
 python3 scripts/format_mobile.py check
 python3 scripts/format_mobile.py format
-# Run only one language when the other toolchain is not installed:
 python3 scripts/format_mobile.py check --language kotlin
 python3 scripts/format_mobile.py check --language swift
 python3 scripts/mobile_contracts.py --check
 ```
 
-`check` exits unsuccessfully on violations and never rewrites source files.
-`format` explicitly applies fixes. Both use the versions and SHA-256 values in
-`mobile/formatters.json`: **ktfmt 0.64** with Kotlin language style and the official
-**swiftlang/swift-format 602.0.0**. This is not Nick Lockwood's `SwiftFormat`.
-Kotlin/Gradle scripts use four-space indentation; Swift uses two spaces, both with
-100-column formatting. Shared settings live in `mobile/.editorconfig` and
-`mobile/.swift-format`.
+`check` reports violations without editing files; `format` applies changes.
+The wrapper uses ktfmt 0.64 and the official `swiftlang/swift-format` 602.0.0,
+with versions and SHA-256 values in `mobile/formatters.json`. Kotlin uses four-space
+indentation and Swift uses two spaces, with 100-column formatting. Settings live
+in `.editorconfig`, `mobile/.editorconfig` and `mobile/.swift-format`.
 
-The wrapper downloads verified tools into ignored `build/format-tools/`. On the
-first Swift run it builds the exact upstream source release, using the transitive
-revisions in `mobile/swift-format.resolved` with automatic resolution disabled.
-Subsequent runs reuse that binary. A system `swift-format` is not substituted:
-Xcode/Command Line Tools can bundle a different formatter version. The tool does
-not require an iOS SDK, Android SDK or Gradle. Local Swift compilation works with
-Command Line Tools; hosted checks select the pinned Xcode build toolchain and
-cache formatter downloads/builds.
+Tools are cached under `build/format-tools/`. The Swift formatter is built from
+its pinned source release using `mobile/swift-format.resolved`. The wrapper uses
+that verified binary rather than an arbitrary formatter from PATH. Generated
+`AnkiContract.kt` is checked by `mobile_contracts.py` instead of the formatter.
 
-Checks cover Kotlin shared/platform/UI/tests and Gradle `.kts` files, plus all
-three Swift application/test targets. Generated/build/cache trees are not scanned.
-`AnkiContract.kt` is excluded because the Python generator owns its exact bytes;
-its dedicated `mobile_contracts.py --check` remains mandatory.
+The reusable [formatting workflow](https://github.com/0then0/cambridge-dictionary-audio/blob/main/.github/workflows/mobile-format.yml)
+runs before mobile builds and signing.
 
-`mobile-format.yml` is a reusable prerequisite of both `mobile.yml` and
-`mobile-sign.yml`. Formatting must pass before native codec builds, SDK setup,
-app builds, emulator tests or signing jobs begin. No formatting dependency is
-added to the Python CLI package.
+## Android
 
-## Android builds
+Install Java 17 and the Android SDK command-line tools, set `ANDROID_HOME`, and
+install the pinned packages:
 
-Install Java 17, Android SDK platform 37.0, build-tools 36.0.0, the pinned NDK and
-CMake. Set `ANDROID_HOME`; install `pkgconf` for LAME's configure. Android tooling
-is independent of `uv sync` and the CLI wheel.
+```sh
+sdkmanager 'platform-tools' 'platforms;android-37.0' 'build-tools;36.0.0' \
+  'ndk;28.2.13676358' 'cmake;3.22.1'
+```
+
+With pkgconf and the native build tools available, build the codec from the
+repository root, then build the applications from `mobile/`:
 
 ```sh
 python3 scripts/build_mobile_codec.py android-arm64-v8a
@@ -81,54 +72,62 @@ python3 scripts/build_mobile_codec.py android-x86_64
 cd mobile
 ./gradlew :shared:jvmTest :androidApp:assembleDebug :androidApp:assembleRelease \
   :androidApp:lintDebug :androidApp:testDebugUnitTest
-./gradlew :androidApp:connectedDebugAndroidTest
 ```
 
-Release signing requires the owner's existing key. Export `ANDROID_KEYSTORE`
-(absolute path), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and
-`ANDROID_KEY_PASSWORD`, then run `:androidApp:assembleRelease`. Do not put these
-values or files in Git. The release build is not debuggable. The owner-only
-`mobile-sign.yml` workflow uses environment `mobile-signing`; PR checks receive
-no signing secrets. With no key, `androidApp-release-unsigned.apk` is built and
-labelled **NOT INSTALLABLE**. A debug APK is **TEST ONLY**, signed with a local
-debug certificate. It is never a production release.
+Start an Android emulator or connect a test device before running
+`./gradlew :androidApp:connectedDebugAndroidTest`. See [Mobile testing](https://github.com/0then0/cambridge-dictionary-audio/blob/main/docs/mobile/readiness.md)
+for coverage and optional fixtures. Android tooling is separate from the Python
+CLI environment.
+
+### Install and sign an APK
+
+Install a debug build for testing:
 
 ```sh
 adb install -r mobile/androidApp/build/outputs/apk/debug/androidApp-debug.apk
-# Owner-signed build:
-$ANDROID_HOME/build-tools/36.0.0/apksigner verify --verbose --print-certs \
-  mobile/androidApp/build/outputs/apk/release/androidApp-release.apk
 ```
 
-For a GitHub release, download the owner-signed APK and checksums; compare SHA-256
-and the published signing-certificate fingerprint. Open the APK on the phone and
-allow installation for the browser/file manager when Android asks. For updates,
-install the APK **over the existing app** with the same application ID and signing
-key. A debug certificate cannot update an owner-signed installation. Export a
-collection backup before deliberately uninstalling; uninstall may remove the
-application's private collection. No broad storage permission is required: import
-uses the system document picker and export uses Sharesheet/Files.
+Run this command from the repository root. Debug APKs use a development
+certificate. Unsigned Release APKs need signing before installation; the packaging
+script marks them `unsigned-NOT-INSTALLABLE`.
 
-GitHub hosting does not override Android verification policy. As of the official
-[Android developer verification page](https://developer.android.com/developer-verification)
-checked on 2026-10-19, protections began on 2026-09-30 for participating stores in
-Brazil, Indonesia, Singapore and Thailand on certified Android 7+ devices; broader
-rollout is planned for 2027. Limited distribution accounts and a power-user
-advanced flow are documented by Google. Applicable install routes depend on the
-device, region and rollout. The owner must verify the applicable route before
-claiming unrestricted public installation. This task creates no developer account
-or verification registration.
+To sign a Release build, set `ANDROID_KEYSTORE` to the absolute keystore path,
+then supply `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and
+`ANDROID_KEY_PASSWORD`. Run `:androidApp:assembleRelease` from `mobile/`, then
+verify the certificate from the repository root:
+
+```sh
+"$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs \
+  mobile/androidApp/build/outputs/apk/release/androidApp-release.apk
+python3 scripts/package_mobile.py android --require-signed --output dist/mobile
+```
+
+Keep signing files and passwords outside Git. The protected
+[mobile signing workflow](https://github.com/0then0/cambridge-dictionary-audio/blob/main/.github/workflows/mobile-sign.yml) accepts
+`ANDROID_KEYSTORE_BASE64` and the corresponding password/alias secrets through the
+`mobile-signing` environment.
+
+For downloaded APKs, compare the SHA-256 checksum and signing-certificate
+fingerprint with the release information. Open the APK on the device and follow
+Android's installation prompts. Distribution requirements can vary by device and
+region; consult [Android developer verification](https://developer.android.com/developer-verification)
+for the applicable installation route.
+
+Install updates over the existing app using the same application ID and signing
+key. A debug-signed build cannot update an installation signed with a different
+release key. Back up the collection before uninstalling: uninstalling can remove
+private application data. Import and export use Android's document picker and
+share sheet rather than broad storage access.
 
 ## iOS
 
-Full Xcode is required, including device and simulator SDKs. Command Line Tools
-alone cannot build an iOS app. Open `mobile/iosApp/CambridgeAudio.xcodeproj`, select
-the CambridgeAudio scheme and an iPhone simulator. Install Java 17, pkgconf and
-Python 3.12+. Set `CDA_PYTHON` to that interpreter's absolute path: Xcode puts its
-own older Python ahead of the normal shell PATH. Both iOS workflows select a
-managed Python explicitly, so local Xcode installation is unnecessary for CI.
-The build phase runs Gradle's standard framework integration and compiles the
-pinned LAME source for the selected architectures. No server is involved.
+Install the pinned Xcode version with iOS device and simulator SDKs, Java 17,
+pkgconf and Python 3.12 or later. Open
+`mobile/iosApp/CambridgeAudio.xcodeproj` and select the CambridgeAudio scheme.
+
+Set `CDA_PYTHON` to the absolute path of the build-script interpreter. Xcode
+prepends its bundled tools to PATH, so an explicit interpreter keeps codec builds
+consistent. With uv installed, run from the repository root:
 
 ```sh
 export DEVELOPER_DIR=/Applications/Xcode_26.4.1.app/Contents/Developer
@@ -136,73 +135,69 @@ uv python install 3.15
 export CDA_PYTHON="$(uv python find 3.15)"
 xcodebuild -project mobile/iosApp/CambridgeAudio.xcodeproj -scheme CambridgeAudio \
   -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 17' \
-  -derivedDataPath build/ios-simulator CODE_SIGNING_ALLOWED=NO test
+  -derivedDataPath build/ios-simulator -resultBundlePath build/ios-tests.xcresult \
+  CODE_SIGNING_ALLOWED=NO test
 xcodebuild -project mobile/iosApp/CambridgeAudio.xcodeproj -scheme CambridgeAudio \
   -configuration Release -destination 'generic/platform=iOS' \
   -derivedDataPath build/ios-device CODE_SIGNING_ALLOWED=NO build
 "$CDA_PYTHON" scripts/package_mobile.py ios --output dist/mobile
 ```
 
-Artifacts have distinct meanings:
+The Xcode build phase integrates the Kotlin framework and compiles pinned LAME
+sources for the selected architectures. Debug builds use the selected simulator
+architecture; Release builds use the destination's supported architectures.
 
-- **Simulator `.app` archive**: simulator only, cannot install on an iPhone.
-- **Unsigned device `.app` archive**: device binary requiring code signing and a
-  matching provisioning profile. Prefer rebuilding from these sources in Xcode;
-  it is not an installable IPA and is not a universal sideloading package.
-- **Signed Ad Hoc IPA**: only devices listed in the owner's provisioning profile.
-  Requires an eligible Apple Developer Program membership, distribution
-  certificate/private key and Ad Hoc profile for `org.cambridgeaudio.app`.
-  Run `scripts/sign_mobile_ios.py` or the protected owner workflow after supplying
-  its documented environment secrets. Install through supported Xcode/device
-  tooling or Apple Configurator for registered devices.
-- **Local Xcode Personal Team installation**: sign into the owner's own Apple
-  Account in Xcode, select that Personal Team in Signing & Capabilities, connect
-  the iPhone, enable Developer Mode when requested and Run. Resolve bundle-ID
-  ownership in Xcode explicitly; changing the bundle ID creates a separate app
-  container. Back up before switching identities. No account is created by tools.
+### Artifacts and device installation
 
-Apple's current [account overview](https://developer.apple.com/help/account/basics/about-your-developer-account)
-states that Personal Team device provisioning expires **7 days** after issuance.
-The app then needs a renewed development build/profile; GitHub hosting does not
-remove the expiry. Ad Hoc limits and device registration are documented in
-[Apple's registered-device distribution guide](https://developer.apple.com/documentation/xcode/distributing-your-app-to-registered-devices)
+- **Simulator `.app` archive:** run it in an iOS simulator. It cannot be installed
+  on an iPhone.
+- **Unsigned device `.app` archive:** requires signing and a matching provisioning
+  profile. Rebuild and sign in Xcode for the intended device or distribution route.
+- **Ad Hoc IPA:** install only on devices registered in its provisioning profile.
+  Distribution requires the corresponding Apple Developer membership,
+  certificate, private key and profile for `org.cambridgeaudio.app`.
+
+For a Personal Team development installation, sign into Xcode with your Apple
+Account, select the team in **Signing & Capabilities**, connect the iPhone and
+choose **Run**. Enable Developer Mode when requested. Changing the bundle ID
+creates a different application container, so export a backup before switching
+identities. Personal Team provisioning expires after seven days and needs renewal;
+see [Apple's account overview](https://developer.apple.com/help/account/basics/about-your-developer-account).
+
+For Ad Hoc distribution, configure the `mobile-signing` environment with
+`IOS_P12_BASE64`, `IOS_P12_PASSWORD`, `IOS_PROFILE_BASE64`, `IOS_TEAM_ID`,
+`IOS_PROFILE_NAME` and `IOS_SIGNING_IDENTITY`. Run the protected signing workflow
+or `scripts/sign_mobile_ios.py --output dist/mobile` using the selected Python
+interpreter. The signing script archives and exports an IPA for the supplied
+profile. See Apple's [registered-device distribution guide](https://developer.apple.com/documentation/xcode/distributing-your-app-to-registered-devices)
 and [Ad Hoc profile instructions](https://developer.apple.com/help/account/provisioning-profiles/create-an-ad-hoc-provisioning-profile).
-No App Store, TestFlight, third-party signing service or paid AnkiMobile purchase
-is required by the application. A normal signed update preserves the app's data
-container; deleting the app removes its private data unless separately backed up.
 
-## Audio and licenses
+A signed update with the same application identity preserves its data container.
+Deleting the app can remove its private data. Export a `.cda` backup beforehand.
 
-Platform MP3 decoders produce sequential mono 44.1 kHz PCM; a shared C library
-applies one phrase-wide RMS gain (target -18 dBFS, -1 dBFS peak ceiling), then LAME
-encodes a genuine MP3. This preserves recording order. It is not TTS, byte
-concatenation or renamed AAC. The loudness method differs from desktop FFmpeg's
-EBU R128 `loudnorm`; it should be assessed by listening on real devices.
+## CI artifacts
 
-LAME 4.0 comes from the repository's pinned source/hash manifest and is built with
-no frontend or decoder. Its GNU Library GPL v2-or-later license is distinct from
-the application license. There are no FFmpegKit binaries or GPL FFmpeg options.
-`<platform>-source-and-relink-materials.tar.gz` contains full application/native source,
-exact upstream source archive, license and build settings; Android object files
-are included when available. Users can rebuild/relink a modified LAME and sign
-with their own credentials. Owner signing keys are not distributed. Preserve
-these materials and notices with binary releases. Cambridge and WikDict data
-rights are described in [data sources](../data-sources.md).
+The [Mobile checks and artifacts workflow](https://github.com/0then0/cambridge-dictionary-audio/actions/workflows/mobile.yml)
+uploads `mobile-android-distributions` and `mobile-ios-distributions`. Each includes
+platform archives, a signing-status manifest, checksums, installation instructions
+and matching source/relink materials. Artifact names identify debug, unsigned
+and simulator builds. Use the signing workflow for signed distribution artifacts.
 
-## Validation and current limits
+GitHub release and optional PyPI publication are described in
+[Contributing](https://github.com/0then0/cambridge-dictionary-audio/blob/main/CONTRIBUTING.md#releases).
 
-See [readiness](readiness.md) for checks actually run and remaining gates. iOS
-simulator/device/unsigned artifacts must not be listed as produced until Xcode
-has successfully built them. There is no unlimited iOS background execution:
-operations cancel safely when the app backgrounds and can be retried after
-return. Playback stops on interruption/old-route removal/background. Long input,
-font scaling, navigation and sharing need concrete accessibility/device checks.
+## Audio, data and licenses
 
-## GitHub Releases and optional PyPI publication
+Platform decoders feed sequential mono 44.1 kHz PCM to the shared C audio library.
+A phrase-wide RMS gain targets -18 dBFS with a -1 dBFS peak ceiling; LAME encodes
+an MP3. Desktop synthesis uses FFmpeg's EBU R128 `loudnorm`, so the loudness methods
+are different. Playback stops on audio interruption, route removal or backgrounding;
+interrupted operations can be retried after returning to the app.
 
-`release.yml` uploads GitHub artifacts independently of PyPI. The `publish-pypi`
-job stays in the same workflow for the existing Trusted Publisher registration,
-but tag pushes do not publish to PyPI. For an explicitly authorized Python
-publication, manually run Release against the existing `v…` tag and enable
-`publish_pypi`; the default is false. Its protected `pypi` environment and OIDC
-permissions are retained. Neither workflow has been dispatched by this change.
+LAME 4.0 is built from the pinned source/hash manifest with its frontend and decoder
+disabled. Its GNU Library GPL v2-or-later license is separate from the application
+license. Distribute the matching `<platform>-source-and-relink-materials.tar.gz`,
+which includes application/native source, the upstream archive, build settings and
+available Android object files for rebuilding with a modified LAME. Signing keys
+are excluded. See [Data sources](https://github.com/0then0/cambridge-dictionary-audio/blob/main/docs/data-sources.md) for Cambridge and WikDict
+attribution, and [Mobile testing](https://github.com/0then0/cambridge-dictionary-audio/blob/main/docs/mobile/readiness.md#checks-before-distribution) for release checks.

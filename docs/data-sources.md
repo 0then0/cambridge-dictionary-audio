@@ -9,11 +9,10 @@ Dictionary content and downloaded recordings do not inherit the code license.
 - Origin: Wiktionary contributors, extracted through DBnary.
 - License: [Creative Commons Attribution-ShareAlike 4.0 International](https://creativecommons.org/licenses/by-sa/4.0/).
 - Official format and provenance: <https://www.wikdict.com/page/download>.
-- Verified snapshot: `2_2026-06`, SQLite format version 2.
+- Pinned snapshot: `2_2026-06`, SQLite format version 2.
 - Artifact: <https://download.wikdict.com/dictionaries/sqlite/2_2026-06/en-ru.sqlite3>.
 - Size: 20,938,752 bytes.
 - SHA-256: `3f65395883b996131c9b7a7b7b7c14c1b4458c892fae0050decd71dc0a3b4b0a`.
-- Verified on 2026-10-15 against the actual downloaded artifact.
 
 The native `translation` table supplies `written_rep`, `lexentry`, `sense`,
 `sense_num`, `trans_list`, `score`, `is_good`, and `importance`. The app queries
@@ -33,8 +32,9 @@ is not embedded in the code wheel or GUI installers.
 
 To verify a future package, check the official download index and license, inspect
 the pair's schema and sample senses, and verify its exact size and SHA-256 before
-updating the pinned package in `cambridge_audio/wikdict.py`. Run the opt-in network
-check separately from ordinary tests:
+updating the pinned package in `cambridge_audio/wikdict.py` and the corresponding
+constants in `mobile/shared`. Keep size, schema and checksum checks aligned.
+Run the opt-in network check separately from ordinary tests:
 
 ```sh
 uv run --no-sync python scripts/verify_wikdict.py

@@ -5,6 +5,7 @@
 # Cambridge Dictionary Audio
 
 [![Checks](https://img.shields.io/github/actions/workflow/status/0then0/cambridge-dictionary-audio/checks.yml?branch=main&label=checks)](https://github.com/0then0/cambridge-dictionary-audio/actions/workflows/checks.yml)
+[![Mobile checks](https://img.shields.io/github/actions/workflow/status/0then0/cambridge-dictionary-audio/mobile.yml?branch=main&label=mobile)](https://github.com/0then0/cambridge-dictionary-audio/actions/workflows/mobile.yml)
 [![Python](https://img.shields.io/badge/Python-3.10%E2%80%933.15-3776AB?logo=python&logoColor=white)](#python-versions)
 [![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-blue)](#playback-and-ffmpeg)
 [![uv](https://img.shields.io/badge/dependencies-uv-DE5FE9)](https://docs.astral.sh/uv/)
@@ -14,26 +15,26 @@
 [![Release](https://img.shields.io/github/v/release/0then0/cambridge-dictionary-audio)](https://github.com/0then0/cambridge-dictionary-audio/releases/latest)
 [![PyPI](https://img.shields.io/pypi/v/cambridge-dictionary-audio)](https://pypi.org/project/cambridge-dictionary-audio/)
 
-[Russian documentation](README.ru.md) · [Changelog](CHANGELOG.md)
+[Русский](README.ru.md) · [Documentation](docs/README.md) · [Contributing](CONTRIBUTING.md) · [Changelog](CHANGELOG.md)
 
 Download English pronunciation recordings from
 [Cambridge Dictionary](https://dictionary.cambridge.org/) as MP3 files.
-A desktop app and CLI provide US and UK audio, IPA transcriptions, English
-definitions and optional dictionary translations.
+Desktop, terminal and mobile applications provide US and UK audio, IPA
+transcriptions, English definitions, Russian translations and Anki export.
+Browser extensions download pronunciation from the current dictionary page.
 
-## Mobile development and collection transfer
+## Android and iOS
 
-The working tree adds standalone Android (Kotlin/Compose Material 3) and iOS
-(SwiftUI) applications with a shared Kotlin core. Current mobile status is
-**1.0.0-dev**, not a published stable release or completed RC. Android requires
-9+; iOS targets 17+. See [build/install/signing instructions](docs/mobile/install.md)
-and the [acceptance record and remaining gates](docs/mobile/readiness.md).
-The stable download links below still point to the published desktop/CLI/extension
-version. Mobile tools are not required to install the Python CLI.
+The [mobile applications](docs/mobile/README.md) offer pronunciation search,
+offline collections, Russian translations, phrase synthesis and Anki export.
+Android uses Kotlin and Compose Material 3; iOS uses SwiftUI with a shared Kotlin
+core. Minimum versions are Android 9 and iOS 17. The mobile version is
+**1.0.0-dev**; see [builds, installation and signing](docs/mobile/install.md).
 
-Desktop GUI and CLI now support versioned `.cda` collection backups, including
-personal translations, shared media and permanent Anki identities. Import previews
-conflicts and retains a backup. See [portable storage](docs/mobile/storage.md).
+Collections can be backed up and transferred between the desktop and mobile apps
+as `.cda` archives, including personal translations, shared media and permanent
+Anki identities. Import previews conflicts before applying changes.
+See [backups and transfer](docs/collection.md#backups-and-transfer).
 
 ## Desktop app
 
@@ -65,12 +66,6 @@ Install the CLI separately from [PyPI](https://pypi.org/project/cambridge-dictio
 ```sh
 uv tool install cambridge-dictionary-audio
 ```
-
-Each format button downloads its file directly, without opening the release page.
-Buttons are pinned to the verified stable version shown above because release
-asset names include version numbers. After publishing a new stable release, run
-`uv run --no-sync python scripts/download_links.py --refresh --verify-network`
-to update both tables and verify the downloads.
 
 ### Run from source
 
@@ -145,9 +140,9 @@ the same source recording reuse one verified MP3. Old local/export IDs and perso
 translations are retained; old duplicate media are not removed automatically.
 
 **Export to Anki** saves one ready `.apkg` with a template, audio and sources.
-In the current source tree, sources and license notices are behind a small,
-closed **Source** disclosure on cards and the deck overview. Export a fresh package
-and reimport with note updates enabled to apply this to existing cards.
+Sources and license notices are behind a small, closed **Source** disclosure on
+cards and the deck overview. Export a fresh package and reimport with note updates
+enabled to apply this to existing cards.
 TSV remains available as an additional format:
 
 ```sh
@@ -166,10 +161,9 @@ those edits but blocks content updates. **If newer** for note types retains newe
 custom CSS and templates, while **Always** can replace them. Keep personal
 translations in the Cambridge collection if they must survive future exports.
 
-A backend round-trip on Anki **26.09.3 for macOS** verified real scheduler answers,
-reimports, content/audio updates, import-option behaviour and a transition from
-actual TSV imports without duplicate cards or lost review history. See the
-[verified scenario and its limits](docs/collection.md#verified-anki-round-trip).
+Anki compatibility checks cover repeated imports, content/audio updates,
+import-option behaviour and migration from TSV without duplicate cards or lost
+review history. See [Anki compatibility](docs/collection.md#anki-compatibility).
 
 ## Browser extension
 
@@ -348,80 +342,30 @@ not require Visual C++ Build Tools; Anki export works with the Python implementa
 
 ## Development
 
-Dependencies are declared in `pyproject.toml` and resolved in `uv.lock`.
-The minimal toolset is uv, Ruff (linting, import sorting, formatting), and pytest.
-CI uses uv 0.13.1 and covers all six Python versions on Linux, plus Python 3.10 and
-3.15 on Windows and macOS. Jobs with GUI dependencies run the full suite on Python
-3.10 and 3.15 on all three OSes, plus Python 3.11 and 3.12 on Linux.
+See [Contributing](CONTRIBUTING.md) for source setup, checks, dependency updates,
+repository structure and release packaging. The [documentation index](docs/README.md)
+links the interface guides and technical specifications.
 
 ```sh
 uv sync --locked
-uv lock --check
-uv run ruff check .
-uv run ruff format --check .
-uv run --isolated --locked pytest
+uv run --locked ruff check .
+uv run --locked ruff format --check .
+uv run --locked pytest
 ```
 
-Automated tests use local HTML fragments and mocked HTTP responses, without network
-access. They cover downloads, cancellation, cache recovery, translation language,
-keyboard interaction, GUI settings and release packaging. FFmpeg-dependent integration tests run when both `ffmpeg` and `ffprobe` are
-available and otherwise report a skip. Update dependencies explicitly with
-`uv lock --upgrade`, then run the checks above.
-
-[Dependabot](.github/dependabot.yml) checks uv, extension npm dependencies, mobile
-Gradle dependencies and GitHub Actions monthly at 09:00 Europe/Moscow. Normal
-updates allow only minor/patch releases at least 14 days old, grouped into one
-open PR per ecosystem, with automatic rebasing disabled. Python updates change
-only `uv.lock` within existing manifest constraints. Major upgrades, exact Python
-pins, Xcode/SDK versions, Swift Xcode references and custom source/formatter
-checksums require manual updates. Security updates, when enabled on GitHub, are
-grouped separately and are not delayed by the monthly schedule or cooldown.
-The configuration takes effect when it reaches the default branch; it does not
-enable automatic merging.
-
-To run without development tools, use `uv run --no-dev -m cambridge_audio hello`.
-
-To include desktop tests, run `uv run --locked --group gui pytest`.
-On Linux with Python 3.10 or 3.11, the lockfile selects Qt 6.11.2 for runtime
-compatibility; other environments use Qt 6.12. The suite checks normal process
-termination after repeated scrollbar painting, as well as widget behavior.
-GUI tests use an offscreen Qt platform, temporary settings and mocked HTTP responses.
-The [desktop design system](docs/design.md) documents layout, appearance and behavior.
-
-Browser extension development uses a separate npm lockfile in `extension/`.
-Node.js 24.15+ provides the TypeScript compiler and DOM tests; CI checks it on all
-three OSes and validates the Firefox bundle with Mozilla's `web-ext` tool. The npm
-tools are not required for Python CLI or GUI development.
+Desktop tests use `uv run --locked --group gui pytest`.
+Mobile and extension toolchains are documented in their
+[build guides](docs/README.md#building-and-contributing).
 
 ## Project layout
 
-- `cambridge_audio/dictionary.py`: dictionary entries, HTML parsing, HTTP requests and MP3 saving.
-- `cambridge_audio/audio.py`: phrase synthesis and platform-specific playback.
-- `cambridge_audio/cli.py`: command-line options, one-shot downloads and the plain prompt.
-- `cambridge_audio/terminal/`: terminal workspace, settings and background tasks.
-- `cambridge_audio/console.py`: formatted terminal output and plain fallback.
-- `cambridge_audio/service.py`: download workflow shared by both interfaces.
-- `cambridge_audio/gui/`: desktop window, download/translation workers and in-window playback.
-- `cambridge_audio/gui/theme.py`: light/dark design tokens and Qt styling.
-- `cambridge_audio/gui/preferences.py`: language and appearance settings.
-- `cambridge_audio/library.py`: saved recordings and optional JSON details.
-- `cambridge_audio/i18n.py`: English and Russian interface messages.
-- `assets/icon.svg`: editable vector icon; `assets/icon.ico` is its Windows export.
-- `extension/`: TypeScript browser popup, browser manifests, DOM tests and build scripts.
-- `tests/`: grouped core, CLI, GUI, terminal and packaging tests, with shared helpers.
-- `scripts/` and `packaging/`: release validation, native bundle builders and installer templates.
-
-The application runs as `python -m cambridge_audio`. The root `main.py` remains a
-compatibility launcher, so existing `uv run main.py` commands continue to work.
-
-On Windows, `start.bat` runs the interactive CLI through uv.
-`compile.bat` builds the Windows desktop app and installer; it needs Inno Setup.
-Native builds use the locked `gui` and `release` dependency groups. Build them on
-the target platform: first `scripts/build_ffmpeg.py`, then `scripts/build_desktop.py`
-and `scripts/package_desktop.py`. See the [FFmpeg build instructions](packaging/ffmpeg-build.md)
-for compiler requirements and rebuilding the LGPL components.
-Generated files are placed in `dist/`. Qt shared libraries and dependency license
-notices remain separate inside the application bundle.
+- `cambridge_audio/`: shared Python services, CLI, terminal workspace and desktop GUI.
+- `mobile/`: shared Kotlin core, Android and iOS applications, and native audio library.
+- `extension/`: Chrome/Firefox extension, TypeScript tests and browser bundles.
+- `contracts/`: shared compatibility fixtures and Anki identities.
+- `tests/`: Python tests for application behaviour and packaging.
+- `scripts/` and `packaging/`: build tools, installer templates and release validation.
+- `docs/`: user guides, contributor documentation and format specifications.
 
 ## License
 

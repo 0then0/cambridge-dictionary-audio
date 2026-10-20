@@ -1,73 +1,61 @@
 # Changelog
 
-User-visible changes are listed newest first. Unreleased changes describe the
-current source tree and may not be available in published downloads. Historical
-entries were reconstructed from Git history and project development discussions;
-release dates are included only where a published release can be verified.
+Changes are listed newest first. **Unreleased** describes changes on `main` that
+are not yet included in a published release. Version headings link changes to
+the corresponding application releases or source history.
 
 ## Unreleased
 
-### 1.0 development (not released; acceptance incomplete)
+### Added
 
-- Grant the CI Android emulator access to KVM and build iOS Debug targets for the
-  selected simulator architecture, matching their Swift package dependencies.
-- Make native audio validation throw on invalid input instead of returning a
-  throwing primitive Boolean, allowing Swift to implement the shared protocol.
-- Fix Windows collection transfer flushes by using writable file handles, correct
-  the pinned Gradle distribution checksum, and stop requesting the removed Android
-  SDK `tools` package in mobile build/signing workflows. Enable Debug testability
-  for the iOS application module used by XCTest.
-- Read shared contract fixtures explicitly as UTF-8 on Windows/Python 3.10 and
-  use a selected modern Python for native Xcode build scripts instead of Apple's
-  older bundled interpreter, retaining safe archive extraction.
-- Keep collection identities intact when accepting incoming records: retire only
-  unreferenced media of replaced entries, retain shared audio and independent MP3s,
-  and allow verified backups to restore missing or corrupt local audio.
-- Restore synthesized phrases with their saved pronunciation plan and selections,
-  preserving personal translations and the permanent ID without a new word lookup.
-- Verify local WikDict status in mobile Settings and before installation; distinguish
-  missing, verified and damaged packages and ask explicitly before downloading again.
-  Keep verification off the UI thread and preserve the existing package on failure.
-- Show three translation choices initially on Android and iOS, with expandable
-  alternatives that collapse after selection; keep the chosen translation visible.
-- Fit the Android shield inside the adaptive icon's safe circle so launcher,
-  app-info and system splash masks no longer crop its top corners.
-- Replace the cramped Android license alert with a full-screen reader, component
-  summaries and separate offline Apache/MIT/NOTICE documents. Reflow printed text
-  into readable paragraphs without changing bundled licenses. Structure iOS
-  license information into native sections and expandable full texts.
-- Show three compact search meanings initially, with expandable alternatives that
-  collapse after selection. Open saved word details inside Collection, retaining
-  the Search selection and unsaved translation draft on return.
-- Add an independent pure-black OLED switch for the active dark theme, including
-  system appearance, and migrate the former standalone black mode without resetting
-  preferences. Keep the desktop red accent on Android and iOS.
-- Apply Android manual accents to the complete colour scheme, including selected
-  chips, switches, navigation and surfaces, instead of retaining Material's default
-  purple roles. Distinguish the active system palette from manual colour selection.
-  Adapt iOS accent colours for light and dark appearance.
-- Prepare playback inline instead of briefly inserting the global operation toolbar.
-- Pin ktfmt and official swift-format with shared mobile settings, source checks
-  before builds/signing, cached verified tools and locked Swift formatter dependencies.
+- Standalone Android and iOS applications with a shared Kotlin core, native
+  Compose Material 3 and SwiftUI interfaces, Cambridge search, pronunciation
+  selection, local collections, translations and independent Anki export.
+- On-device MP3 phrase synthesis using platform decoders and source-built LAME,
+  with matching source, build and relink materials distributed alongside artifacts.
+- Checksummed `.cda` collection backups and transfer in the desktop GUI, CLI and
+  mobile apps, including import previews, explicit conflict choices, retained
+  backups and recovery.
+- Collection detail views on mobile with playback, audio repair, deletion,
+  translation and export actions while retaining the current Search state.
+- Expandable mobile meaning and translation lists that initially show three choices
+  and keep the selected meaning or translation visible.
+- An independent pure-black OLED preference for dark appearance, and the desktop
+  red accent on both mobile platforms.
+- WikDict installation verification and explicit re-download confirmation on mobile.
+- Shared Python/Kotlin compatibility fixtures, stable Anki identity contracts,
+  native integration tests and protected mobile-signing workflows.
 
-- Add standalone Kotlin Multiplatform business logic, Android Compose Material 3
-  presentation and native iOS SwiftUI presentation. Implement Cambridge search,
-  pronunciation choice, persistent collections, personal/dictionary translations,
-  explicit WikDict installation, native playback and independent APKG/TSV export.
-- Build real MP3 phrases on device using platform decoders and pinned source-built
-  LAME. Supply source/build/relink materials alongside mobile artifacts.
-- Add versioned, checksummed `.cda` collection transfer to desktop GUI/CLI and
-  mobile, explicit conflict decisions, stale-preview protection, staged import,
-  retained backups and recovery. Preserve unknown sidecar/cache fields on edits.
-- Add shared Python/Kotlin fixtures and Anki identity contracts. Verify real Anki
-  scheduler history across Python/Kotlin and Android exports; distinguish these
-  checks from unperformed iOS runtime acceptance.
-- Add Android/iOS CI and protected owner-signing workflows. Keep GitHub release
-  independent of optional PyPI publication; restore the existing PyPI job behind
-  an explicit manual `publish_pypi` input, default false.
-- Document installation/signing limits, storage migration and measured acceptance.
-  Mobile builds remain 1.0.0-dev. Python and extensions remain 0.4.2; iOS full build,
-  device signing and accessibility gates have not passed on this host.
+### Changed
+
+- Apply Android manual accents to the complete colour scheme, including chips,
+  switches, navigation and surfaces. Distinguish system colours from manual
+  palettes and adapt iOS accents to light and dark appearance.
+- Migrate the former black theme mode to dark appearance with the OLED preference,
+  preserving other settings.
+- Present Android licenses in a full-screen reader with component summaries and
+  separate Apache/MIT/NOTICE texts; group iOS license information into native sections.
+- Check mobile formatting with pinned ktfmt and official swift-format before builds
+  and signing, using verified downloads and locked formatter dependencies.
+- Keep GitHub releases independent of optional PyPI publication through the manual
+  `publish_pypi` input and protected publishing environment.
+- Organize documentation into application guides, contributor instructions,
+  build and testing guides, and storage specifications.
+
+### Fixed
+
+- Avoid briefly inserting global progress controls during playback preparation.
+- Fit the Android adaptive icon within launcher and splash-screen masks.
+- Preserve collection identities, shared audio and independent MP3s when importing
+  replacements, and restore missing or corrupt media from verified backups.
+- Repair synthesized phrases using saved pronunciation selections without repeating
+  word lookup or losing personal translations.
+- Use writable handles for Windows transfer flushes and UTF-8 for shared fixtures.
+- Correct the Gradle wrapper checksum, Android SDK setup and emulator KVM permissions.
+- Align iOS Debug architectures with Swift packages, enable XCTest access, select
+  the build-script Python explicitly and support Swift audio-validation adapters.
+- Wait for asynchronous terminal selection and worker messages in UI tests, and
+  isolate desktop translation-layout tests from live network requests.
 
 ## 0.4.2 (2026-10-19)
 
@@ -129,7 +117,7 @@ release dates are included only where a published release can be verified.
   shared media and source/license attribution. TSV remains available. Explicit TSV
   transition reads original GUIDs and note types from an Anki-exported package;
   real Anki import and review-history retention had not yet been tested at this
-  release. See the current [verification results](docs/collection.md#verified-anki-round-trip).
+  release. See [Anki compatibility](docs/collection.md#anki-compatibility).
 
 ## 0.3.0 (2026-10-16)
 
@@ -237,10 +225,9 @@ CLI and browser extension work developed under version 0.2.0 below.
 [Release and downloads](https://github.com/0then0/cambridge-dictionary-audio/releases/tag/v0.2.1)
 · [Build fix](https://github.com/0then0/cambridge-dictionary-audio/commit/e952fda7ae69d72b3b9c1299414807642c624c87)
 
-## 0.2.0 (development history, 2026-10-15)
+## 0.2.0 (source milestone, 2026-10-15)
 
-The source tree used this version before 0.2.1. No separate published 0.2.0
-release is currently available on GitHub; the date here is the commit date.
+Source changes preceding the 0.2.1 release.
 
 ### Added
 

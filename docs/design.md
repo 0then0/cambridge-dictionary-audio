@@ -43,9 +43,9 @@ Palette tokens, contrast calculations and widget styles are in
 
 English and American pronunciation are the defaults. Interface language affects
 controls and messages; dictionary definitions remain English. Optional translation
-targets Russian in 0.3.0. A Russian translation toggle and the local dictionary
-status replace the former free-form language field. Historical foreign-language
-caches and edits remain intact.
+targets Russian. A translation toggle controls display and lookup; the local
+dictionary status shows offline translation availability. Previously saved
+foreign-language caches and personal edits remain intact.
 
 Find displays meanings inline, grouped by part of speech. Selecting a meaning shows
 its complete definition and the audio owned by its source block. US/UK and preview

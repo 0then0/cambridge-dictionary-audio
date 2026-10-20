@@ -35,3 +35,10 @@ Windows/Linux onedir bundles keep this directory under `_internal/`.
 
 - [FFmpeg licensing](https://ffmpeg.org/legal.html)
 - [LAME](https://lame.sourceforge.io/)
+
+## Desktop packaging
+
+After rebuilding FFmpeg, follow [Contributing](../CONTRIBUTING.md#desktop-and-python-packaging)
+to build the application and native installer on the target platform. Mobile apps
+use platform decoders and their own source-built LAME library; see
+[Mobile builds](../docs/mobile/install.md#audio-data-and-licenses).

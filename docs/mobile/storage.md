@@ -1,8 +1,9 @@
 # Portable storage contract
 
-Sidecar schema remains **3**. Bundle schema is **1**. Application versions and
-platform build numbers do not select a storage schema. Python remains the
-implementation for desktop/CLI/TUI; `mobile/shared` defines the mobile rules.
+The collection uses sidecar schema **3** and bundle schema **1**. Application
+versions and platform build numbers are independent of storage schema versions.
+Python implements the desktop, CLI and terminal storage services; `mobile/shared`
+implements the same format for Android and iOS.
 `contracts/golden.json` is consumed by both implementations, including original
 HTML fixtures, normalization, source identities, filenames, matching and GUIDs.
 `contracts/anki.json` freezes model/deck/field/template identities. Regenerate the
@@ -69,7 +70,7 @@ publication. The previous collection is renamed to a retained sibling
 journal records the backup before either rename. If interrupted between renames,
 the next collection open restores the previous directory. Failed publication rolls
 back. Repeating the same bundle is a no-op. A retained backup is deliberately not
-a full undo engine; it can be inspected/exported separately.
+an automatic undo operation; open or export the backup separately when needed.
 
 Media is reference-counted by collection entries on deletion. Removing one meaning
 retains a shared MP3. Checksums detect damaged managed media. Downloads and phrase

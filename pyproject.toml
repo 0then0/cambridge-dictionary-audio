@@ -33,6 +33,7 @@ cambridge-audio = "cambridge_audio.cli:main"
 [project.urls]
 Homepage = "https://github.com/0then0/cambridge-dictionary-audio"
 Repository = "https://github.com/0then0/cambridge-dictionary-audio"
+Documentation = "https://github.com/0then0/cambridge-dictionary-audio/blob/main/docs/README.md"
 Issues = "https://github.com/0then0/cambridge-dictionary-audio/issues"
 
 [build-system]
