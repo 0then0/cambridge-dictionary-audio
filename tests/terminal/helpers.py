@@ -2,6 +2,8 @@
 
 import time
 
+from textual.worker import WorkerCancelled
+
 from cambridge_audio.library import save_metadata
 from cambridge_audio.service import Recording
 
@@ -14,7 +16,12 @@ def saved(directory, word="hello", accent="us"):
 
 
 async def finish_download(app, pilot):
-    await app.workers.wait_for_complete()
+    try:
+        await app.workers.wait_for_complete()
+    except WorkerCancelled:
+        # Textual cancels its remaining workers when a requested quit completes.
+        if not app.quit_pending:
+            raise
     await pilot.pause()
 
 

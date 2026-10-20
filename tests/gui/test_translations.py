@@ -429,7 +429,7 @@ def test_russian_translation_block_keyboard_focus_follows_layout(window, app):
 )
 @pytest.mark.parametrize("count", [0, 1, 2])
 def test_find_translation_only_shown_for_unresolved_saved_translation(
-    window, mp3, language, title, count
+    window, app, monkeypatch, client, mp3, language, title, count
 ):
     from cambridge_audio.library import read_recording, save_metadata
     from cambridge_audio.translations import (
@@ -438,6 +438,9 @@ def test_find_translation_only_shown_for_unresolved_saved_translation(
         persist_translation,
     )
 
+    # An empty cache starts a lookup; keep this layout test independent of HTTP.
+    client.translation_options = Mock(return_value=())
+    monkeypatch.setattr(workers, "CambridgeClient", lambda **kwargs: client)
     window.language = language
     window._retranslate()
     window.output_dir.mkdir()
@@ -466,6 +469,8 @@ def test_find_translation_only_shown_for_unresolved_saved_translation(
     layout = window.translation_label.parentWidget().layout()
     actions = layout.itemAt(layout.indexOf(window.translation_label) + 1).layout()
     assert actions.indexOf(window.select_translation_button) >= 0
+    wait_until(app, lambda: window._translation_worker is None)
+    client.session.get.assert_not_called()
     window.translation_check.setChecked(False)
     assert not window.select_translation_button.isVisible()
 
