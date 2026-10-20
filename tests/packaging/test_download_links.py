@@ -13,32 +13,45 @@ from markdown_it import MarkdownIt
 from scripts import download_links
 
 
-def test_both_readmes_have_direct_format_buttons_for_verified_release_assets():
+@pytest.mark.parametrize("cell_padding", [None, "", "   "], ids=["readme", "compact", "padded"])
+def test_both_readmes_have_direct_format_buttons_for_verified_release_assets(cell_padding):
     release = json.loads(download_links.SNAPSHOT.read_text(encoding="utf-8"))
     assets = {url for _, group in download_links.assets_for(release) for _, url in group}
     assert len(assets) == 20
     for filename, russian in (("README.md", False), ("README.ru.md", True)):
         text = (download_links.ROOT / filename).read_text(encoding="utf-8")
         block = text.split("<!-- downloads:start -->")[1].split("<!-- downloads:end -->")[0].strip()
+        if cell_padding is not None:
+            block = "\n".join(
+                re.sub(r" *\| *", f"{cell_padding}|{cell_padding}", line)
+                if line.lstrip().startswith("|")
+                else line
+                for line in block.splitlines()
+            )
         markdown = MarkdownIt().enable("table")
         assert markdown.render(block) == markdown.render(download_links.render(release, russian))
         urls = set(re.findall(r"\]\((https://github.com/[^)]+)\)", block))
         assert urls == assets
         assert len(re.findall(r"!\[[^\]]+\]\(https://img.shields.io/", block)) == 20
-        assert len([line for line in block.splitlines() if line.startswith("| ")]) == 11
         assert release["tag_name"] in block
         assert "/releases/latest" not in block
-        rows = [line for line in block.splitlines() if line.startswith("| ")]
+        rows = [
+            [cell.strip() for cell in line.strip().split("|")[1:-1]]
+            for line in block.splitlines()
+            if line.lstrip().startswith("|")
+        ]
+        assert len(rows) == 11
         assert all(
             "windows-x86_64" in url
-            for url in re.findall(r"\]\((https://github.com/[^)]+)\)", rows[2])
+            for url in re.findall(r"\]\((https://github.com/[^)]+)\)", rows[2][-1])
         )
         assert all(
-            "macos-arm64" in url for url in re.findall(r"\]\((https://github.com/[^)]+)\)", rows[3])
+            "macos-arm64" in url
+            for url in re.findall(r"\]\((https://github.com/[^)]+)\)", rows[3][-1])
         )
         assert all(
             "macos-x86_64" in url
-            for url in re.findall(r"\]\((https://github.com/[^)]+)\)", rows[4])
+            for url in re.findall(r"\]\((https://github.com/[^)]+)\)", rows[4][-1])
         )
         for platform, filenames in (
             ("Android 9+", ("-debug-TEST-ONLY.apk", "-unsigned-NOT-INSTALLABLE.apk")),
@@ -50,8 +63,8 @@ def test_both_readmes_have_direct_format_buttons_for_verified_release_assets():
                 ),
             ),
         ):
-            row = next(line for line in rows if line.startswith(f"| {platform} |"))
-            links = re.findall(r"\]\((https://github.com/[^)]+)\)", row)
+            row = next(cells for cells in rows if cells[0] == platform)
+            links = re.findall(r"\]\((https://github.com/[^)]+)\)", row[-1])
             assert len(links) == 2
             assert all(any(url.endswith(name) for url in links) for name in filenames)
         assert "docs/mobile/install.md" in block
