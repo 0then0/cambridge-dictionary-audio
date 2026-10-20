@@ -11,7 +11,7 @@ from cambridge_audio.terminal import CambridgeApp, Options
 from cambridge_audio.terminal import app as terminal
 from tests.core.test_shared_audio import AUDIO, BANK
 from tests.helpers import response
-from tests.terminal.helpers import finish_download
+from tests.terminal.helpers import finish_download, wait_for_ui
 
 
 def test_inline_meanings_preview_and_shared_audio(tmp_path, monkeypatch, client):
@@ -38,7 +38,9 @@ def test_inline_meanings_preview_and_shared_audio(tmp_path, monkeypatch, client)
             app.save_meaning()
             await finish_download(app, pilot)
             listing.highlighted = 1
-            await pilot.pause()
+            await wait_for_ui(
+                pilot, lambda: app.query_one("#definition", Static).render().plain == "river"
+            )
             assert app.query_one("#definition", Static).render().plain == "river"
             app.save_meaning()
             await finish_download(app, pilot)
