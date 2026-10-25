@@ -17,6 +17,8 @@
 
 [Русский](README.ru.md) · [Documentation](docs/README.md) · [Contributing](CONTRIBUTING.md) · [Changelog](CHANGELOG.md)
 
+[Security policy](SECURITY.md) · [Code of conduct](CODE_OF_CONDUCT.md)
+
 Download English pronunciation recordings from
 [Cambridge Dictionary](https://dictionary.cambridge.org/) as MP3 files.
 Desktop, terminal and mobile applications provide US and UK audio, IPA

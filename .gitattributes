@@ -1,0 +1,25 @@
+# Normalize source files on every platform. Windows launchers use native CRLF.
+* text=auto eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Preserve binary fixtures, icons, archives and native build artifacts byte for byte.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.icns binary
+*.mp3 binary
+*.wav binary
+*.ogg binary
+*.zip binary
+*.gz binary
+*.jar binary
+*.apk binary
+*.aab binary
+*.ipa binary
+*.pdf binary
+*.so binary
+*.dylib binary
+*.dll binary
+*.exe binary

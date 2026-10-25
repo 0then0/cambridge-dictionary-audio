@@ -10,7 +10,7 @@ indent_size = 4
 max_line_length = 100
 
 # Match Biome and the repository's YAML/JSON/web source conventions.
-[*.{json,jsonc,yml,yaml,js,mjs,cjs,jsx,ts,tsx,css,html,xml,svg,plist}]
+[*.{json,jsonc,yml,yaml,js,mjs,cjs,jsx,ts,tsx,css,html,xml,svg,plist,xcworkspacedata,xcscheme}]
 indent_size = 2
 
 [*.sh]

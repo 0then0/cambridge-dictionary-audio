@@ -1,0 +1,50 @@
+name: Bug report
+description: Report a reproducible problem in an application, extension or build.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Search existing issues first. For vulnerabilities, follow [SECURITY.md](https://github.com/0then0/cambridge-dictionary-audio/blob/main/SECURITY.md).
+        Remove personal data, tokens and signing material from logs and attachments.
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - Desktop GUI
+        - CLI
+        - Terminal UI
+        - Android
+        - iOS
+        - Browser extension
+        - Build or CI
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Version and environment
+      description: App version or commit, OS/device version, and installation source. For source builds, include relevant Python, Node, Java or Xcode versions.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Include the exact command or UI steps and a minimal example word, where relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Logs, screenshots or sample files
+      description: Include the full sanitized error and CI URL if relevant. Do not upload private collections.

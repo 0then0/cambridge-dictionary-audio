@@ -6,6 +6,8 @@
 
 [English](README.md) · [Документация](docs/README.md) · [Участие в проекте](CONTRIBUTING.md) · [История изменений](CHANGELOG.md)
 
+[Безопасность](SECURITY.md) · [Правила поведения](CODE_OF_CONDUCT.md)
+
 Скачивание MP3 с произношением английских слов и фраз из
 [Cambridge Dictionary](https://dictionary.cambridge.org/).
 Доступны графическое, терминальное и мобильные приложения: US/UK, транскрипции

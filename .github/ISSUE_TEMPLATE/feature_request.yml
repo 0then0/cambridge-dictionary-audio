@@ -1,0 +1,23 @@
+name: Feature request
+description: Suggest an improvement and explain the problem it solves.
+title: "[Feature]: "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: Describe who needs this and what is difficult with the current behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Include affected platforms and any collection, compatibility or privacy implications.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives and additional context
+      description: Mention existing workarounds or related issues.

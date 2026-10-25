@@ -6,6 +6,17 @@ the corresponding application releases or source history.
 
 ## Unreleased
 
+### Added
+
+- Public contribution, conduct and security-reporting guidance, structured issue
+  forms and a pull request template.
+- Repository-wide Git attributes for consistent line endings and binary fixtures.
+
+### Changed
+
+- Limit ignored files to project tooling, generated outputs and private local state.
+- Give Checks read-only repository permissions and cancel superseded PR checks.
+
 ## 1.0.0 (2026-10-20)
 
 ### Added

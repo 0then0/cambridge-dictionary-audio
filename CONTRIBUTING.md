@@ -3,6 +3,21 @@
 This guide covers source setup, repository structure, validation and release
 packaging. For application usage, start with the [documentation index](docs/README.md).
 
+## Issues and pull requests
+
+Use the [issue templates](https://github.com/0then0/cambridge-dictionary-audio/issues/new/choose)
+for reproducible bugs and feature proposals. Include the affected platform,
+version and a minimal example. Discuss substantial compatibility or architecture
+changes before implementing them. Never attach credentials or private collections.
+
+Keep pull requests focused. Explain the resulting behavior, relevant checks and
+any effects on existing data or supported platforms. Add regression coverage for
+behavior changes and update the changelog when users are affected. Use English
+Conventional Commit messages, for example `fix: preserve selected pronunciation`.
+
+Follow the [code of conduct](CODE_OF_CONDUCT.md). Report vulnerabilities privately
+as described in [SECURITY.md](SECURITY.md), rather than in a public issue.
+
 ## Python setup
 
 Use [uv](https://docs.astral.sh/uv/) 0.13.0 or later. Python 3.10–3.15 is supported;
