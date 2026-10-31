@@ -94,6 +94,13 @@ cambridge-audio --output-dir restored --import-collection ../backup.cda --apply-
   --resolve-conflict ID=existing
 ```
 
+Export never replaces an existing file unless replacement is requested explicitly
+(`--replace-bundle`, the desktop confirmation or `export_bundle(..., replace=True)`).
+The archive is validated before it is published and the previous file stays intact
+until then. Mobile apps write each export to a new uniquely named file in private
+cache and hand it to the system share sheet; the receiving app or provider decides
+where it is stored and whether an existing file is replaced.
+
 Keep JSON and MP3 together for manual legacy-folder backups. Bundle import never
 accesses a running Anki profile. Exported APKG note updates are still governed by
 Anki's **If newer / Always / Never** import options; see the collection guide.

@@ -11,7 +11,7 @@ from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import ModalScreen
 from textual.widgets import Button, Checkbox, Input, Label, Link, Select, Static
 
-from ..i18n import translate
+from ..i18n import LANGUAGES, translate
 from .settings import Options
 
 
@@ -50,7 +50,7 @@ class Settings(Dialog):
             yield Label(t("Settings"), classes="dialog-title")
             yield Label(t("Language"))
             yield Select(
-                [("English", "en"), ("Русский", "ru")],
+                [(name, code) for code, name in LANGUAGES.items()],
                 value=self.options.language,
                 allow_blank=False,
                 id="language",

@@ -5,7 +5,7 @@ collection, Russian translations, phrase synthesis and Anki export. They run
 independently of the desktop application and do not require a Python installation.
 
 Android requires **Android 9 or later**; iOS requires **iOS 17 or later**.
-The mobile version is **1.0.0**. For build artifacts, signing requirements and
+The mobile version is **1.0.1**. For build artifacts, signing requirements and
 installation commands, see [Mobile builds and installation](install.md).
 
 ## Search and save
@@ -53,8 +53,9 @@ See [Data sources](../data-sources.md) for the package version and attribution.
 
 ## Appearance
 
-Settings offers English and Russian interface languages, a default pronunciation,
-and system, light and dark appearance. Choose a blue, green, purple, orange or red
+Settings offers English, Russian, Spanish, German, French, Japanese and Brazilian
+Portuguese interface languages, a default pronunciation, and system, light and dark
+appearance. Choose a blue, green, purple, orange or red
 accent; the red matches the desktop palette. Android can also use system colours.
 Selecting a manual accent switches away from the system palette.
 
@@ -68,9 +69,10 @@ Android uses a full-screen reader; iOS groups the information into native sectio
 ## Backups, transfer and Anki
 
 Use **Back up / export** to save a `.cda` collection archive through the system
-file picker or share sheet. Import previews changes and asks how to resolve
-conflicts before applying them. A retained backup protects the previous collection.
-The same format is supported by the desktop GUI and CLI.
+share sheet. Each export is a new file; the app you share it with decides where it is
+saved and how an existing file with the same name is handled. Import previews changes
+and asks how to resolve conflicts before applying them. A retained backup protects the
+previous collection. The same format is supported by the desktop GUI and CLI.
 
 Export Anki material as an `.apkg` package, or as TSV with audio. Export does not
 require Anki to be installed on the phone. Import the exported package into Anki

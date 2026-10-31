@@ -92,7 +92,9 @@ shown in full; **Other pronunciation** appears only for multiple recordings of
 the selected accent. Click **Play** to listen in the window,
 or **Open folder** to find the MP3. No external player is needed for GUI playback.
 
-- English and Russian interfaces; English is the default.
+- Interfaces in English, Russian, Spanish, German, French, Japanese and Brazilian
+  Portuguese; English is the default. Translations of dictionary entries are separate
+  and currently Russian only.
 - System, light and dark appearance. System mode follows Qt's OS appearance
   notifications, with a light fallback when the platform does not report its theme.
 - The gear button opens **Settings** for language and appearance. Choose any
@@ -231,7 +233,8 @@ uv run -m cambridge_audio --lang ru --help
 - `--accent us|uk|both`: select pronunciation; filenames include `.us` or `.uk`.
 - `--output-dir PATH`: select the destination directory; default: `downloads/` in the
   current working directory. The directory is created if necessary.
-- `--lang en|ru`: select the interface language, including help and application messages.
+- `--lang en|ru|es|de|fr|ja|pt-BR`: select the interface language, including help and
+  application messages (case-insensitive).
 - `--translation russian`: enable Russian translations; `ru` and `русский` are aliases.
   Other target languages are rejected.
   Translation is disabled by default and independent of the interface language.
@@ -262,7 +265,7 @@ uv run -m cambridge_audio --lang ru --no-play --translation russian
 
 The workspace shows a searchable library and recording details side by side.
 On narrower terminals the panels stack vertically. It supports keyboard navigation,
-mouse input, background downloads and playback, and an English or Russian interface.
+mouse input, background downloads and playback, and a localized interface.
 Search filters the saved library as you type. Enter downloads the word or opens
 existing audio offline; with both accents selected, only missing recordings are
 downloaded. **Download again** asks before replacing an existing recording.

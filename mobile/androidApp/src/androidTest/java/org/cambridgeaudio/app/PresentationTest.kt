@@ -37,7 +37,7 @@ class PresentationTest {
         compose.setContent {
             MaterialTheme {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
-                    TranslationMenu(options, selected.value, "word-sense", false) {
+                    TranslationMenu(options, selected.value, "word-sense", "en") {
                         selected.value = it
                     }
                 }
@@ -58,7 +58,7 @@ class PresentationTest {
         compose.setContent {
             val density = LocalDensity.current.density
             CompositionLocalProvider(LocalDensity provides Density(density, 2f)) {
-                MaterialTheme { LicensesDialog(false) { closed = true } }
+                MaterialTheme { LicensesDialog("en") { closed = true } }
             }
         }
         compose.onNodeWithText("Close").assertIsDisplayed()
@@ -94,7 +94,7 @@ class PresentationTest {
         compose.setContent {
             MaterialTheme {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
-                    MeaningMenu(entries, selected.value, false) {
+                    MeaningMenu(entries, selected.value, "en") {
                         selected.value = it.str("sense_id")
                     }
                 }

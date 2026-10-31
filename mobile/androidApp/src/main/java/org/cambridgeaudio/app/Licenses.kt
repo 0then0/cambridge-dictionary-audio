@@ -25,8 +25,8 @@ import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.view.WindowCompat
 
 @Composable
-internal fun LicensesDialog(russian: Boolean, dismiss: () -> Unit) {
-    fun t(en: String, ru: String) = if (russian) ru else en
+internal fun LicensesDialog(language: String, dismiss: () -> Unit) {
+    fun t(en: String, ru: String) = Locales.text(language, en, ru)
     var document by rememberSaveable { mutableStateOf<String?>(null) }
     val documents =
         mapOf(

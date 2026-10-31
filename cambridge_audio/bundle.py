@@ -3,6 +3,7 @@
 Bundle layout is specified in docs/mobile/storage.md. No network or Qt dependency.
 """
 
+import errno
 import hashlib
 import json
 import os
@@ -109,13 +110,66 @@ def _document(saved):
     return data
 
 
-def export_bundle(directory: Path, destination: Path) -> Path:
-    """Export all entries; refuse external symlinks and unverifiable media."""
+class BundleExistsError(FileExistsError):
+    """The destination file exists and replacing it was not allowed."""
+
+    def __init__(self, path):
+        super().__init__(f"File already exists: {path}. It was not replaced.")
+        self.path = Path(path)
+
+
+def _check_destination(destination, replace):
+    """Fail early for a destination that can never be published to."""
+    if destination.is_dir():
+        raise IsADirectoryError(f"The backup destination is a folder: {destination}")
+    if destination.exists() and not destination.is_file():
+        raise FileExistsError(f"The backup destination is not a regular file: {destination}")
+    if destination.exists() and not replace:
+        raise BundleExistsError(destination)
+
+
+def _publish(temporary, destination, replace):
+    """Make the finished archive visible at destination in one atomic step.
+
+    Without ``replace`` the step fails if anything exists there, even if it appeared
+    after _check_destination. A file system that cannot do that is an error: there
+    is deliberately no fallback to os.replace. Crash durability is not promised.
+    """
+    try:
+        if replace:
+            os.replace(temporary, destination)
+        elif os.name == "nt":
+            # Windows rename refuses an existing destination, including on exFAT.
+            os.rename(temporary, destination)
+        else:
+            # A hard link publishes the complete inode exclusively; EEXIST means it lost.
+            os.link(temporary, destination)
+    except FileExistsError as exc:
+        if replace:
+            raise
+        raise BundleExistsError(destination) from exc
+    except OSError as exc:
+        if replace or exc.errno not in {errno.EPERM, errno.ENOTSUP, errno.ENOSYS}:
+            raise
+        raise OSError(
+            f"This file system cannot save {destination} without risking replacement "
+            f"of an existing file ({exc.strerror}); choose another location."
+        ) from exc
+
+
+def export_bundle(directory: Path, destination: Path, *, replace: bool = False) -> Path:
+    """Export all entries; refuse external symlinks and unverifiable media.
+
+    An existing destination is kept and BundleExistsError is raised unless ``replace``
+    is true. The archive is complete and validated before it is published, so a
+    failure at any point leaves a previous file untouched.
+    """
     directory, destination = Path(directory).absolute(), Path(destination).absolute()
     if directory.is_symlink() or destination.is_symlink():
         raise ValueError("Collection and bundle destination must not be symbolic links.")
     if destination.resolve().is_relative_to(directory.resolve()):
         raise ValueError("Save the backup outside the collection directory.")
+    _check_destination(destination, replace)
     destination.parent.mkdir(parents=True, exist_ok=True)
     with _METADATA_LOCK:
         recover_import(directory)
@@ -170,11 +224,11 @@ def export_bundle(directory: Path, destination: Path) -> Path:
                     if len(content) > MAX_FILE:
                         raise ValueError(f"File exceeds bundle limit: {name}")
                     archive.writestr(name, content)
-            # Validate our output before replacing even an existing backup.
+            # Validate our output before it can replace or appear next to anything.
             _load_bundle(temporary)
             with temporary.open("r+b") as stream:
                 os.fsync(stream.fileno())
-            os.replace(temporary, destination)
+            _publish(temporary, destination, replace)
         finally:
             if temporary:
                 temporary.unlink(missing_ok=True)

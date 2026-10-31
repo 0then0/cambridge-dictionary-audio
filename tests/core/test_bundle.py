@@ -83,7 +83,7 @@ def test_file_transfer_round_trip_idempotence_and_unknown_data(client, tmp_path)
         before = {p.name: p.read_bytes() for p in target.iterdir()}
         assert apply_import(again) is None
         assert before == {p.name: p.read_bytes() for p in target.iterdir()}
-        export_bundle(target, source)
+        export_bundle(target, source, replace=True)
     # These are Python storage operations, not emulator/device validation.
     assert (
         json.loads((target / ".anki-mapping.json").read_bytes())["notes"][records[0].id]["guid"]
@@ -149,7 +149,7 @@ def test_replacing_native_record_does_not_resurrect_old_media(
                 save_metadata(
                     replace(saved.recording, audio_sha256=bundle._sha(b"ID3new source recording"))
                 )
-    export_bundle(incoming, archive)
+    export_bundle(incoming, archive, replace=True)
     preview = preview_import(archive, target)
     backup = apply_import(preview, {i: "incoming" for i in preview.conflicts})
     current = scan_recordings(target)

@@ -41,3 +41,6 @@ jobs:
       - name: Verify generated Anki contract separately
         if: matrix.language == 'kotlin'
         run: uv run --no-project python scripts/mobile_contracts.py --check
+      - name: Verify generated interface catalogues separately
+        if: matrix.language == 'kotlin'
+        run: uv run --no-project python scripts/mobile_locales.py --check

@@ -1,7 +1,7 @@
 import type { Entry, Pronunciation } from './page.js';
 import { audioFilename, isDictionaryPage, readPage } from './page.js';
 import type { Message, Settings } from './settings.js';
-import { messages, parseSettings } from './settings.js';
+import { messages, parseLanguage, parseSettings } from './settings.js';
 
 export type BrowserApi = Pick<typeof chrome, 'tabs' | 'scripting' | 'downloads' | 'storage'>;
 
@@ -194,7 +194,7 @@ export async function startPopup(document: Document, api: BrowserApi): Promise<v
     });
   }
   language.addEventListener('change', () => {
-    settings = { ...settings, language: language.value === 'ru' ? 'ru' : 'en' };
+    settings = { ...settings, language: parseLanguage(language.value) };
     localize();
     void persist();
   });

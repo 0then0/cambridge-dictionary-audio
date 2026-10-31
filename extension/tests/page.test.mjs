@@ -109,7 +109,7 @@ for (const [word, expected] of [
 test('limits filenames and accepts only supported preferences', () => {
   assert.ok(audioFilename('hello'.repeat(100), 'us').length <= 87);
   assert.deepEqual(parseSettings({}), { language: 'en', theme: 'system', accent: 'us' });
-  assert.deepEqual(parseSettings({ language: 'de', theme: {}, accent: 'both' }), parseSettings({}));
+  assert.deepEqual(parseSettings({ language: 'xx', theme: {}, accent: 'both' }), parseSettings({}));
   assert.deepEqual(parseSettings({ language: 'ru', theme: 'dark', accent: 'uk' }), {
     language: 'ru',
     theme: 'dark',

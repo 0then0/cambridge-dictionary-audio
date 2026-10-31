@@ -1,6 +1,6 @@
 [project]
 name = "cambridge-dictionary-audio"
-version = "1.0.0"
+version = "1.0.1"
 description = "Download UK and US pronunciations from Cambridge Dictionary"
 readme = "docs/cli.md"
 requires-python = ">=3.10,<3.16"
@@ -53,7 +53,7 @@ packages = ["cambridge_audio"]
 # Repository-only cross-language tests inspect mobile generated sources.
 exclude = [
     "cambridge_audio/gui", "cambridge_audio/desktop.py",
-    "tests/core/test_mobile_contract.py",
+    "tests/core/test_mobile_contract.py", "tests/core/test_mobile_locales.py",
 ]
 only-include = [
     "cambridge_audio", "pyproject.toml", "docs/cli.md", "docs/collection.md", "docs/data-sources.md",

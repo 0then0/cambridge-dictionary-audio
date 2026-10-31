@@ -14,7 +14,11 @@ ROOT = Path(__file__).resolve().parents[1]
 MOBILE = ROOT / "mobile"
 TOOLS = ROOT / "build/format-tools"
 CONFIG = json.loads((MOBILE / "formatters.json").read_text(encoding="utf-8"))
-GENERATED = MOBILE / "shared/src/commonMain/kotlin/org/cambridgeaudio/core/AnkiContract.kt"
+GENERATED = {
+    MOBILE / "shared/src/commonMain/kotlin/org/cambridgeaudio/core/AnkiContract.kt",
+    MOBILE / "androidApp/src/main/java/org/cambridgeaudio/app/Locales.kt",
+    MOBILE / "iosApp/CambridgeAudio/Locales.swift",
+}
 
 
 def sources(language):
@@ -28,7 +32,7 @@ def sources(language):
         files = []
         for target in ("CambridgeAudio", "CambridgeAudioTests", "CambridgeAudioUITests"):
             files.extend((MOBILE / "iosApp" / target).rglob("*.swift"))
-    return sorted(p for p in set(files) if p != GENERATED and not p.is_symlink())
+    return sorted(p for p in set(files) if p not in GENERATED and not p.is_symlink())
 
 
 def download(tool, filename):

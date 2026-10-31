@@ -2,13 +2,15 @@
 
 import argparse
 import math
+import re
 import sys
+import unicodedata
 from importlib.metadata import version
 from pathlib import Path
 
 from .anki import adopt_anki_identities, export_anki, export_apkg
 from .audio import play_audio
-from .bundle import apply_import, export_bundle, preview_import
+from .bundle import BundleExistsError, apply_import, export_bundle, preview_import
 from .console import Output, is_terminal
 from .dictionary import (
     CambridgeClient,
@@ -16,7 +18,7 @@ from .dictionary import (
     SelectionRequired,
     variants,
 )
-from .i18n import translate
+from .i18n import LANGUAGES, language_code, translate
 from .library import delete_recording, read_recording, save_metadata, scan_recordings
 from .service import Recording, download_recordings, preview_recording
 from .translations import (
@@ -29,10 +31,42 @@ from .translations import (
 from .wikdict import PACKAGE, install_dictionary
 
 
+def _cells(character: str) -> int:
+    return 2 if unicodedata.east_asian_width(character) in "WF" else 1
+
+
+def wrap_by_width(text: str, width: int) -> list[str]:
+    """Wrap by terminal cells; textwrap cannot break CJK text and counts wide glyphs as one."""
+    width = max(width - 2, 10)  # room for hanging punctuation
+    lines, line, used = [], "", 0
+    # A token is a run of narrow non-space characters, one wide character or one space.
+    for token in re.findall(r"[^\s\u2e80-\uffff]+|[\u2e80-\uffff]|\s", text):
+        size = sum(map(_cells, token))
+        # Closing punctuation may hang past the margin instead of starting a line.
+        if used + size > width and line.strip() and token not in "。、，．）」』】！？：；)":
+            lines.append(line.rstrip())
+            line, used = "", 0
+            if token.isspace():
+                continue
+        line += token
+        used += size
+    return lines + [line.rstrip()] if line.strip() else lines
+
+
 class HelpFormatter(argparse.HelpFormatter):
     def __init__(self, prog: str, language: str):
         super().__init__(prog)
         self.language = language
+
+    def _split_lines(self, text, width):
+        if self.language != "ja":
+            return super()._split_lines(text, width)
+        return wrap_by_width(" ".join(text.split()), width)
+
+    def _fill_text(self, text, width, indent):
+        if self.language != "ja":
+            return super()._fill_text(text, width, indent)
+        return "\n".join(indent + line for line in wrap_by_width(" ".join(text.split()), width))
 
     def add_usage(self, usage, actions, groups, prefix=None):
         super().add_usage(usage, actions, groups, prefix or translate("usage: ", self.language))
@@ -53,6 +87,14 @@ class ArgumentParser(argparse.ArgumentParser):
         self.exit(
             2, translate("{prog}: error: {error}\n", self.language, prog=self.prog, error=message)
         )
+
+
+def interface_language(value: str) -> str:
+    """Accept any letter case; unknown values are rejected by argparse's choices."""
+    try:
+        return language_code(value)
+    except ValueError:
+        return value
 
 
 def positive_timeout(value: str, language: str = "en") -> float:
@@ -209,7 +251,9 @@ def main(argv: list[str] | None = None) -> int:
             if hasattr(stream, "reconfigure"):
                 stream.reconfigure(encoding="utf-8")
     language_parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
-    language_parser.add_argument("--lang", choices=("en", "ru"), default="en")
+    language_parser.add_argument(
+        "--lang", type=interface_language, choices=tuple(LANGUAGES), default="en"
+    )
     language = language_parser.parse_known_args(argv)[0].lang
     parser = ArgumentParser(
         language,
@@ -246,7 +290,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     options.add_argument(
         "--lang",
-        choices=("en", "ru"),
+        type=interface_language,
+        choices=tuple(LANGUAGES),
         default=language,
         help=translate(
             "Interface language (default: en); does not change dictionary translations.", language
@@ -400,6 +445,15 @@ def main(argv: list[str] | None = None) -> int:
         help=translate("Preview a collection bundle import.", language),
     )
     options.add_argument(
+        "--replace-bundle",
+        action="store_true",
+        help=translate(
+            "Allow --export-collection to replace an existing file (kept until the new "
+            "bundle is complete).",
+            language,
+        ),
+    )
+    options.add_argument(
         "--apply-import",
         action="store_true",
         help=translate("Apply the displayed collection import.", language),
@@ -416,6 +470,8 @@ def main(argv: list[str] | None = None) -> int:
         args.list_variants or args.variant or args.sense or args.audio or args.preview
     ) and not args.word:
         parser.error("--list-variants and --variant require a word argument.")
+    if args.replace_bundle and not args.export_collection:
+        parser.error("--replace-bundle requires --export-collection.")
     if args.apply_import or args.resolve_conflict:
         if not args.import_collection:
             parser.error("--apply-import / --resolve-conflict require --import-collection.")
@@ -424,7 +480,11 @@ def main(argv: list[str] | None = None) -> int:
             parser.error("Collection transfer uses --output-dir and no word/recording/Anki action.")
         try:
             if args.export_collection:
-                print(export_bundle(args.output_dir, args.export_collection))
+                print(
+                    export_bundle(
+                        args.output_dir, args.export_collection, replace=args.replace_bundle
+                    )
+                )
             else:
                 import json
 
@@ -454,6 +514,10 @@ def main(argv: list[str] | None = None) -> int:
                         )
                     )
             return 0
+        except BundleExistsError as exc:
+            message = "File already exists: {path}. Use --replace-bundle to replace it."
+            print(translate(message, args.lang, path=exc.path), file=sys.stderr)
+            return 1
         except (OSError, ValueError) as exc:
             print(str(exc), file=sys.stderr)
             return 1

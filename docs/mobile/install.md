@@ -4,7 +4,7 @@ This guide covers Android and iOS source builds, CI artifacts, signing and updat
 For application usage, see [Android and iOS](https://github.com/0then0/cambridge-dictionary-audio/blob/main/docs/mobile/README.md); for regression suites,
 see [Mobile testing](https://github.com/0then0/cambridge-dictionary-audio/blob/main/docs/mobile/readiness.md).
 
-The mobile version is **1.0.0**, build **1000002**. Python and browser-extension
+The mobile version is **1.0.1**, build **1000003**. Python and browser-extension
 versions are managed separately. Published downloads are listed on
 [GitHub Releases](https://github.com/0then0/cambridge-dictionary-audio/releases).
 
@@ -47,7 +47,8 @@ in `.editorconfig`, `mobile/.editorconfig` and `mobile/.swift-format`.
 Tools are cached under `build/format-tools/`. The Swift formatter is built from
 its pinned source release using `mobile/swift-format.resolved`. The wrapper uses
 that verified binary rather than an arbitrary formatter from PATH. Generated
-`AnkiContract.kt` is checked by `mobile_contracts.py` instead of the formatter.
+`AnkiContract.kt` is checked by `mobile_contracts.py`, and the generated `Locales.kt` and
+`Locales.swift` by `mobile_locales.py`, instead of the formatter.
 
 The reusable [formatting workflow](https://github.com/0then0/cambridge-dictionary-audio/blob/main/.github/workflows/mobile-format.yml)
 runs before mobile builds and signing.

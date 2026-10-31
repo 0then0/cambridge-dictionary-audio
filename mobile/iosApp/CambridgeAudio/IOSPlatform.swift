@@ -246,7 +246,7 @@ private final class BoundedDownload: NSObject, URLSessionDataDelegate {
     let session = URLSession(configuration: config, delegate: self, delegateQueue: nil)
     var request = URLRequest(url: url)
     request.setValue(
-      "Mozilla/5.0 CambridgeDictionaryAudio/1.0.0", forHTTPHeaderField: "User-Agent")
+      "Mozilla/5.0 CambridgeDictionaryAudio/1.0.1", forHTTPHeaderField: "User-Agent")
     let task = session.dataTask(with: request)
     task.resume()
     while completed.wait(timeout: .now() + .milliseconds(100)) == .timedOut {

@@ -40,7 +40,8 @@ specified. `python -m cambridge_audio` is an equivalent entry point.
 Words and phrases are case-insensitive. Quotes, apostrophes and hyphens are
 supported; URLs and path separators are rejected. Saved filenames include `.us`
 or `.uk`. Interface language and translation settings are independent:
-`--lang en|ru` changes messages, while `--translation russian` enables translations.
+`--lang en|ru|es|de|fr|ja|pt-BR` changes messages, while `--translation russian` enables
+translations.
 Aliases `ru` and `русский` are accepted for the translation language.
 
 Lookup/download failures exit with status 1; invalid arguments exit with status 2.
@@ -121,7 +122,27 @@ cambridge-audio --output-dir restored --import-collection ../backup.cda --apply-
 
 Resolve each conflict with `ID=existing` or `ID=incoming`. Import retains the
 previous collection as a backup. The same format works with the desktop GUI and
-mobile apps. See the [storage specification](https://github.com/0then0/cambridge-dictionary-audio/blob/main/docs/mobile/storage.md)
+mobile apps.
+
+Export never replaces an existing file by default: the command exits with status 1,
+prints no success output and leaves the file unchanged. To replace a previous backup
+deliberately, add `--replace-bundle` (`--overwrite` applies to MP3 files only):
+
+```sh
+cambridge-audio --output-dir downloads --export-collection ../backup.cda --replace-bundle
+```
+
+The archive is written to a temporary file next to the destination, validated and then
+published in one step. Until that step the previous file is kept, and an error leaves it
+unchanged. A file that appears at the destination in the meantime is not replaced
+either. This protects against accidental replacement and interrupted writes; it does
+not promise that the file survives a power failure. On Linux and macOS a new file is
+published with a hard link, so a file system without hard-link support may report an
+error instead of saving; choose another location. The export never falls back to
+replacing the destination.
+
+To restore, import the archive into a collection folder as shown above. Import
+previews the changes first and retains the previous folder as a backup. See the [storage specification](https://github.com/0then0/cambridge-dictionary-audio/blob/main/docs/mobile/storage.md)
 for archive limits, identity rules and recovery.
 
 ## Anki export

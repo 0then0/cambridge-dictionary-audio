@@ -113,7 +113,7 @@ final class AppModel: NSObject, ObservableObject, AVAudioPlayerDelegate {
     }
   }
   deinit { observers.forEach(NotificationCenter.default.removeObserver) }
-  func t(_ en: String, _ ru: String) -> String { language == "ru" ? ru : en }
+  func t(_ en: String, _ ru: String) -> String { Locales.text(language, en, ru) }
   func json(_ document: Document) throws -> String { try encodeJSON(document) }
   func cached(_ document: Document) -> Document? {
     guard let input = try? json(document),

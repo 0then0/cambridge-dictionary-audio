@@ -1,4 +1,8 @@
-"""English application messages and their Russian translations."""
+"""English application messages and their translations."""
+
+import re
+
+from .locales import de, es, fr, ja, pt_br
 
 RUSSIAN = {
     "No automatic translation match for this meaning.": (
@@ -518,6 +522,27 @@ RUSSIAN.update(
             "Перед заменой будет сохранена резервная копия прежних данных."
         ),
         "Export a checksummed collection bundle.": "Экспорт коллекции с контрольными суммами.",
+        (
+            "Allow --export-collection to replace an existing file (kept until the new "
+            "bundle is complete)."
+        ): (
+            "Разрешить --export-collection заменить существующий файл "
+            "(прежний сохраняется до готовности нового архива)."
+        ),
+        "File already exists: {path}. Use --replace-bundle to replace it.": (
+            "Файл уже существует: {path}. Используйте --replace-bundle для замены."
+        ),
+        "File already exists: {path}. It was not replaced.": (
+            "Файл уже существует: {path}. Он не был заменён."
+        ),
+        "Replace backup?": "Заменить резервную копию?",
+        (
+            "The backup file already exists:\n{path}\n\nReplace it? "
+            "The current file is kept until the new backup is complete."
+        ): (
+            "Файл резервной копии уже существует:\n{path}\n\nЗаменить его? "
+            "Текущий файл сохраняется до готовности новой копии."
+        ),
         "Preview a collection bundle import.": "Предварительный просмотр импорта коллекции.",
         "Apply the displayed collection import.": "Применить показанный импорт коллекции.",
         "Resolve an import conflict: existing or incoming.": (
@@ -527,7 +552,68 @@ RUSSIAN.update(
 )
 
 
+RUSSIAN.update({"Export: {error}": "Экспорт: {error}", "OK": "ОК", "Action": "Действие"})
+
+# Language codes are BCP 47 tags; each catalogue maps the English message to its translation.
+LANGUAGES = {
+    "en": "English",
+    "ru": "Русский",
+    "es": "Español",
+    "de": "Deutsch",
+    "fr": "Français",
+    "ja": "日本語",
+    "pt-BR": "Português (Brasil)",
+}
+CATALOGS = {
+    "ru": RUSSIAN,
+    "es": es.MESSAGES,
+    "de": de.MESSAGES,
+    "fr": fr.MESSAGES,
+    "ja": ja.MESSAGES,
+    "pt-BR": pt_br.MESSAGES,
+}
+_BY_FOLDED_CODE = {code.casefold(): code for code in LANGUAGES}
+
+
+def language_code(value: str) -> str:
+    """Return the canonical code for a case-insensitive user-supplied language."""
+    try:
+        return _BY_FOLDED_CODE[value.strip().casefold()]
+    except KeyError:
+        raise ValueError(f"Unsupported language: {value}") from None
+
+
 def translate(message: str, language: str = "en", **values) -> str:
-    if language == "ru":
-        message = RUSSIAN.get(message, message)
+    message = CATALOGS.get(language, {}).get(message, message)
     return message.format(**values)
+
+
+_PATTERNS = None
+_PLACEHOLDER = re.compile(r"\{\w+\}")
+_MAX_TEXT = 4000  # longer diagnostics are classified by their beginning
+
+
+def english_text(text: str) -> str:
+    """English sources whose translations occur in ``text``.
+
+    Stored errors may have been produced in any interface language; classification
+    works on the English wording. A message must match as a whole (values may differ).
+    Short messages are ignored because they would match unrelated text; CJK text packs
+    more meaning into each character, so it needs more.
+    """
+    global _PATTERNS
+    if _PATTERNS is None:
+        _PATTERNS = []
+        for catalog in CATALOGS.values():
+            for english, translated in catalog.items():
+                literal = _PLACEHOLDER.sub("", translated).strip()
+                needed = 11 if any(ord(c) > 0x2E80 for c in literal) else 8
+                if len(literal) >= needed:
+                    # Values at either end need no pattern: ``search`` skips them anyway,
+                    # and a leading ``.+?`` would make every search quadratic.
+                    parts = _PLACEHOLDER.split(translated.strip())
+                    inner = ".+?".join(map(re.escape, parts))
+                    pattern = re.compile(inner.removeprefix(".+?").removesuffix(".+?"), re.DOTALL)
+                    _PATTERNS.append((pattern, english))
+    text = text[:_MAX_TEXT]
+    return " ".join(english for pattern, english in _PATTERNS if pattern.search(text))

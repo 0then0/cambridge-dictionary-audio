@@ -11,11 +11,32 @@ the corresponding application releases or source history.
 - Public contribution, conduct and security-reporting guidance, structured issue
   forms and a pull request template.
 - Repository-wide Git attributes for consistent line endings and binary fixtures.
+- Interface languages Spanish, German, French, Japanese and Brazilian Portuguese
+  (`es`, `de`, `fr`, `ja`, `pt-BR`) in the desktop app, terminal workspace, CLI,
+  browser extension and, with mobile catalogues compiled into generated sources, the
+  Android and iOS apps (not yet built or run on devices). `--lang` accepts all seven languages
+  in any letter case; Qt's own texts (standard buttons, text-field menus) follow the
+  selected language. Dictionary translations remain Russian only.
 
 ### Changed
 
 - Limit ignored files to project tooling, generated outputs and private local state.
 - Give Checks read-only repository permissions and cancel superseded PR checks.
+- Prepare version 1.0.1: Python, browser extension and mobile metadata now share it,
+  with Android version code and iOS build number 1000003. Mobile application code
+  and the `.cda` format are unchanged.
+
+### Fixed
+
+- Collection backup export no longer replaces an existing file silently. The
+  `--export-collection` CLI command, the Python `export_bundle()` function and the
+  desktop **Back up / transfer collection** export keep the existing file and report
+  a failure unless replacement is requested explicitly: `--replace-bundle` on the
+  CLI, **Replace** in the desktop confirmation, `replace=True` in Python.
+- A file that appears at the destination while the archive is being prepared is
+  also kept. The finished, validated archive is published in one step that refuses
+  an existing destination; an allowed replacement keeps the previous file until the
+  new archive is ready, and failures leave it untouched.
 
 ## 1.0.0 (2026-10-20)
 
