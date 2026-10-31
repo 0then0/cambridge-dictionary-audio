@@ -6,6 +6,10 @@ the corresponding application releases or source history.
 
 ## Unreleased
 
+No changes yet.
+
+## 1.0.1 (2026-10-31)
+
 ### Added
 
 - Public contribution, conduct and security-reporting guidance, structured issue
@@ -23,8 +27,8 @@ the corresponding application releases or source history.
 - Limit ignored files to project tooling, generated outputs and private local state.
 - Give Checks read-only repository permissions and cancel superseded PR checks.
 - Prepare version 1.0.1: Python, browser extension and mobile metadata now share it,
-  with Android version code and iOS build number 1000003. Mobile application code
-  and the `.cda` format are unchanged.
+  with Android version code and iOS build number 1000003. The `.cda` format and
+  stable Anki identities are unchanged.
 
 ### Fixed
 
