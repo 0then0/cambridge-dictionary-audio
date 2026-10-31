@@ -868,7 +868,7 @@ internal object Locales {
             "pt-BR" to pt_br,
         )
 
-    private val placeholder = Regex("\\{(\\d+)}")
+    private val placeholder = Regex("\\{(\\d+)\\}")
 
     /** English and Russian come from the call site; other languages from the catalogues. */
     fun text(language: String, english: String, russian: String): String =
