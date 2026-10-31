@@ -18,8 +18,8 @@ android {
         minSdk = 28
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }
         targetSdk = 37
-        versionCode = 1000002
-        versionName = "1.0.0"
+        versionCode = 1000003
+        versionName = "1.0.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     val keystore = System.getenv("ANDROID_KEYSTORE")

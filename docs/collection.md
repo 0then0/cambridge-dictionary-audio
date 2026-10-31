@@ -90,6 +90,19 @@ cambridge-audio --output-dir restored --import-collection ../backup.cda --apply-
   --resolve-conflict ID=existing
 ```
 
+Export keeps an existing file unless you allow replacement. The desktop app asks
+before replacing a file (**Keep existing** is the default; cancelling the file dialog
+or choosing **Keep existing** exports nothing and leaves the file as it was). On the
+CLI add `--replace-bundle`; without it the command fails and reports the existing file.
+The previous file stays in place until the new archive is complete and validated, and
+a failed export (for example a full disk) does not change it. If the system file dialog
+also asks about replacement, the application's own confirmation follows it, because the
+dialog does not tell the application what you answered.
+
+To restore a collection, use **Import collection bundle** in the desktop app or
+`--import-collection` on the CLI, review the preview and choose how to resolve each
+conflict.
+
 Use `ID=incoming` to replace that entry with its archive version. A successful
 import retains the previous collection as a sibling backup directory. Export a
 backup before moving application data or uninstalling an app.
@@ -112,7 +125,7 @@ translations. The GUI has a **Show Russian translation** checkbox, an offline
 dictionary status and **Install WikDict**; no free-form language field is shown.
 The TUI offers the same Russian translation toggle in its recording panel and
 Settings. English definitions remain visible when translation is off. Interface
-language (`--lang en` / `--lang ru`) is independent of this toggle.
+language (`--lang`) is independent of this toggle.
 
 The checkbox shows and hides cached Russian results immediately, without repeating
 requests for a usable cache. CLI: `--translation russian` enables translation;

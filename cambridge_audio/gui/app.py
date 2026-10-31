@@ -10,10 +10,12 @@ from tempfile import TemporaryDirectory
 try:
     from PySide6.QtCore import (
         QByteArray,
+        QLibraryInfo,
         QSettings,
         QSize,
         QStandardPaths,
         Qt,
+        QTranslator,
         QUrl,
         Slot,
     )
@@ -49,7 +51,7 @@ except ModuleNotFoundError as exc:
 
 from ..anki import export_anki, export_apkg
 from ..audio import ffmpeg_executable
-from ..bundle import apply_import, export_bundle, preview_import
+from ..bundle import BundleExistsError, apply_import, export_bundle, preview_import
 from ..desktop import APPLICATION_NAME, launch_macos_bundle
 from ..dictionary import (
     audio_filename,
@@ -57,7 +59,7 @@ from ..dictionary import (
     variants,
 )
 from ..errors import diagnostic_details, friendly_error
-from ..i18n import translate
+from ..i18n import LANGUAGES, translate
 from ..library import SavedRecording, read_recording, scan_recordings
 from ..service import DownloadResult, Recording
 from ..translations import (
@@ -123,7 +125,7 @@ class MainWindow(QMainWindow):
             if settings is not None
             else QSettings("CambridgeDictionaryAudio", "CambridgeDictionaryAudio")
         )
-        self.language = self._choice("language", {"en", "ru"}, "en")
+        self.language = self._choice("language", set(LANGUAGES), "en")
         self.theme = self._choice("theme", {"system", "light", "dark"}, "system")
         self.accent = self._choice("accent", {"us", "uk", "both"}, "us")
         self.output_dir = Path(str(self.settings.value("output_dir", str(default_output_dir()))))
@@ -428,6 +430,7 @@ class MainWindow(QMainWindow):
         self.combine_check.toggled.connect(lambda value: self.settings.setValue("combine", value))
 
     def _retranslate(self):
+        install_qt_translation(self.language)
         self.error_details_button.setText(self._t("Technical details"))
         self.error_details_text.setAccessibleName(self._t("Technical details"))
         self.subtitle.setText(self._t("Download and listen to English pronunciation."))
@@ -503,7 +506,7 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def _preferences_changed(self):
-        self.language = self._choice("language", {"en", "ru"}, "en")
+        self.language = self._choice("language", set(LANGUAGES), "en")
         self.theme = self._choice("theme", {"system", "light", "dark"}, "system")
         self._retranslate()
         self._apply_theme()
@@ -869,15 +872,18 @@ class MainWindow(QMainWindow):
             return
         try:
             if dialog.textValue() == choices[0]:
+                # The static dialog returns only a path, never whether the user agreed
+                # to replace a file. Skip its prompt and ask exactly once ourselves.
                 path, _ = QFileDialog.getSaveFileName(
                     self,
                     choices[0],
                     str(self.output_dir.parent / "cambridge-collection.cda"),
                     "Cambridge collection (*.cda)",
+                    "",
+                    QFileDialog.Option.DontConfirmOverwrite,
                 )
                 if path:
-                    export_bundle(self.output_dir, Path(path))
-                    self._status("Collection bundle saved: {path}", path=path)
+                    self._export_bundle(Path(path))
                 return
             path, _ = QFileDialog.getOpenFileName(
                 self, choices[1], "", "Cambridge collection (*.cda)"
@@ -929,6 +935,41 @@ class MainWindow(QMainWindow):
             self._status("Collection imported. Backup: {path}", path=backup or "-")
         except (OSError, ValueError) as exc:
             self._status("Collection transfer: {error}", severity="error", error=exc)
+
+    def _export_bundle(self, destination):
+        replace = False
+        if destination.is_file() and not destination.is_symlink():
+            confirmation = QMessageBox(self)
+            confirmation.setIcon(QMessageBox.Icon.Question)
+            confirmation.setWindowTitle(self._t("Replace backup?"))
+            confirmation.setTextFormat(Qt.TextFormat.PlainText)
+            confirmation.setText(
+                self._t(
+                    "The backup file already exists:\n{path}\n\nReplace it? "
+                    "The current file is kept until the new backup is complete.",
+                    path=destination.name,
+                )
+            )
+            confirmation.setStandardButtons(
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
+            confirmation.button(QMessageBox.StandardButton.Yes).setText(self._t("Replace"))
+            confirmation.button(QMessageBox.StandardButton.No).setText(self._t("Keep existing"))
+            confirmation.setDefaultButton(QMessageBox.StandardButton.No)
+            if confirmation.exec() != QMessageBox.StandardButton.Yes:
+                return
+            replace = True
+        try:
+            export_bundle(self.output_dir, destination, replace=replace)
+        except BundleExistsError as exc:
+            self._status(
+                "File already exists: {path}. It was not replaced.",
+                severity="error",
+                path=exc.path,
+                error=exc,
+            )
+            return
+        self._status("Collection bundle saved: {path}", path=destination)
 
     def export_collection(self):
         choices = [self._t("Selected recording"), self._t("Whole collection")]
@@ -1668,6 +1709,27 @@ class MainWindow(QMainWindow):
             event.ignore()
             return
         event.accept()
+
+
+_qt_translators: list = []
+
+
+def install_qt_translation(language: str) -> None:
+    """Translate Qt's own texts (standard buttons, text-field menus, file dialogs).
+
+    Missing translation files leave Qt's English texts in place.
+    """
+    application = QApplication.instance()
+    for translator in _qt_translators:
+        application.removeTranslator(translator)
+    _qt_translators.clear()
+    if language == "en":
+        return
+    translator = QTranslator(application)
+    folder = QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath)
+    if translator.load("qtbase_" + language.replace("-", "_"), folder):
+        application.installTranslator(translator)
+        _qt_translators.append(translator)
 
 
 def create_application(argv: list[str] | None = None) -> QApplication:

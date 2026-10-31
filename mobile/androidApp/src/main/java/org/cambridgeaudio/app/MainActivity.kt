@@ -241,7 +241,7 @@ fun MobileApp(model: AppModel, importFile: () -> Unit, share: (File) -> Unit) {
                                         MeaningMenu(
                                             model.entries,
                                             model.selected?.str("sense_id"),
-                                            model.language == "ru",
+                                            model.language,
                                             model::selectEntry,
                                         )
                                     }
@@ -441,10 +441,10 @@ fun MobileApp(model: AppModel, importFile: () -> Unit, share: (File) -> Unit) {
 internal fun MeaningMenu(
     entries: List<JsonObject>,
     selectedId: String?,
-    russian: Boolean,
+    language: String,
     onSelect: (JsonObject) -> Unit,
 ) {
-    fun t(en: String, ru: String) = if (russian) ru else en
+    fun t(en: String, ru: String) = Locales.text(language, en, ru)
     if (entries.isEmpty()) return
     var expanded by rememberSaveable(entries) { mutableStateOf(false) }
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -494,11 +494,11 @@ internal fun TranslationMenu(
     options: List<JsonObject>,
     selectedId: String?,
     selectionKey: String,
-    russian: Boolean,
+    language: String,
     choose: (String) -> Unit,
 ) {
     if (options.isEmpty()) return
-    fun t(en: String, ru: String) = if (russian) ru else en
+    fun t(en: String, ru: String) = Locales.text(language, en, ru)
     var expanded by rememberSaveable(selectionKey, options) { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
@@ -676,7 +676,7 @@ private fun Detail(
                     result["options"]?.jsonArray.orEmpty().map { it.jsonObject },
                     result.str("selected_id"),
                     item.str("variant_id").ifEmpty { item.str("sense_id") },
-                    model.language == "ru",
+                    model.language,
                     model::chooseTranslation,
                 )
             }
@@ -783,7 +783,7 @@ private fun Settings(
         item {
             Text(model.t("Language", "Язык"), style = MaterialTheme.typography.titleMedium)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("en" to "English", "ru" to "Русский").forEach { (value, label) ->
+                Locales.names.forEach { (value, label) ->
                     FilterChip(
                         model.language == value,
                         { model.preference("language", value) },
@@ -952,7 +952,7 @@ private fun Settings(
             }
         }
     }
-    if (licenses) LicensesDialog(model.language == "ru") { licenses = false }
+    if (licenses) LicensesDialog(model.language) { licenses = false }
 }
 
 @Composable

@@ -47,8 +47,11 @@ group supplies PySide6; the `release` group supplies packaging tools. See
 - `cambridge_audio/service.py`: download and recording workflows.
 - `cambridge_audio/library.py`, `bundle.py`, `translations.py`, `anki.py`: metadata,
   portable collections, translation resolution and study-material export.
+- `cambridge_audio/i18n.py`, `locales/`: interface languages and their message catalogues.
 - `cambridge_audio/audio.py`: desktop/CLI playback and FFmpeg phrase processing.
 - `cambridge_audio/cli.py`, `terminal/`, `gui/`: the Python application interfaces.
+- `mobile/locales/`: mobile interface catalogues, compiled into `Locales.kt` and
+  `Locales.swift` by `scripts/mobile_locales.py`.
 - `mobile/shared/`: Kotlin core for mobile storage, lookup, transfer and export.
 - `mobile/androidApp/`: Android Compose interface and platform adapters.
 - `mobile/iosApp/`: SwiftUI interface, platform adapters and XCTest targets.
@@ -90,6 +93,22 @@ package-integrity jobs run in the same workflow.
 Keep tests independent of live dictionary services. When changing asynchronous
 interfaces, wait for observable state rather than assuming one event-loop pause
 has processed a worker result. Preserve user metadata and stable export identities.
+
+## Interface languages
+
+The application supports English, Russian, Spanish, German, French, Japanese and
+Brazilian Portuguese (`en`, `ru`, `es`, `de`, `fr`, `ja`, `pt-BR`). English messages are
+the keys: Python catalogues live in `cambridge_audio/locales/`, mobile catalogues in
+`mobile/locales/*.json`, and the browser extension's messages in `extension/src/settings.ts`.
+Dictionary translations are independent of the interface language.
+
+Add or change a user-visible message in every catalogue, keeping `{placeholders}` and line
+breaks. Tests reject missing, unused or inconsistent entries. After changing mobile
+sources or catalogues, regenerate the Android and iOS sources with
+`python3 scripts/mobile_locales.py` (`--check` verifies them). A new language also needs
+entries in `LANGUAGES` of `cambridge_audio/i18n.py` and `scripts/mobile_locales.py`, the
+extension's language list and `popup.html`, and a screenshot review of the desktop,
+terminal and extension layouts: German and French are the longest, Japanese the widest.
 
 ## Mobile and browser development
 

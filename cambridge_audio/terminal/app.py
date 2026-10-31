@@ -28,7 +28,7 @@ from ..dictionary import (
     variants,
 )
 from ..errors import diagnostic_details, friendly_error
-from ..i18n import translate
+from ..i18n import english_text, translate
 from ..library import SavedRecording, read_recording, save_metadata, scan_recordings
 from ..service import DownloadCancelled, Recording, download_recordings, preview_recording
 from ..translations import (
@@ -247,7 +247,7 @@ class CambridgeApp(App[None]):
         widget.set_class(warning, "warning")
         if error or warning:
             self._set_error_details("Operation", message)
-            if "Details could not" in str(message) or "сведения" in str(message):
+            if "Details could not" in (str(message) + " " + english_text(str(message))):
                 context = "metadata"
             message = friendly_error(message, self.options.language, context=context)
         else:

@@ -531,8 +531,9 @@ private struct SettingsView: View {
     Form {
       Section {
         Picker(model.t("Language", "Язык"), selection: $model.language) {
-          Text("English").tag("en")
-          Text("Русский").tag("ru")
+          ForEach(Locales.names, id: \.code) { language in
+            Text(language.name).tag(language.code)
+          }
         }
         Picker(model.t("Appearance", "Оформление"), selection: $model.theme) {
           Text(model.t("System", "Системное")).tag("system")
@@ -603,7 +604,7 @@ private struct SettingsView: View {
         }
       }.oledRowBackground(model.pureBlack)
       Section(model.t("About", "О приложении")) {
-        Text("1.0.0 (1000002) · storage 3 · bundle 1")
+        Text("1.0.1 (1000003) · storage 3 · bundle 1")
         Link(
           model.t("Repository", "Репозиторий"),
           destination: URL(string: "https://github.com/0then0/cambridge-dictionary-audio")!)

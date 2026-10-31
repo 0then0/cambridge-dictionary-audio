@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
+from ..i18n import LANGUAGES
+
 
 def settings_path() -> Path:
     if sys.platform == "win32":
@@ -27,7 +29,7 @@ def load_settings() -> dict:
         return {}
     settings = {}
     for name, choices in {
-        "language": ("en", "ru"),
+        "language": tuple(LANGUAGES),
         "accent": ("us", "uk", "both"),
         "theme": ("cambridge-dark", "cambridge-light"),
         "translation": (None, "russian"),

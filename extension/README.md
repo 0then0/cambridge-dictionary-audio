@@ -21,8 +21,8 @@ Transcriptions and definitions come from the page and remain in the dictionary's
 language. The extension downloads existing recordings; translations, a saved-recording
 library and phrase synthesis are available in the [desktop app and CLI](../README.md).
 
-The gear button opens **Settings**. English and Russian interfaces are available;
-English is the default. Choose **System**, **Light** or **Dark** appearance. System
+The gear button opens **Settings**. Interfaces in English, Russian, Spanish, German,
+French, Japanese and Brazilian Portuguese are available; English is the default. Choose **System**, **Light** or **Dark** appearance. System
 mode follows the browser's operating-system colour preference. Language, theme and
 accent are stored locally and restored the next time you open the popup.
 

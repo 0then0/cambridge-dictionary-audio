@@ -152,7 +152,7 @@ class AppModel(application: Application, private val state: SavedStateHandle) :
         }
     }
 
-    fun t(en: String, ru: String) = if (language == "ru") ru else en
+    fun t(en: String, ru: String) = Locales.text(language, en, ru)
 
     fun preference(key: String, value: String) {
         prefs.edit().putString(key, value).apply()

@@ -3,7 +3,7 @@
 import errno
 import re
 
-from .i18n import translate
+from .i18n import english_text, translate
 
 
 def diagnostic_details(error: Exception | str) -> str:
@@ -19,7 +19,9 @@ def diagnostic_details(error: Exception | str) -> str:
 
 def friendly_error(error: Exception | str, language: str = "en", *, context="operation") -> str:
     """Classify live exceptions and serialized/cached errors without exposing raw text."""
-    details = diagnostic_details(error).casefold()
+    details = diagnostic_details(error)
+    # The error may have been produced in any interface language.
+    details = (details + " " + english_text(details)).casefold()
     if any(token in details for token in ("timeout", "timed out", "не ответил вовремя")):
         message = "The service took too long to respond. Please try again."
     elif re.search(r"\bhttp(?:error)?[\s:()]*429\b", details) or any(

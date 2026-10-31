@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
-from ..i18n import translate
+from ..i18n import LANGUAGES, translate
 from .theme import ComboBox, stored_colors, theme_colors
 
 
@@ -98,7 +98,7 @@ class PreferencesDialog(QDialog):
         self.about_button.setText(self._t("About"))
         self.close_button.setText(self._t("Close"))
         for combo, choices, selected in (
-            (self.language_combo, [("English", "en"), ("Русский", "ru")], language),
+            (self.language_combo, [(name, code) for code, name in LANGUAGES.items()], language),
             (
                 self.theme_combo,
                 [

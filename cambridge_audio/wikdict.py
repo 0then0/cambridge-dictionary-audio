@@ -16,6 +16,9 @@ from bs4 import BeautifulSoup
 
 from .dictionary import CambridgeError, stable_id
 
+_DECIMAL_COMMA = {"ru", "es", "de", "fr", "pt-BR"}
+_SIZE_UNIT = {"ru": "МБ", "fr": "Mo"}
+
 
 @dataclass(frozen=True)
 class DictionaryPackage:
@@ -32,10 +35,9 @@ class DictionaryPackage:
 
     def describe(self, language: str = "en") -> str:
         size = f"{self.size / 1_000_000:.1f}"
-        if language == "ru":
-            size = size.replace(".", ",") + " МБ"
-        else:
-            size += " MB"
+        if language in _DECIMAL_COMMA:
+            size = size.replace(".", ",")
+        size += " " + _SIZE_UNIT.get(language, "MB")
         return f"WikDict en → ru · {self.version} · {size} · {self.license}"
 
 

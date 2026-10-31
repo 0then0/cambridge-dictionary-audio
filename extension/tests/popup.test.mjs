@@ -186,7 +186,9 @@ test('supports multiple entries and variants and renders dictionary text safely'
   assert.equal(state.downloads[0].url, 'https://dictionary.cambridge.org/b.mp3');
 });
 
-for (const language of ['en', 'ru']) {
+const supported = ['en', 'ru', 'es', 'de', 'fr', 'ja', 'pt-BR'];
+
+for (const language of supported) {
   test(`all UI labels and links are translated in ${language}`, async (t) => {
     const { dom } = await popup(t, { settings: { language } });
     for (const node of dom.window.document.querySelectorAll('[data-i18n]')) {
@@ -197,6 +199,39 @@ for (const language of ['en', 'ru']) {
     }
   });
 }
+
+test('the language menu offers exactly the translated languages with a complete catalogue', async (t) => {
+  const { dom } = await popup(t);
+  const { messages, languages } = await import('../build/settings.js');
+  const offered = [...dom.window.document.querySelectorAll('#language option')];
+  assert.deepEqual(
+    offered.map((option) => [option.value, option.textContent]),
+    languages.map(({ code, name }) => [code, name]),
+  );
+  assert.deepEqual(
+    offered.map((option) => option.value),
+    supported,
+  );
+  const keys = Object.keys(messages.en);
+  for (const language of supported) {
+    assert.deepEqual(Object.keys(messages[language]), keys, language);
+    for (const key of keys) assert.ok(messages[language][key].trim(), `${language}.${key}`);
+  }
+});
+
+test('an unsupported saved language falls back to English', async (t) => {
+  const { dom } = await popup(t, { settings: { language: 'xx' } });
+  assert.equal(dom.window.document.documentElement.lang, 'en');
+});
+
+test('every language can be selected and is remembered', async (t) => {
+  for (const language of supported.slice(1)) {
+    const { dom, change, state } = await popup(t);
+    change('language', language);
+    assert.equal(dom.window.document.documentElement.lang, language);
+    await waitFor(() => state.writes.some((write) => write.language === language));
+  }
+});
 
 test('CSS keeps settings hidden until opened and hides them again after closing', async (t) => {
   const { dom, byId } = await popup(t);
