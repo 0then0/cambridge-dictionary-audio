@@ -6,6 +6,10 @@ the corresponding application releases or source history.
 
 ## Unreleased
 
+No changes yet.
+
+## 1.1.0 (2026-11-15)
+
 ### Added
 
 - Desktop **Word list...** dialog for adding up to 100 pasted words or phrases at
@@ -33,6 +37,10 @@ the corresponding application releases or source history.
   a rounded red tile replaces the shield with a download arrow. Desktop, installer,
   browser extension, Android and iOS icons share the design; Android adds a
   single-colour themed icon.
+- Reorganized documentation: concise English and Russian READMEs, a new desktop
+  guide, a complete CLI option list and the project icon on the PyPI page.
+- Mobile apps are versioned 1.1.0 (Android version code and iOS build 1000004).
+  The `.cda` format and stable Anki identities are unchanged.
 
 ## 1.0.1 (2026-10-31)
 
