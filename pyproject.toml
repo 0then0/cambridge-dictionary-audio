@@ -82,6 +82,9 @@ release = [
 
 [tool.uv]
 required-version = ">=0.13.0"
+# Beautiful Soup's selector engine: 4.0+ fixes GHSA-mmhr-3c5m-f64f, GHSA-6655-6qjp-jx7x and
+# GHSA-7g44-g9rc-x53w. These releases need Python 3.11.5+; older interpreters keep 2.10.
+constraint-dependencies = ["soupsieve>=4.0.1; python_full_version >= '3.11.5'"]
 
 [tool.uv.extra-build-variables]
 # PyYAML has no CPython 3.15 wheel on Windows. Its optional C extension must
