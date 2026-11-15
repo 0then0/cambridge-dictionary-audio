@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/0then0/cambridge-dictionary-audio/main/assets/icon.svg" width="120" alt="Cambridge Dictionary Audio icon">
+</p>
+
 # Cambridge Dictionary Audio CLI
 
 Download US and UK pronunciation recordings from Cambridge Dictionary, keep a
