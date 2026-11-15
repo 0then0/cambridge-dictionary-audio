@@ -553,6 +553,88 @@ RUSSIAN.update(
 
 
 RUSSIAN.update({"Export: {error}": "Экспорт: {error}", "OK": "ОК", "Action": "Действие"})
+# Desktop batch word lists.
+RUSSIAN.update(
+    {
+        "Add a word list": ("Добавить список слов"),
+        "Word list...": ("Список слов..."),
+        "Search several words, choose meanings, then save them together.": (
+            "Найти несколько слов, выбрать значения и сохранить их вместе."
+        ),
+        "Words and phrases, one per line": ("Слова и словосочетания, по одному на строку"),
+        "For example:\nhello\nlead\ngood morning": ("Например:\nhello\nlead\ngood morning"),
+        "Paste words or phrases, one per line, then search.": (
+            "Вставьте слова или словосочетания по одному на строку и запустите поиск."
+        ),
+        "Queries: {count}": ("Запросов: {count}"),
+        "Repeated lines merged: {items}": ("Повторы объединены: {items}"),
+        "Invalid lines (fix or remove them): {items}": (
+            "Недопустимые строки (исправьте или удалите): {items}"
+        ),
+        (
+            "The list has {count} different queries; the limit is {limit}. "
+            "Split it into smaller lists."
+        ): "В списке {count} разных запросов, предел: {limit}. Разделите его на несколько списков.",
+        "Search results": ("Результаты поиска"),
+        "Choose meanings to save": ("Выберите значения для сохранения"),
+        "Selected for saving": ("Выбрано для сохранения"),
+        "Selected for saving: {count}": ("Выбрано для сохранения: {count}"),
+        "Waiting": ("Ожидает"),
+        "Searching...": ("Поиск..."),
+        "No result": ("Нет результата"),
+        "Search failed: {error}": ("Поиск не удался: {error}"),
+        "No recording for the selected pronunciation": ("Нет записи для выбранного произношения"),
+        "Choose a pronunciation": ("Выберите произношение"),
+        "Choose a pronunciation for each selected meaning.": (
+            "Выберите произношение для каждого выбранного значения."
+        ),
+        "Found · selected: {count}": ("Найдено · выбрано: {count}"),
+        "Choose meanings: {count}": ("Выберите значения: {count}"),
+        "saved: {count}": ("сохранено: {count}"),
+        "already in collection: {count}": ("уже в коллекции: {count}"),
+        "failed: {count}": ("ошибок: {count}"),
+        "Already saved: {accents}": ("Уже сохранено: {accents}"),
+        "{accent}: not available": ("{accent}: нет записи"),
+        "{accent}: saved": ("{accent}: сохранено"),
+        "{accent}: failed": ("{accent}: не сохранено"),
+        "Saving failed: {error}": ("Не удалось сохранить: {error}"),
+        "Retry search ({count})": ("Повторить поиск ({count})"),
+        "Retry saving ({count})": ("Повторить сохранение ({count})"),
+        "Save {count} recordings": ("Сохранить записи: {count}"),
+        "Retry search: {items}": ("Повторный поиск: {items}"),
+        "Retry saving: {items}": ("Повторное сохранение: {items}"),
+        "Completed searches and saved recordings are not repeated.": (
+            "Завершённые поиски и сохранённые записи не повторяются."
+        ),
+        (
+            "Saved: {saved} · already in collection: {existing} · skipped queries: {skipped} · "
+            "failed: {failed}"
+        ): (
+            "Сохранено: {saved} · уже в коллекции: {existing} · пропущено запросов: {skipped} · "
+            "ошибок: {failed}"
+        ),
+        "Audio saved; translation unavailable for {count} recordings.": (
+            "Аудио сохранено; перевод недоступен для записей: {count}."
+        ),
+        "Searching {done} of {total}...": ("Поиск {done} из {total}..."),
+        "Saving {done} of {total}...": ("Сохранение {done} из {total}..."),
+        "Stopping after the current request...": ("Остановка после текущего запроса..."),
+        "Stopping after the current request. The window closes then.": (
+            "Остановка после текущего запроса. Затем окно закроется."
+        ),
+        "Cancelled. Finished results are kept.": ("Отменено. Готовые результаты сохранены."),
+        "Search finished with errors: {count}. Retry is available.": (
+            "Поиск завершён, ошибок: {count}. Можно повторить."
+        ),
+        "Search finished. Choose meanings, listen, then save.": (
+            "Поиск завершён. Выберите значения, прослушайте и сохраните."
+        ),
+        "Saving finished with errors: {count}. Retry is available.": (
+            "Сохранение завершено, ошибок: {count}. Можно повторить."
+        ),
+        "Saving finished.": ("Сохранение завершено."),
+    }
+)
 
 # Language codes are BCP 47 tags; each catalogue maps the English message to its translation.
 LANGUAGES = {

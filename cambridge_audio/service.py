@@ -13,6 +13,7 @@ from .dictionary import (
     CambridgeError,
     Entry,
     SelectionRequired,
+    Variant,
     audio_filename,
     normalize_word,
     stable_id,
@@ -85,6 +86,26 @@ class Recording:
             f"{self.word} · {self.accent.upper()} · {self.part_of_speech} · "
             f"{self.definition[:70]} · /{self.ipa}/"
         )
+
+
+def saved_choice_matches(recording: Recording, word: str, choice: Variant) -> bool:
+    """Whether a saved record already holds this word's meaning and pronunciation."""
+    entry = choice.entry
+    return (
+        recording.word == word
+        and recording.accent == choice.pronunciation.accent
+        and recording.audio_url == choice.pronunciation.url
+        and (
+            recording.source_sense_id == entry.sense_id
+            or recording.variant_id == choice.id
+            or recording.variant_id in entry.legacy_ids
+            or (
+                not recording.source_sense_id
+                and recording.definition == entry.definition
+                and recording.part_of_speech == entry.part_of_speech
+            )
+        )
+    )
 
 
 @dataclass(frozen=True)
@@ -190,20 +211,7 @@ def download_recordings(
             matches = [
                 s.recording
                 for s in saved_records
-                if choice
-                and s.recording.word == word
-                and s.recording.accent == region
-                and s.recording.audio_url == choice.pronunciation.url
-                and (
-                    s.recording.source_sense_id == entry.sense_id
-                    or s.recording.variant_id == choice.id
-                    or s.recording.variant_id in entry.legacy_ids
-                    or (
-                        not s.recording.source_sense_id
-                        and s.recording.definition == entry.definition
-                        and s.recording.part_of_speech == entry.part_of_speech
-                    )
-                )
+                if choice and saved_choice_matches(s.recording, word, choice)
             ]
             if len(matches) > 1 and target is None:
                 raise ValueError("Several saved records match; select the saved record explicitly.")

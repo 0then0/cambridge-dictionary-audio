@@ -45,6 +45,47 @@ alone. Selecting another meaning reuses verified local audio, including after a
 restart. Missing audio, invalid signatures and checksum mismatches trigger repair.
 Explicitly replacing shared audio affects all entries referencing that file.
 
+### Add a word list (desktop)
+
+**Word list...** next to **Find** opens a dialog for several words at once. Paste
+one word or phrase per line and choose US, UK or both; the dialog starts with the
+main window's pronunciation setting. Lines are normalized like single searches.
+Empty lines are ignored, repeated lines are merged and reported, and invalid lines
+must be fixed before searching. A list may contain up to 100 different queries;
+a longer list is rejected, never shortened silently.
+
+**Search** looks words up one at a time with the usual request spacing, timeouts
+and rate-limit handling. Each line shows its state: waiting, searching, found,
+choose meanings, no result or search failed. A missing dictionary entry is shown as
+“No result”, separately from network and service errors. Search failures can be
+retried; completed searches are not repeated.
+
+Select a word to see its meanings with part of speech, definition and IPA per
+accent. Check the meanings to save; several meanings of one word are allowed.
+Nothing is selected automatically when a word has several meanings, and a meaning
+with several recordings of one accent requires choosing one of them. Only a word
+with a single meaning and one recording per accent is preselected. A missing accent
+is shown as not available and is not replaced with the other accent. **Play** uses
+the same disposable preview as single searches and does not add collection entries.
+Meanings already in the collection are marked.
+
+**Selected for saving** lists every chosen meaning and accent. Nothing is saved
+until **Save** is pressed. Saving goes to the current collection folder through
+the same service as **Save meaning**, one recording at a time: meanings already
+saved are left unchanged, including personal translations, and meanings sharing a
+pronunciation reuse one MP3. The destination and options are fixed when saving
+starts. The summary counts saved recordings, recordings already in the collection,
+skipped queries and failures. A failed recording can be retried without
+repeating recordings that were saved; the dialog lists what a retry repeats.
+If translation is enabled in the main window, a translation failure is reported
+separately and does not affect the saved audio.
+
+**Cancel** stops before the next request or recording; recordings already saved
+remain. A request in progress finishes or reaches its timeout first. Closing the
+dialog while it works cancels the same way and closes it once the current request
+ends; the main window stays unavailable until then. Batch results are kept only
+while the dialog is open. Word lists are available in the desktop app only.
+
 ### Storage and existing collections
 
 Collection entries have permanent local IDs and separate JSON v3 metadata.

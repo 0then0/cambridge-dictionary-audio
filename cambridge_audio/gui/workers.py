@@ -5,6 +5,9 @@ from pathlib import Path
 
 from PySide6.QtCore import QThread, Signal
 
+from ..batch import SaveSettings
+from ..batch import lookup as batch_lookup
+from ..batch import save_item as save_batch_item
 from ..dictionary import (
     CambridgeClient,
     SelectionRequired,
@@ -121,6 +124,69 @@ class DownloadWorker(QThread):
         except Exception as exc:
             # Keep the UI usable even when a dependency raises an unexpected error.
             self.failed.emit(diagnostic_details(exc))
+
+
+class BatchLookupWorker(QThread):
+    """Search batch queries one by one; emits plain data only, never touches widgets."""
+
+    searching = Signal(int, str)
+    looked_up = Signal(int, str, str, object, str)
+
+    def __init__(self, generation: int, queries: tuple, language: str, parent=None):
+        super().__init__(parent)
+        self.generation = generation
+        self.queries = tuple(queries)  # normalized, unique queries
+        self.language = language
+
+    def _check_cancelled(self):
+        if self.isInterruptionRequested():
+            raise DownloadCancelled(translate("Download cancelled.", self.language))
+
+    def run(self):
+        try:
+            # One client: the process-wide pacer and HTTP 429 handling stay in force.
+            with CambridgeClient(
+                language=self.language, check_cancelled=self._check_cancelled
+            ) as client:
+                for query in self.queries:
+                    self._check_cancelled()
+                    self.searching.emit(self.generation, query)
+                    status, entries, details = batch_lookup(client, query)
+                    self.looked_up.emit(self.generation, query, status, entries, details)
+        except DownloadCancelled:
+            pass
+
+
+class BatchSaveWorker(QThread):
+    """Save a frozen plan sequentially through the shared download service."""
+
+    saving = Signal(int, str)
+    saved = Signal(int, str, str, str)
+
+    def __init__(self, generation: int, items: tuple, settings: SaveSettings, parent=None):
+        super().__init__(parent)
+        self.generation = generation
+        self.items = tuple(items)
+        self.settings = settings
+
+    def _check_cancelled(self):
+        if self.isInterruptionRequested():
+            raise DownloadCancelled(translate("Download cancelled.", self.settings.language))
+
+    def run(self):
+        try:
+            with CambridgeClient(
+                language=self.settings.language, check_cancelled=self._check_cancelled
+            ) as client:
+                for item in self.items:
+                    self._check_cancelled()
+                    self.saving.emit(self.generation, item.key)
+                    outcome, details = save_batch_item(
+                        client, item, self.settings, check_cancelled=self._check_cancelled
+                    )
+                    self.saved.emit(self.generation, item.key, outcome, details)
+        except DownloadCancelled:
+            pass
 
 
 class TranslationWorker(QThread):

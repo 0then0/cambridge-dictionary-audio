@@ -72,6 +72,15 @@ preserve manual edits and do not switch the selected recording or reveal a hidde
 translation. Toggling off and on retries a failed request. Closing waits for
 active downloads, translations and dictionary installation.
 
+**Word list...** opens a modal batch dialog: the pasted list, a per-query status
+list, the meanings and pronunciations of the selected query, and a confirmation list
+of selected recordings with the save summary. Lookups and saves run sequentially in
+background threads that only emit data; results of a list or accent that has since
+changed are ignored. Choices are explicit except for single unambiguous meanings.
+Saving freezes the destination and options, reuses the single-recording service and
+skips meanings already in the collection. Closing during work cancels it and waits
+for the bounded request; the main window remains blocked meanwhile.
+
 Install WikDict shows version, size in MB and license before explicit confirmation.
 Anki export uses genanki to package the selected entry or whole collection into one
 .apkg with a stable model, template and note GUIDs. TSV is an additional format;

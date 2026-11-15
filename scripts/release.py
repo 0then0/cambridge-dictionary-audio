@@ -44,6 +44,7 @@ CLI_MODULES = {
     "wikdict.py",
     "anki.py",
     "bundle.py",
+    "batch.py",
 }
 
 

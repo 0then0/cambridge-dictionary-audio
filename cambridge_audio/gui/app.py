@@ -76,6 +76,7 @@ from ..wikdict import (
     package_path,
     validate_package,
 )
+from .batch import BatchDialog
 from .dialogs import ChoiceDialog
 from .preferences import PreferencesDialog
 from .theme import (
@@ -138,6 +139,7 @@ class MainWindow(QMainWindow):
         self._translation_attempts: set[tuple[Path, str]] = set()
         self._closing = False
         self._dictionary_worker = None
+        self._batch_dialog = None
         self._pending_selection = None
         self._lookup_entries = ()
         self._preview_cache = TemporaryDirectory(prefix="cambridge-preview-")
@@ -244,6 +246,8 @@ class MainWindow(QMainWindow):
         entry_row.setSpacing(12)
         entry_row.addWidget(self.word_edit, 1)
         entry_row.addWidget(self.download_button)
+        self.batch_button = QPushButton()
+        entry_row.addWidget(self.batch_button)
         grid.addLayout(entry_row, 1, 0, 1, 2)
         self.accent_label = label()
         self.accent_combo = ComboBox()
@@ -405,6 +409,7 @@ class MainWindow(QMainWindow):
         self.word_edit.returnPressed.connect(lambda: self.start_download(select_only=True))
         self.word_edit.textChanged.connect(self._input_changed)
         self.download_button.clicked.connect(lambda: self.start_download(select_only=True))
+        self.batch_button.clicked.connect(self.open_batch)
         self.choose_button.clicked.connect(self.choose_folder)
         self.open_button.clicked.connect(self.open_folder)
         self.refresh_button.clicked.connect(self.refresh_library)
@@ -441,6 +446,10 @@ class MainWindow(QMainWindow):
         self.word_edit.setPlaceholderText(self._t("For example: hello or good morning"))
         self.word_edit.setAccessibleName(self._t("Word or phrase"))
         self.clear_action.setText(self._t("Clear word"))
+        self.batch_button.setText(self._t("Word list..."))
+        self.batch_button.setToolTip(
+            self._t("Search several words, choose meanings, then save them together.")
+        )
         self.accent_label.setText(self._t("Pronunciation"))
         self.accent_combo.setAccessibleName(self._t("Pronunciation"))
         self.folder_label.setText(self._t("Save to"))
@@ -936,6 +945,40 @@ class MainWindow(QMainWindow):
         except (OSError, ValueError) as exc:
             self._status("Collection transfer: {error}", severity="error", error=exc)
 
+    @Slot()
+    def open_batch(self):
+        if (
+            self._worker is not None
+            or self._translation_worker is not None
+            or self._batch_dialog is not None
+            or self._closing
+        ):
+            self._status("Wait for the current operation or cancel it first.", severity="error")
+            return
+        self.player.stop()
+        dialog = BatchDialog(
+            self,
+            output_dir=self.output_dir,
+            accent=self.accent,
+            language=self.language,
+            translation_language=(
+                self.translation_language if self.translation_check.isChecked() else None
+            ),
+            dictionary_dir=self.dictionary_dir,
+            preview_dir=Path(self._preview_cache.name),
+            play=self._play_preview,
+        )
+        self._batch_dialog = dialog
+        dialog.library_changed.connect(lambda: self.refresh_library(select=False))
+        dialog.destroyed.connect(self._batch_closed)
+        dialog.show()
+
+    @Slot()
+    def _batch_closed(self):
+        self._batch_dialog = None
+        if not self._closing:
+            self.refresh_library(select=False)
+
     def _export_bundle(self, destination):
         replace = False
         if destination.is_file() and not destination.is_symlink():
@@ -1142,6 +1185,7 @@ class MainWindow(QMainWindow):
         self.progress.setVisible(busy)
         self._update_download_label()
         self.download_button.setEnabled(not busy and bool(self.word_edit.text().strip()))
+        self.batch_button.setEnabled(not busy)
         self.save_button.setEnabled(not busy)
         self.play_button.setEnabled(not busy and bool(self.recordings or self._current_choice()))
         self.redownload_button.setEnabled(not busy and bool(self.recordings))
@@ -1685,6 +1729,8 @@ class MainWindow(QMainWindow):
         self.settings.setValue("window/geometry", self.saveGeometry())
         self.settings.sync()
         self.hide()
+        if self._batch_dialog is not None:
+            self._batch_dialog.shutdown()
         for worker in (self._worker, self._translation_worker, self._dictionary_worker):
             if worker is not None and worker.isRunning():
                 worker.requestInterruption()

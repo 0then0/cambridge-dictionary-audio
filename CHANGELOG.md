@@ -6,7 +6,17 @@ the corresponding application releases or source history.
 
 ## Unreleased
 
-No changes yet.
+### Added
+
+- Desktop **Word list...** dialog for adding up to 100 pasted words or phrases at
+  once. Queries are searched one by one with per-line status, meanings and
+  pronunciations are chosen explicitly (ambiguous words are never preselected), and
+  the selection is saved to the current collection only after confirmation. Saved
+  meanings are recognized and left unchanged, shared MP3s are reused, failed
+  searches or recordings can be retried without repeating completed ones, and
+  cancellation keeps recordings already saved. The collection format and Anki
+  identities are unchanged. Not available in the CLI, terminal workspace, browser
+  extension or mobile apps.
 
 ## 1.0.1 (2026-10-31)
 
