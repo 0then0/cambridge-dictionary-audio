@@ -40,7 +40,7 @@ jobs:
       - run: uv run --locked --group release twine check --strict dist/python/*
       - name: Install and exercise the wheel without GUI dependencies
         run: |
-          uv venv --python 3.10 .package-test
+          uv venv --python 3.11 .package-test
           uv pip install --python .package-test dist/python/*.whl
           cd /tmp
           "$GITHUB_WORKSPACE/.package-test/bin/cambridge-audio" --help

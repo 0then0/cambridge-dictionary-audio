@@ -20,7 +20,7 @@ as described in [SECURITY.md](SECURITY.md), rather than in a public issue.
 
 ## Python setup
 
-Use [uv](https://docs.astral.sh/uv/) 0.13.0 or later. Python 3.10–3.15 is supported;
+Use [uv](https://docs.astral.sh/uv/) 0.13.0 or later. Python 3.11.5–3.15 is supported;
 `.python-version` selects 3.15 for development. Dependencies are declared in
 `pyproject.toml` and resolved in `uv.lock`.
 
@@ -41,8 +41,8 @@ only selects the default interpreter for development. To use another supported
 interpreter, pass the same `--python` selection to both `uv sync` and `uv run`:
 
 ```sh
-uv sync --locked --python 3.10
-uv run --locked --python 3.10 -m cambridge_audio hello
+uv sync --locked --python 3.11
+uv run --locked --python 3.11 -m cambridge_audio hello
 ```
 
 The CLI wheel excludes Qt and desktop modules. The `gui` group supplies PySide6;
@@ -95,8 +95,8 @@ audio integration test needs both `ffmpeg` and `ffprobe` and otherwise reports a
 skip. It does not change normal application playback requirements.
 
 The [Checks workflow](https://github.com/0then0/cambridge-dictionary-audio/actions/workflows/checks.yml)
-covers all supported Python versions on Linux and Python 3.10/3.15 on Windows and
-macOS. Desktop suites additionally cover Python 3.11/3.12 on Linux. Extension and
+covers all supported Python versions on Linux and Python 3.11/3.15 on Windows and
+macOS. Desktop suites additionally cover Python 3.12 on Linux. Extension and
 package-integrity jobs run in the same workflow.
 
 Keep tests independent of live dictionary services. When changing asynchronous

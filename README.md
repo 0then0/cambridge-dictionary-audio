@@ -8,7 +8,7 @@
 [![Mobile checks](https://img.shields.io/github/actions/workflow/status/0then0/cambridge-dictionary-audio/mobile.yml?branch=main&label=mobile)](https://github.com/0then0/cambridge-dictionary-audio/actions/workflows/mobile.yml)
 [![Release](https://img.shields.io/github/v/release/0then0/cambridge-dictionary-audio)](https://github.com/0then0/cambridge-dictionary-audio/releases/latest)
 [![PyPI](https://img.shields.io/pypi/v/cambridge-dictionary-audio)](https://pypi.org/project/cambridge-dictionary-audio/)
-[![Python](https://img.shields.io/badge/Python-3.10%E2%80%933.15-3776AB?logo=python&logoColor=white)](CONTRIBUTING.md#python-setup)
+[![Python](https://img.shields.io/badge/Python-3.11%E2%80%933.15-3776AB?logo=python&logoColor=white)](CONTRIBUTING.md#python-setup)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-green)](LICENSE)
 
 [Русский](README.ru.md) · [Documentation](docs/README.md) · [Contributing](CONTRIBUTING.md) · [Changelog](CHANGELOG.md)

@@ -3,7 +3,7 @@
 Download US and UK pronunciation recordings from Cambridge Dictionary, keep a
 local collection, add Russian translations and export notes to Anki. The package
 includes command-line and terminal interfaces for Windows, macOS and Linux, with
-Python **3.10–3.15** and no Qt dependency.
+Python **3.11.5–3.15** and no Qt dependency.
 
 [Project documentation](https://github.com/0then0/cambridge-dictionary-audio/blob/main/docs/README.md) ·
 [Changelog](https://github.com/0then0/cambridge-dictionary-audio/blob/main/CHANGELOG.md) ·
