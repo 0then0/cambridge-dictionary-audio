@@ -1,9 +1,12 @@
 # Collection, translations and Anki
 
-The CLI, terminal workspace and desktop app use the same recording, translation
-and export services. The browser extensions remain independent pronunciation downloaders.
-This guide describes the current source tree. Features listed under **Unreleased**
-in the [changelog](../CHANGELOG.md) are not yet included in published downloads.
+This guide explains how recordings are organized into a collection, how
+translations work and how to export the collection to Anki. The desktop app,
+the terminal interface and the command-line tool share the same collection
+format and behaviour; the browser extension only downloads MP3 files.
+
+Commands below use the installed `cambridge-audio` tool; from a source checkout
+use `uv run -m cambridge_audio` instead.
 
 ## Choose a meaning and audio
 
@@ -209,11 +212,9 @@ Among dictionary results, explicit choices precede automatic matches and
 unresolved candidates. Unresolved Cambridge caches can use installed WikDict
 without repeating the Cambridge request. Old caches with source glosses are
 re-evaluated when read without rewriting existing files or personal choices.
-Legacy flat translations without source-sense metadata retain their old behaviour.
+Translations saved by early versions without source-sense metadata are used as they are.
 Unresolved choices still need confirmation before Anki export.
 
-**F2** or **About** in Help opens the installed version, repository link and
-code/data license information.
 CLI examples, without any audio download:
 
 ```sh
@@ -244,9 +245,8 @@ The CLI prints the version, download size, source URL and license before
 installation. GUI: **Install WikDict**. TUI: **Ctrl+D**. Both show the package
 information before confirmation; the GUI reports downloaded bytes. Installation
 is explicit; normal lookup never downloads a dictionary. No API key is needed.
-Each GUI click checks the installed package locally. A verified installation or
-a damaged package prompts for explicit confirmation before downloading again;
-declining leaves the existing file untouched.
+If the package is already installed or damaged, the app asks before downloading
+it again; declining leaves the existing file untouched.
 Use `--dictionary-dir PATH` to override the platform data directory in CLI/TUI.
 
 The pinned package is `en-ru.sqlite3`, version `2_2026-06`, **20.9 MB** (20,938,752 bytes)
@@ -282,9 +282,9 @@ to translation, audio, collection files, exports and unexpected failures.
 next to the error message to read and copy the original diagnostic. In the TUI, the same
 button opens a scrollable dialog; Escape closes it. Details include the original
 error and, when available, its underlying cause. They remain hidden by default
-and are updated for the current operation. Interface messages use the selected
-English/Russian language; the original diagnostic is retained unchanged.
-CLI diagnostic output remains available as before.
+and are updated for the current operation. Explanations follow the interface
+language; the original diagnostic is shown unchanged. The CLI prints the
+diagnostic directly.
 
 ## Export to Anki
 
@@ -302,12 +302,10 @@ The package contains one note per selected collection entry, a fixed note type,
 one card template and deduplicated MP3 media. The front shows the word. The back
 shows the chosen translation, definition, part of speech, IPA, accent and audio,
 followed by a small **Source** disclosure, closed by default, containing sources
-and data-license attribution. The disclosure is stored in the Source field, so
-exporting a fresh package and reimporting it also updates cards whose existing
-template displays `{{Source}}`, with note updates enabled in Anki. There is no need
-to edit that template manually. To update exported content, create
-a new package before reimporting it. The deck overview uses the same
-compact, closed Source disclosure for its description.
+and data-license attribution. The disclosure is stored in the Source field.
+To update cards after changing the collection, export a new package and import
+it with note updates enabled. The deck overview uses the same closed Source
+disclosure for its description.
 The template defines light and Anki night-mode colours. Text is HTML-escaped,
 including user translations and the text inside the Source disclosure.
 
@@ -316,8 +314,8 @@ the permanent local collection ID, not editable fields or storage paths. Reimpor
 into the same Anki collection matches these identities, rather than the word or
 translation. Keep the note type's fields and single card template intact.
 Existing card scheduling and review history are retained when matching notes are
-updated; see the verified scenario below. This utility does not export study
-progress or reverse cards.
+updated; see [Anki compatibility](#anki-compatibility). Study progress and
+reverse cards are not exported.
 
 ### Reimport and personal edits
 
@@ -369,8 +367,8 @@ is supported.
 For an explicit transition with the original nine fields and one normal card:
 
 1. In Anki, export the relevant old deck as **Anki Deck Package (.apkg)** with
-   **Support older Anki versions** enabled. Retain a backup. This is a copy of the
-   collection; the utility does not open your live Anki database.
+   **Support older Anki versions** enabled. Keep a backup. This is a copy of the
+   collection; the tool never opens your live Anki database.
 2. Run the following once, using the same local collection that produced the TSV:
 
    ```sh

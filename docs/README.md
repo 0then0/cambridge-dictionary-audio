@@ -6,8 +6,9 @@ interface you use or the part of the project you want to change.
 
 ## Using the applications
 
-- [Desktop app and quick start](../README.md): installation, playback and appearance.
-- [Руководство на русском](../README.ru.md): установка и работа с приложением.
+- [Project overview and downloads](../README.md) · [на русском](../README.ru.md).
+- [Desktop app](desktop.md): finding, saving and organizing recordings, word lists,
+  translations, settings and running from source.
 - [Command-line and terminal interfaces](cli.md): commands, shortcuts and examples.
 - [Collection, translations and Anki](collection.md): meanings, saved recordings,
   Russian translations, offline dictionaries, backups and export.

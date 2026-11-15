@@ -36,10 +36,19 @@ uv sync --locked --group gui
 uv run --locked --group gui -m cambridge_audio.gui
 ```
 
-To use another supported interpreter, pass the same `--python` selection to both
-`uv sync` and `uv run`. The CLI wheel excludes Qt and desktop modules. The `gui`
-group supplies PySide6; the `release` group supplies packaging tools. See
-[Python versions](README.md#python-versions) for platform-specific dependency notes.
+`requires-python` in `pyproject.toml` defines the supported range; `.python-version`
+only selects the default interpreter for development. To use another supported
+interpreter, pass the same `--python` selection to both `uv sync` and `uv run`:
+
+```sh
+uv sync --locked --python 3.10
+uv run --locked --python 3.10 -m cambridge_audio hello
+```
+
+The CLI wheel excludes Qt and desktop modules. The `gui` group supplies PySide6;
+the `release` group supplies packaging tools. When PyYAML has no wheel for the
+platform, the uv configuration builds it without its optional C extension, so
+Windows with Python 3.15 needs no C++ build tools.
 
 ## Repository structure
 

@@ -9,8 +9,8 @@ Python **3.10–3.15** and no Qt dependency.
 [Changelog](https://github.com/0then0/cambridge-dictionary-audio/blob/main/CHANGELOG.md) ·
 [Desktop downloads](https://github.com/0then0/cambridge-dictionary-audio/releases)
 
-Repository documentation follows `main`; the changelog identifies changes not yet
-included in published packages.
+The documentation in the repository describes the current development version;
+the **Unreleased** section of the changelog lists changes not yet published.
 
 ## Installation
 
@@ -43,6 +43,22 @@ or `.uk`. Interface language and translation settings are independent:
 `--lang en|ru|es|de|fr|ja|pt-BR` changes messages, while `--translation russian` enables
 translations.
 Aliases `ru` and `русский` are accepted for the translation language.
+
+### Common options
+
+- `--accent us|uk|both`: pronunciation to save; filenames end in `.us.mp3` or `.uk.mp3`.
+- `--output-dir PATH`: destination folder, created if necessary (default `downloads/`).
+- `--lang en|ru|es|de|fr|ja|pt-BR`: interface language, including help (case-insensitive).
+- `--translation russian`: add a Russian translation; independent of `--lang`.
+- `--play` / `--no-play`: play the recording after downloading.
+- `--combine` / `--no-combine`: synthesize a phrase that has no recording of its own.
+- `--overwrite`: replace existing recordings.
+- `--timeout SECONDS`: timeout for each HTTP request (default 15).
+- `--version`: print the installed version.
+
+Run `cambridge-audio --help` for the complete list. Windows device names such as
+`con` are saved with a leading underscore (`_con.us.mp3`) on every platform, so
+collections stay portable.
 
 Lookup/download failures exit with status 1; invalid arguments exit with status 2.
 Playback or optional translation failure does not invalidate a completed download.
@@ -197,6 +213,11 @@ saved audio offline; Enter in the library plays the selected recording.
 Function keys work independently of keyboard layout: **F3** search, **F4**
 play/stop, **F5** refresh, **F6** settings, **F7** export, **F8** translation,
 **F9** WikDict, **F10** meanings, **F11** cancel and **F12** quit.
+
+Use `--plain` for a line-based prompt with undecorated output; it is chosen
+automatically when input or output is redirected or `TERM=dumb`. The prompt accepts
+`/m` to toggle playback, `/r` to remove recordings downloaded in this session and `/q`
+to quit. `NO_COLOR` disables colours.
 
 Settings persist language, theme, accent, destination, translation display,
 autoplay and phrase synthesis. Explicit CLI flags override saved values for the
