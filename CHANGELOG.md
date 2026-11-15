@@ -18,6 +18,13 @@ the corresponding application releases or source history.
   identities are unchanged. Not available in the CLI, terminal workspace, browser
   extension or mobile apps.
 
+### Changed
+
+- New application icon: an open dictionary with lines of text and a sound wave on
+  a rounded red tile replaces the shield with a download arrow. Desktop, installer,
+  browser extension, Android and iOS icons share the design; Android adds a
+  single-colour themed icon.
+
 ## 1.0.1 (2026-10-31)
 
 ### Added
