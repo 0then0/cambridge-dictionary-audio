@@ -1,8 +1,13 @@
 # Desktop interface
 
 The desktop app provides one workflow: enter a word, download its pronunciation,
-listen, and find the saved MP3. The main window contains the library and recording
-controls; a separate Settings window contains language and appearance preferences.
+listen, and find the saved MP3. The main window follows that order: the search
+panel with the accent and translation toggle, the status line, the result panel
+and the collection panel with saved recordings, folder, export and backup. The
+result panel shows only actions that apply: Play and Save meaning for a search
+result, Choose meaning and Download again for a saved recording, and translation
+actions only while translation is shown. A separate Settings window contains
+language, appearance, phrase synthesis and the offline dictionary.
 
 ## Layout and appearance
 

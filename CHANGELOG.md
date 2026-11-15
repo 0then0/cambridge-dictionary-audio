@@ -24,6 +24,11 @@ the corresponding application releases or source history.
   minimum follows soupsieve 4, the Beautiful Soup selector engine that fixes
   GHSA-mmhr-3c5m-f64f, GHSA-6655-6qjp-jx7x and GHSA-7g44-g9rc-x53w; no fixed release
   supports older interpreters.
+- Clearer desktop main window: search, status, result and collection now appear
+  in the order they are used. The accent and translation toggle sit under the
+  search field; phrase synthesis and the offline dictionary moved to **Settings**.
+  The result panel shows only actions that apply, and saved recording labels no
+  longer contain empty separators.
 - New application icon: an open dictionary with lines of text and a sound wave on
   a rounded red tile replaces the shield with a download arrow. Desktop, installer,
   browser extension, Android and iOS icons share the design; Android adds a

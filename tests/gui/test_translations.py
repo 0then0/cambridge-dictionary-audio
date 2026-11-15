@@ -233,6 +233,26 @@ def test_wikdict_install_confirmation_shows_megabytes(window, monkeypatch, langu
     assert window._dictionary_worker is None
 
 
+def test_wikdict_install_feedback_stays_in_settings(window, app, monkeypatch):
+    def failing_install(directory, *, progress, check_cancelled):
+        progress(1024, 2048)
+        raise OSError("No space left on device")
+
+    question = Mock(return_value=QMessageBox.StandardButton.Yes)
+    monkeypatch.setattr(gui.QMessageBox, "question", question)
+    monkeypatch.setattr(workers, "install_dictionary", failing_install)
+    window.preferences_dialog.show()
+    window.dictionary_button.click()
+    # The confirmation belongs to the Settings window that holds the button.
+    assert question.call_args.args[0] is window.preferences_dialog
+    wait_until(app, lambda: window._dictionary_worker is None)
+    status = window.dictionary_status_label.text()
+    assert status.startswith(window._t("Offline dictionary: not installed."))
+    assert "Not enough free space" in status
+    assert window.dictionary_button.isEnabled()
+    window.preferences_dialog.hide()
+
+
 @pytest.mark.parametrize("language", ["en", "ru"])
 def test_unmatched_translation_candidates_are_only_shown_in_explicit_picker(
     window, app, monkeypatch, client, html, mp3, language
@@ -412,16 +432,25 @@ def test_russian_translation_block_ignores_old_language_setting_and_preserves_ca
         restarted.close()
 
 
-def test_russian_translation_block_keyboard_focus_follows_layout(window, app):
+def test_option_keyboard_focus_follows_layout(window, app):
+    # Main window: the accent and translation toggle follow the search field.
+    window.accent_combo.setFocus()
+    assert window.accent_combo.hasFocus()
+    QTest.keyClick(window.accent_combo, Qt.Key.Key_Tab)
+    assert window.translation_check.hasFocus()
+    # Settings: phrase synthesis, then the offline dictionary installation.
+    dialog = window.preferences_dialog
+    dialog.show()
+    dialog.activateWindow()
+    app.processEvents()
     if window.combine_check.isEnabled():
         window.combine_check.setFocus()
         assert window.combine_check.hasFocus()
         QTest.keyClick(window.combine_check, Qt.Key.Key_Tab)
     else:
-        window.translation_check.setFocus()
-    assert window.translation_check.hasFocus()
-    QTest.keyClick(window.translation_check, Qt.Key.Key_Tab)
+        window.dictionary_button.setFocus()
     assert window.dictionary_button.hasFocus()
+    dialog.hide()
 
 
 @pytest.mark.parametrize(
@@ -467,8 +496,10 @@ def test_find_translation_only_shown_for_unresolved_saved_translation(
     assert window.select_translation_button.text() == title
     assert "Cambridge" in window.variant_button.toolTip()
     layout = window.translation_label.parentWidget().layout()
-    actions = layout.itemAt(layout.indexOf(window.translation_label) + 1).layout()
-    assert actions.indexOf(window.select_translation_button) >= 0
+    # The translation actions row directly follows the translation it acts on.
+    actions = layout.itemAt(layout.indexOf(window.translation_label) + 1).widget()
+    assert actions is window.translation_actions
+    assert actions.layout().indexOf(window.select_translation_button) >= 0
     wait_until(app, lambda: window._translation_worker is None)
     client.session.get.assert_not_called()
     window.translation_check.setChecked(False)

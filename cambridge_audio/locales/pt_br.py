@@ -286,6 +286,7 @@ MESSAGES = {
     "Export: {error}": "Exportação: {error}",
     "OK": "OK",
     "Action": "Ação",
+    "Collection": "Coleção",
     "Add a word list": "Adicionar uma lista de palavras",
     "Word list...": "Lista de palavras...",
     "Search several words, choose meanings, then save them together.": "Pesquise várias palavras, escolha os significados e salve tudo junto.",

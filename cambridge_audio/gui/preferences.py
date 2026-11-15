@@ -65,6 +65,13 @@ class PreferencesDialog(QDialog):
         self.reset_button = QPushButton()
         self.reset_button.clicked.connect(self.reset_colors)
         layout.addWidget(self.reset_button)
+        # Download and translation options supplied by the main window.
+        self.options_label = QLabel()
+        self.options_label.setObjectName("heading")
+        layout.addWidget(self.options_label)
+        self.options_layout = QVBoxLayout()
+        self.options_layout.setSpacing(8)
+        layout.addLayout(self.options_layout)
         actions = QHBoxLayout()
         self.about_button = QPushButton()
         self.about_button.clicked.connect(self.about_requested.emit)
@@ -78,6 +85,17 @@ class PreferencesDialog(QDialog):
         self.update_colors(self.mode)
         self.language_combo.currentIndexChanged.connect(self._language_changed)
         self.theme_combo.currentIndexChanged.connect(self._theme_changed)
+
+    def add_options(self, *widgets):
+        for widget in widgets:
+            if isinstance(widget, QPushButton):
+                # Keep buttons at their natural width; labels need the full width to wrap.
+                row = QHBoxLayout()
+                row.addWidget(widget)
+                row.addStretch()
+                self.options_layout.addLayout(row)
+            else:
+                self.options_layout.addWidget(widget)
 
     def _t(self, message, **values):
         return translate(message, self.language, **values)
@@ -95,6 +113,7 @@ class PreferencesDialog(QDialog):
         self.color_labels["background"].setText(self._t("Background colour"))
         self.color_labels["accent"].setText(self._t("Accent colour"))
         self.reset_button.setText(self._t("Restore default colours"))
+        self.options_label.setText(self._t("Options"))
         self.about_button.setText(self._t("About"))
         self.close_button.setText(self._t("Close"))
         for combo, choices, selected in (

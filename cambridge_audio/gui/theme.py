@@ -364,6 +364,7 @@ def apply_theme(
         QLabel {{ color: {c["text"]}; background: transparent; }}
         QLabel#muted, QLabel#status {{ color: {c["muted"]}; }}
         QLabel#heading {{ font-size: 20px; font-weight: 600; }}
+        QLabel#section {{ font-size: 16px; font-weight: 600; }}
         QLabel#word {{ font-size: 22px; font-weight: 600; }}
         QLabel#status[severity="error"] {{ color: {c["error"]}; }}
         QFrame#panel {{

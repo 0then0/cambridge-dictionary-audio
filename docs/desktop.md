@@ -21,7 +21,7 @@ selected, only a missing accent is downloaded. **Download again** replaces a sav
 recording after confirmation.
 
 If Cambridge has no recording of a whole phrase, enable **Combine words if the
-phrase has no recording**. The app joins the recordings of the individual words;
+phrase has no recording** in **Settings**. The app joins the recordings of the individual words;
 the result is not a recording of the complete phrase.
 
 ## Add a word list
@@ -50,8 +50,8 @@ interface can use the same folder.
 translation is loaded in the background; turn the option off and on to retry a
 failed request. **Edit translation**, **Reset translation** and **Find translation**
 let you correct or choose a translation; personal edits are kept across later
-lookups and exports. **Install WikDict** downloads an English–Russian dictionary for
-offline translations. See [translations](collection.md#translation-lookup-and-editing).
+lookups and exports. **Install WikDict** in **Settings** downloads an
+English–Russian dictionary for offline translations. See [translations](collection.md#translation-lookup-and-editing).
 
 ## Anki and backups
 
@@ -69,6 +69,8 @@ The gear button opens **Settings**:
   Brazilian Portuguese. Dictionary translations are always Russian.
 - Appearance: system, light or dark, with custom background and accent colours
   for each palette. **Restore default colours** resets them.
+- **Options**: phrase synthesis, the offline dictionary status and
+  **Install WikDict**.
 - **About** shows the version, the source code link and license information.
 
 The app remembers the language, appearance, accent, options, folder and window

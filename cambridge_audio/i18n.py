@@ -556,6 +556,7 @@ RUSSIAN.update({"Export: {error}": "Экспорт: {error}", "OK": "ОК", "Act
 # Desktop batch word lists.
 RUSSIAN.update(
     {
+        "Collection": "Коллекция",
         "Add a word list": ("Добавить список слов"),
         "Word list...": ("Список слов..."),
         "Search several words, choose meanings, then save them together.": (

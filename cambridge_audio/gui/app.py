@@ -27,7 +27,6 @@ try:
         QComboBox,
         QFileDialog,
         QFrame,
-        QGridLayout,
         QHBoxLayout,
         QInputDialog,
         QLabel,
@@ -139,6 +138,7 @@ class MainWindow(QMainWindow):
         self._translation_attempts: set[tuple[Path, str]] = set()
         self._closing = False
         self._dictionary_worker = None
+        self._dictionary_error = ""
         self._batch_dialog = None
         self._pending_selection = None
         self._lookup_entries = ()
@@ -223,12 +223,12 @@ class MainWindow(QMainWindow):
         layout.addLayout(header)
         self.preferences_dialog = PreferencesDialog(self.settings, self)
 
+        # Search: the primary action and the options that shape it.
         form = QFrame()
         form.setObjectName("panel")
-        grid = QGridLayout(form)
-        grid.setContentsMargins(16, 16, 16, 16)
-        grid.setHorizontalSpacing(12)
-        grid.setVerticalSpacing(8)
+        search = QVBoxLayout(form)
+        search.setContentsMargins(16, 16, 16, 16)
+        search.setSpacing(8)
         self.word_label = label()
         self.word_edit = QLineEdit()
         self.clear_action = self.word_edit.addAction(
@@ -241,37 +241,42 @@ class MainWindow(QMainWindow):
         self.download_button = QPushButton()
         self.download_button.setObjectName("downloadButton")
         self.download_button.setMinimumWidth(130)
-        grid.addWidget(self.word_label, 0, 0, 1, 2)
+        search.addWidget(self.word_label)
         entry_row = QHBoxLayout()
         entry_row.setSpacing(12)
         entry_row.addWidget(self.word_edit, 1)
         entry_row.addWidget(self.download_button)
         self.batch_button = QPushButton()
         entry_row.addWidget(self.batch_button)
-        grid.addLayout(entry_row, 1, 0, 1, 2)
+        search.addLayout(entry_row)
+        options_row = QHBoxLayout()
+        options_row.setSpacing(12)
         self.accent_label = label()
         self.accent_combo = ComboBox()
         self.accent_label.setBuddy(self.accent_combo)
+        self.translation_check = QCheckBox()
+        self.translation_check.setChecked(self.settings.value("translation", False, type=bool))
+        options_row.addWidget(self.accent_label)
+        options_row.addWidget(self.accent_combo)
+        options_row.addSpacing(8)
+        options_row.addWidget(self.translation_check)
+        options_row.addStretch()
+        search.addLayout(options_row)
+        layout.addWidget(form)
+
+        # Rarely changed options live in Settings.
         self.combine_check = QCheckBox()
         ffmpeg_available = bool(ffmpeg_executable())
         self.combine_check.setChecked(
             ffmpeg_available and self.settings.value("combine", False, type=bool)
         )
         self.combine_check.setEnabled(ffmpeg_available)
-        self.translation_check = QCheckBox()
-        self.translation_check.setChecked(self.settings.value("translation", False, type=bool))
-        grid.addWidget(self.accent_label, 2, 0)
-        grid.addWidget(self.accent_combo, 3, 0, 1, 2)
-        grid.addWidget(self.combine_check, 4, 0, 1, 2)
         self.dictionary_button = QPushButton(self._t("Install WikDict"))
         self.dictionary_status_label = label(name="muted", wrap=True)
-        grid.addWidget(self.translation_check, 5, 0)
-        grid.addWidget(self.dictionary_button, 5, 1)
-        grid.addWidget(self.dictionary_status_label, 6, 0, 1, 2)
-        grid.setRowMinimumHeight(2, 28)
-        grid.setColumnStretch(0, 1)
-        grid.setColumnStretch(1, 1)
-        layout.addWidget(form)
+        self.preferences_dialog.add_options(
+            self.combine_check, self.dictionary_status_label, self.dictionary_button
+        )
+
         self.progress = QProgressBar()
         self.progress.setRange(0, 0)
         self.progress.setTextVisible(False)
@@ -291,28 +296,85 @@ class MainWindow(QMainWindow):
         self.error_details_text.setAccessibleName(self._t("Technical details"))
         self.error_details_text.hide()
         self.error_details_button.toggled.connect(self.error_details_text.setVisible)
-        layout.addWidget(self.error_details_button)
+        layout.addWidget(self.error_details_button, 0, Qt.AlignmentFlag.AlignLeft)
         layout.addWidget(self.error_details_text)
 
-        destination = QVBoxLayout()
-        destination.setSpacing(8)
-        self.folder_label = label()
-        destination.addWidget(self.folder_label)
-        destination_row = QHBoxLayout()
-        destination_row.setSpacing(8)
-        self.folder_edit = QLineEdit(str(self.output_dir))
-        self.folder_edit.setReadOnly(True)
-        self.folder_edit.setCursorPosition(0)
-        self.folder_label.setBuddy(self.folder_edit)
-        self.choose_button = QPushButton()
-        self.open_button = QPushButton()
-        destination_row.addWidget(self.folder_edit, 1)
-        destination_row.addWidget(self.choose_button)
-        destination_row.addWidget(self.open_button)
-        destination.addLayout(destination_row)
-        layout.addLayout(destination)
+        # Result: the found or saved word, its meanings and pronunciation.
+        result = QFrame()
+        result.setObjectName("panel")
+        result_layout = QVBoxLayout(result)
+        result_layout.setContentsMargins(16, 16, 16, 16)
+        result_layout.setSpacing(8)
+        self.result_title = label(name="word", wrap=True)
+        self.ipa_label = label(name="muted", wrap=True)
+        self.play_button = QPushButton()
+        self.play_button.setMinimumWidth(100)
+        self.save_button = QPushButton(self._t("Save meaning"))
+        self.save_button.setObjectName("downloadButton")
+        self.save_button.hide()
+        result_header = QHBoxLayout()
+        result_header.setSpacing(12)
+        word_details = QVBoxLayout()
+        word_details.setSpacing(2)
+        word_details.addWidget(self.result_title)
+        word_details.addWidget(self.ipa_label)
+        result_header.addLayout(word_details, 1)
+        result_header.addWidget(self.play_button, 0, Qt.AlignmentFlag.AlignTop)
+        result_header.addWidget(self.save_button, 0, Qt.AlignmentFlag.AlignTop)
+        result_layout.addLayout(result_header)
+        self.meaning_list = ContentList()
+        self.meaning_list.setWordWrap(True)
+        self.meaning_list.setSpacing(4)
+        self.meaning_list.hide()
+        result_layout.addWidget(self.meaning_list)
+        self.audio_combo = ComboBox()
+        self.audio_combo.hide()
+        result_layout.addWidget(self.audio_combo)
+        self.recording_combo = ComboBox()
+        result_layout.addWidget(self.recording_combo)
+        self.definition_label = label(wrap=True)
+        self.definition_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        result_layout.addWidget(self.definition_label)
+        self.translation_label = label(wrap=True)
+        self.translation_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        result_layout.addWidget(self.translation_label)
+        self.translation_actions = QWidget()
+        translation_actions = QHBoxLayout(self.translation_actions)
+        translation_actions.setContentsMargins(0, 0, 0, 0)
+        translation_actions.setSpacing(8)
+        self.edit_translation_button = QPushButton(self._t("Edit translation"))
+        self.reset_translation_button = QPushButton(self._t("Reset translation"))
+        self.select_translation_button = QPushButton(self._t("Find translation"))
+        self.select_translation_button.hide()
+        for button in (
+            self.edit_translation_button,
+            self.reset_translation_button,
+            self.select_translation_button,
+        ):
+            translation_actions.addWidget(button)
+        translation_actions.addStretch()
+        result_layout.addWidget(self.translation_actions)
+        record_actions = QHBoxLayout()
+        record_actions.setSpacing(8)
+        self.file_label = label(name="muted", wrap=True)
+        self.variant_button = QPushButton(self._t("Choose another pronunciation"))
+        self.redownload_button = QPushButton()
+        record_actions.addWidget(self.file_label, 1)
+        record_actions.addWidget(self.variant_button)
+        record_actions.addWidget(self.redownload_button)
+        result_layout.addLayout(record_actions)
+        layout.addWidget(result)
 
+        # Collection: where recordings are kept and what can be done with them.
+        collection = QFrame()
+        collection.setObjectName("panel")
+        collection_layout = QVBoxLayout(collection)
+        collection_layout.setContentsMargins(16, 16, 16, 16)
+        collection_layout.setSpacing(8)
+        self.collection_label = label(name="section")
+        collection_layout.addWidget(self.collection_label)
         library_row = QHBoxLayout()
+        library_row.setSpacing(8)
         self.library_label = label()
         self.library_combo = ComboBox()
         self.library_combo.setSizeAdjustPolicy(
@@ -324,85 +386,30 @@ class MainWindow(QMainWindow):
         library_row.addWidget(self.library_label)
         library_row.addWidget(self.library_combo, 1)
         library_row.addWidget(self.refresh_button)
-        layout.addLayout(library_row)
-
-        result = QFrame()
-        result.setObjectName("panel")
-        result_layout = QVBoxLayout(result)
-        result_layout.setContentsMargins(16, 16, 16, 16)
-        result_layout.setSpacing(8)
-        self.result_title = label(name="word", wrap=True)
-        self.ipa_label = label(name="muted", wrap=True)
-        self.definition_label = label(wrap=True)
-        self.definition_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        self.translation_label = label(wrap=True)
-        self.translation_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        self.file_label = label(name="muted", wrap=True)
-        for widget in (
-            self.result_title,
-            self.ipa_label,
-            self.definition_label,
-            self.translation_label,
-            self.file_label,
-        ):
-            result_layout.addWidget(widget)
-        self.meaning_list = ContentList()
-        self.meaning_list.setWordWrap(True)
-        self.meaning_list.setSpacing(4)
-        self.meaning_list.hide()
-        result_layout.insertWidget(2, self.meaning_list)
-        self.audio_combo = ComboBox()
-        self.audio_combo.hide()
-        result_layout.insertWidget(3, self.audio_combo)
-        self.save_button = QPushButton(self._t("Save meaning"))
-        self.save_button.hide()
-        player_row = QHBoxLayout()
-        player_row.setSpacing(12)
-        self.play_button = QPushButton()
-        self.play_button.setMinimumWidth(100)
-        self.recording_combo = ComboBox()
-        player_row.addWidget(self.play_button)
-        player_row.addWidget(self.accent_combo)
-        player_row.addWidget(self.save_button)
-        self.accent_label.hide()
-        player_row.addWidget(self.recording_combo)
-        player_row.addStretch()
-        self.redownload_button = QPushButton()
-        player_row.addWidget(self.redownload_button)
-        result_layout.addLayout(player_row)
-        result_layout.removeWidget(self.result_title)
-        result_layout.removeWidget(self.ipa_label)
-        result_header = QHBoxLayout()
-        word_details = QVBoxLayout()
-        word_details.addWidget(self.result_title)
-        word_details.addWidget(self.ipa_label)
-        result_header.addLayout(word_details, 1)
-        result_header.addWidget(self.accent_combo)
-        result_header.addWidget(self.play_button)
-        result_layout.insertLayout(0, result_header)
-        translation_actions = QHBoxLayout()
-        self.edit_translation_button = QPushButton(self._t("Edit translation"))
-        self.reset_translation_button = QPushButton(self._t("Reset translation"))
-        self.select_translation_button = QPushButton(self._t("Find translation"))
-        self.select_translation_button.hide()
-        for button in (
-            self.edit_translation_button,
-            self.reset_translation_button,
-            self.select_translation_button,
-        ):
-            translation_actions.addWidget(button)
-        result_layout.insertLayout(
-            result_layout.indexOf(self.translation_label) + 1, translation_actions
-        )
-        layout.addWidget(result)
+        collection_layout.addLayout(library_row)
+        destination_row = QHBoxLayout()
+        destination_row.setSpacing(8)
+        self.folder_label = label()
+        self.folder_edit = QLineEdit(str(self.output_dir))
+        self.folder_edit.setReadOnly(True)
+        self.folder_edit.setCursorPosition(0)
+        self.folder_label.setBuddy(self.folder_edit)
+        self.choose_button = QPushButton()
+        self.open_button = QPushButton()
+        destination_row.addWidget(self.folder_label)
+        destination_row.addWidget(self.folder_edit, 1)
+        destination_row.addWidget(self.choose_button)
+        destination_row.addWidget(self.open_button)
+        collection_layout.addLayout(destination_row)
         export_actions = QHBoxLayout()
-        self.variant_button = QPushButton(self._t("Choose another pronunciation"))
+        export_actions.setSpacing(8)
         self.export_button = QPushButton(self._t("Export to Anki"))
-        export_actions.addWidget(self.variant_button)
-        export_actions.addWidget(self.export_button)
-        layout.addLayout(export_actions)
         self.transfer_button = QPushButton(self._t("Back up / transfer collection"))
-        layout.addWidget(self.transfer_button)
+        export_actions.addWidget(self.export_button)
+        export_actions.addWidget(self.transfer_button)
+        export_actions.addStretch()
+        collection_layout.addLayout(export_actions)
+        layout.addWidget(collection)
         layout.addStretch()
 
     def _connect_ui(self):
@@ -457,6 +464,7 @@ class MainWindow(QMainWindow):
         self.choose_button.setText(self._t("Choose..."))
         self.open_button.setText(self._t("Open folder"))
         self.library_label.setText(self._t("Saved recordings"))
+        self.collection_label.setText(self._t("Collection"))
         self.library_combo.setAccessibleName(self._t("Saved recordings"))
         self.refresh_button.setText(self._t("Refresh"))
         self.redownload_button.setText(self._t("Download again"))
@@ -619,6 +627,7 @@ class MainWindow(QMainWindow):
         record = self.selected_recording()
         visible = self.translation_check.isChecked() and record is not None
         self.translation_label.setVisible(visible)
+        self.translation_actions.setVisible(visible)
         if record is None:
             self._set_error_details("Translation", "")
             self.translations = ()
@@ -831,7 +840,8 @@ class MainWindow(QMainWindow):
             message = self._t("WikDict is already installed and verified. Download it again?")
         if (
             QMessageBox.question(
-                self,
+                # Ask in the window that holds the button (Settings), not behind it.
+                self.dictionary_button.window(),
                 title,
                 message + "\n\n" + PACKAGE.describe(self.language) + "\n" + PACKAGE.license_url,
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
@@ -842,19 +852,25 @@ class MainWindow(QMainWindow):
             return
         worker = DictionaryWorker(self.dictionary_dir, self)
         self._dictionary_worker = worker
+        self._dictionary_error = ""
         self.dictionary_button.setEnabled(False)
-        worker.progress.connect(
-            lambda done, total: self._status(
-                "WikDict: {done} / {total} bytes", done=done, total=total
-            )
-        )
+        worker.progress.connect(self._dictionary_progress)
         worker.completed.connect(lambda path: self._status("WikDict installed: {path}", path=path))
-        worker.failed.connect(
-            lambda error: self._status("Error: {error}", severity="error", error=error)
-        )
+        worker.failed.connect(self._dictionary_failed)
         worker.finished.connect(self._dictionary_finished)
         worker.finished.connect(worker.deleteLater)
         worker.start()
+
+    def _dictionary_progress(self, done, total):
+        # Shown in both windows: installation is started from Settings.
+        self._status("WikDict: {done} / {total} bytes", done=done, total=total)
+        self.dictionary_status_label.setText(
+            self._t("WikDict: {done} / {total} bytes", done=done, total=total)
+        )
+
+    def _dictionary_failed(self, error):
+        self._dictionary_error = error
+        self._status("Error: {error}", severity="error", error=error)
 
     def _dictionary_finished(self):
         if self._dictionary_worker:
@@ -862,6 +878,13 @@ class MainWindow(QMainWindow):
         self._dictionary_worker = None
         self.dictionary_button.setEnabled(True)
         self._update_dictionary_status()
+        if self._dictionary_error:
+            # Keep the reason next to the button that failed, not only in the main window.
+            self.dictionary_status_label.setText(
+                self.dictionary_status_label.text()
+                + "\n"
+                + friendly_error(self._dictionary_error, self.language)
+            )
         self._translation_errors.clear()
         self._translation_attempts.clear()
         if self._closing:
@@ -1385,9 +1408,14 @@ class MainWindow(QMainWindow):
         self.save_button.setEnabled(self._worker is None)
         self.play_button.setEnabled(self._worker is None)
         self.redownload_button.setEnabled(False)
+        # Saved-record actions do not apply to an unsaved search result.
+        for widget in (self.variant_button, self.redownload_button, self.recording_combo):
+            widget.hide()
+        self.play_button.show()
         self.translation_label.setText("")
         self._set_error_details("Translation", "")
         self.translation_label.setVisible(self.translation_check.isChecked())
+        self.translation_actions.setVisible(self.translation_check.isChecked())
         self.edit_translation_button.setEnabled(self._worker is None)
         self.select_translation_button.setEnabled(self._worker is None)
         result = cached_translation(existing, self.translation_language) if existing else None
@@ -1564,6 +1592,9 @@ class MainWindow(QMainWindow):
         self.file_label.setVisible(record is not None)
         self.play_button.setEnabled(record is not None and self._worker is None)
         self.redownload_button.setEnabled(record is not None and self._worker is None)
+        # An empty panel shows only its hint; actions appear with a recording.
+        for widget in (self.play_button, self.variant_button, self.redownload_button):
+            widget.setVisible(record is not None)
         if record is not None:
             self._accent_record = record
             if self.accent != "both":

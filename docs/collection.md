@@ -165,8 +165,9 @@ Cambridge error visible. Missing translation, network failure, blocking, missing
 local dictionary and corrupt local dictionary produce separate statuses.
 
 The application supports English words and definitions with optional Russian
-translations. The GUI has a **Show Russian translation** checkbox, an offline
-dictionary status and **Install WikDict**; no free-form language field is shown.
+translations. The GUI has a **Show Russian translation** checkbox under the search
+field; the offline dictionary status and **Install WikDict** are in **Settings**.
+No free-form language field is shown.
 The TUI offers the same Russian translation toggle in its recording panel and
 Settings. English definitions remain visible when translation is off. Interface
 language (`--lang`) is independent of this toggle.

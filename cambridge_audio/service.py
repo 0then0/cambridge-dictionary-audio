@@ -82,10 +82,14 @@ class Recording:
 
     @property
     def label(self):
-        return (
-            f"{self.word} · {self.accent.upper()} · {self.part_of_speech} · "
-            f"{self.definition[:70]} · /{self.ipa}/"
+        parts = (
+            self.word,
+            self.accent.upper(),
+            self.part_of_speech,
+            self.definition[:70],
+            f"/{self.ipa}/" if self.ipa else "",
         )
+        return " · ".join(part for part in parts if part)
 
 
 def saved_choice_matches(recording: Recording, word: str, choice: Variant) -> bool:

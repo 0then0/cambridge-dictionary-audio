@@ -174,3 +174,39 @@ def test_invalid_window_geometry_keeps_default_size(window, app, geometry):
         assert restored.size() == expected
     finally:
         restored.close()
+
+
+def test_main_window_shows_only_actions_that_apply(window, app, mp3, client, monkeypatch):
+    from cambridge_audio.gui import workers
+    from cambridge_audio.library import save_metadata
+    from cambridge_audio.service import Recording
+    from tests.gui.helpers import wait_until
+
+    client.translation_options = Mock(return_value=())
+    monkeypatch.setattr(workers, "CambridgeClient", lambda **kwargs: client)
+
+    # Rarely changed options belong to Settings, not the main window.
+    for widget in (window.combine_check, window.dictionary_button):
+        assert widget.window() is window.preferences_dialog
+    # Without a recording the result panel shows only its hint.
+    for widget in (
+        window.play_button,
+        window.variant_button,
+        window.redownload_button,
+        window.translation_actions,
+    ):
+        assert not widget.isVisible()
+    window.output_dir.mkdir()
+    path = window.output_dir / "hello.us.mp3"
+    path.write_bytes(mp3)
+    save_metadata(Recording("hello", "us", path, "həˈloʊ", "a greeting"))
+    window.refresh_library()
+    app.processEvents()
+    for widget in (window.play_button, window.variant_button, window.redownload_button):
+        assert widget.isVisible()
+    assert not window.translation_actions.isVisible()
+    window.translation_check.setChecked(True)
+    assert window.translation_actions.isVisible()
+    wait_until(app, lambda: window._translation_worker is None)
+    client.session.get.assert_not_called()
+    assert window.library_combo.currentText() == "hello · US · a greeting · /həˈloʊ/"
