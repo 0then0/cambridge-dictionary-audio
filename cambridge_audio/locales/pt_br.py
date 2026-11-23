@@ -234,6 +234,15 @@ MESSAGES = {
     "Export": "Exportar",
     "Selected recording": "Gravação selecionada",
     "Whole collection": "Coleção inteira",
+    "Choose recordings...": "Escolher gravações...",
+    "Filter by word or phrase": "Filtrar por palavra ou expressão",
+    "Selected for export: {count}": "Selecionadas para exportar: {count}",
+    "Clear selection": "Limpar seleção",
+    "A selected recording or its audio is unavailable. "
+    "Use {refresh} in the collection and try again.": (
+        "Uma das entradas selecionadas ou seu áudio está indisponível. "
+        "Clique em «{refresh}» na coleção e tente novamente."
+    ),
     "Choose export parent folder": "Escolha a pasta superior da exportação",
     "Dictionary entry": "Verbete do dicionário",
     "User": "Tradução própria",

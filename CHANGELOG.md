@@ -6,7 +6,10 @@ the corresponding application releases or source history.
 
 ## Unreleased
 
-No changes yet.
+### Added
+
+- Desktop Anki export can filter saved recordings by word or phrase and save a
+  reviewed selection in one `.apkg` with audio.
 
 ## 1.1.0 (2026-11-15)
 

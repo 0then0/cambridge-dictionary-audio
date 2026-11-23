@@ -431,6 +431,15 @@ RUSSIAN.update(
         "Export": ("Экспорт"),
         "Selected recording": ("Текущая запись"),
         "Whole collection": ("Вся коллекция"),
+        "Choose recordings...": "Выбрать записи...",
+        "Filter by word or phrase": "Фильтр по слову или фразе",
+        "Selected for export: {count}": "Выбрано для экспорта: {count}",
+        "Clear selection": "Снять все отметки",
+        "A selected recording or its audio is unavailable. "
+        "Use {refresh} in the collection and try again.": (
+            "Выбранная запись или её аудио недоступны. "
+            "Нажмите «{refresh}» в коллекции и повторите экспорт."
+        ),
         "Choose export parent folder": ("Выберите родительскую папку экспорта"),
         "Dictionary entry": ("Словарная запись"),
         "User": ("Пользовательский перевод"),

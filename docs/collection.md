@@ -1,9 +1,9 @@
 # Collection, translations and Anki
 
 This guide explains how recordings are organized into a collection, how
-translations work and how to export the collection to Anki. The desktop app,
+translations work and how to export recordings to Anki. The desktop app,
 the terminal interface and the command-line tool share the same collection
-format and behaviour; the browser extension only downloads MP3 files.
+format. The browser extension only downloads MP3 files.
 
 Commands below use the installed `cambridge-audio` tool; from a source checkout
 use `uv run -m cambridge_audio` instead.
@@ -289,9 +289,19 @@ diagnostic directly.
 
 ## Export to Anki
 
-Choose the selected entry or the whole collection, then **Export to Anki** and
-save one `.apkg`. Import it in Anki with **File → Import**. No running Anki,
-manual field setup or copying into `collection.media` is needed for export.
+In the desktop app, open **Export to Anki** and choose **Selected recording**,
+**Whole collection** or **Choose recordings...**. To build a package from several
+recordings, filter by word or phrase and check the entries you want. Use the
+definition, part of speech and accent to distinguish entries with the same word.
+**Selected for export** shows every checked entry, including entries hidden by
+the filter. Use **Clear selection** to uncheck them all.
+
+Review the selection, click **Export** and save the `.apkg`. If a selected entry
+or its audio is unavailable, use **Refresh** in the collection before trying again.
+The selected-recording and whole-collection options also offer TSV.
+
+Import the package in Anki with **File → Import**. Export works without Anki
+running, and the package includes the note type and audio.
 
 ```sh
 cambridge-audio --output-dir downloads --export-anki exports/my-deck.apkg

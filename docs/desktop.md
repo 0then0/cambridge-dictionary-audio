@@ -55,8 +55,11 @@ English–Russian dictionary for offline translations. See [translations](collec
 
 ## Anki and backups
 
-**Export to Anki** saves the selected recording or the whole collection as an
-`.apkg` deck, or as a TSV folder. Exporting again later updates the same Anki notes.
+**Export to Anki** saves the current recording, the whole collection or a
+selection of recordings as an `.apkg` deck. Use **Choose recordings...** to filter
+and review the entries for a selection. The current recording and whole collection
+can also be exported as a TSV folder. Reimporting an updated deck in Anki can
+update the same notes.
 **Back up / transfer collection** creates or imports a `.cda` archive, for example
 to move the collection to the mobile app. See [Export to Anki](collection.md#export-to-anki)
 and [Backups and transfer](collection.md#backups-and-transfer).

@@ -234,6 +234,15 @@ MESSAGES = {
     "Export": "エクスポート",
     "Selected recording": "選択中の録音",
     "Whole collection": "コレクション全体",
+    "Choose recordings...": "録音を選択...",
+    "Filter by word or phrase": "単語やフレーズで絞り込む",
+    "Selected for export: {count}": "エクスポート対象: {count} 件",
+    "Clear selection": "選択をクリア",
+    "A selected recording or its audio is unavailable. "
+    "Use {refresh} in the collection and try again.": (
+        "選択した項目またはその音声が利用できません。"
+        "コレクションで「{refresh}」を押してから、もう一度お試しください。"
+    ),
     "Choose export parent folder": "エクスポート先の親フォルダを選択",
     "Dictionary entry": "辞書の項目",
     "User": "自分の訳",

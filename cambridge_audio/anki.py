@@ -43,6 +43,10 @@ Reference: https://docs.ankiweb.net/manual/importing/text-files
 """
 
 
+class AnkiRecordingUnavailableError(ValueError):
+    """A recording selected for an Anki package or its audio is unavailable."""
+
+
 def field(value: str) -> str:
     return (
         html.escape(value, quote=True)
@@ -380,7 +384,7 @@ def export_apkg(records, destination: Path, *, language: str = "russian") -> Pat
             ) from exc
     # Anki compares modification times in whole seconds. Reserve a monotonic
     # timestamp per collection even for rapid exports to different destinations.
-    from .library import _METADATA_LOCK
+    from .library import _METADATA_LOCK, read_valid_audio
 
     with _METADATA_LOCK:
         directories = {s.recording.reference.parent for s in records}
@@ -418,11 +422,11 @@ def export_apkg(records, destination: Path, *, language: str = "russian") -> Pat
             if record.id in seen:
                 raise ValueError("Duplicate collection ID; select each record only once.")
             seen.add(record.id)
-            from .library import valid_audio
-
-            if not valid_audio(record):
-                raise ValueError(f"Cannot export missing or damaged MP3: {record.path}")
-            content = record.path.read_bytes()
+            content = read_valid_audio(record)
+            if content is None:
+                raise AnkiRecordingUnavailableError(
+                    f"Cannot export missing or damaged MP3: {record.path}"
+                )
             name = "cambridge-audio-" + hashlib.sha256(content).hexdigest() + ".mp3"
             if name not in media:
                 path = staging / name

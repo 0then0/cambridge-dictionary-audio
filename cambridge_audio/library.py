@@ -358,15 +358,22 @@ def _merge_cache_extensions(previous, cache):
 
 def valid_audio(record: Recording) -> bool:
     """Check the signature and, for managed files, the saved content checksum."""
+    return read_valid_audio(record) is not None
+
+
+def read_valid_audio(record: Recording) -> bytes | None:
+    """Read and validate the same bytes that will be used by the caller."""
     import hashlib
 
     try:
         content = record.path.read_bytes()
-        return is_mp3(content) and (
-            not record.audio_sha256 or hashlib.sha256(content).hexdigest() == record.audio_sha256
-        )
     except OSError:
-        return False
+        return None
+    if is_mp3(content) and (
+        not record.audio_sha256 or hashlib.sha256(content).hexdigest() == record.audio_sha256
+    ):
+        return content
+    return None
 
 
 def delete_recording(record: Recording) -> None:

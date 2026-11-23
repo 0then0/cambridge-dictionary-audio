@@ -48,7 +48,7 @@ except ModuleNotFoundError as exc:
         ) from None
     raise
 
-from ..anki import export_anki, export_apkg
+from ..anki import AnkiRecordingUnavailableError, export_anki, export_apkg
 from ..audio import ffmpeg_executable
 from ..bundle import BundleExistsError, apply_import, export_bundle, preview_import
 from ..desktop import APPLICATION_NAME, launch_macos_bundle
@@ -76,7 +76,7 @@ from ..wikdict import (
     validate_package,
 )
 from .batch import BatchDialog
-from .dialogs import ChoiceDialog
+from .dialogs import ChoiceDialog, ExportSelectionDialog
 from .preferences import PreferencesDialog
 from .theme import (
     ComboBox,
@@ -1038,29 +1038,62 @@ class MainWindow(QMainWindow):
         self._status("Collection bundle saved: {path}", path=destination)
 
     def export_collection(self):
-        choices = [self._t("Selected recording"), self._t("Whole collection")]
+        choices = [
+            self._t("Selected recording"),
+            self._t("Whole collection"),
+            self._t("Choose recordings..."),
+        ]
         dialog = ChoiceDialog(self, self._t("Export to Anki"), self._t("Export"), choices)
         dialog.setOkButtonText(self._t("Export"))
         dialog.setCancelButtonText(self._t("Cancel"))
         if dialog.exec() != ChoiceDialog.DialogCode.Accepted:
             return
         scope = dialog.textValue()
-        records = (
-            [self._selected_saved()] if scope == choices[0] else scan_recordings(self.output_dir)
-        )
-        if not records or not all(records):
-            self._status("No recordings selected for export.", severity="error")
-            return
-        path, chosen_filter = QFileDialog.getSaveFileName(
-            self,
-            self._t("Export to Anki"),
-            str(self.output_dir / "cambridge-anki.apkg"),
-            "Anki (*.apkg);;TSV (*.tsv)",
-        )
-        if not path:
-            return
+        directory = self.output_dir
+        selected_references = None
         try:
-            if chosen_filter.startswith("TSV"):
+            records = (
+                [self._selected_saved()] if scope == choices[0] else scan_recordings(directory)
+            )
+            if not records or not all(records):
+                self._status("No recordings selected for export.", severity="error")
+                return
+
+            file_filter = "Anki (*.apkg);;TSV (*.tsv)"
+            if scope == choices[2]:
+                references = {saved.recording.id: saved.recording.reference for saved in records}
+                selection = ExportSelectionDialog(self, records, self.language)
+                accepted = selection.exec() == ExportSelectionDialog.DialogCode.Accepted
+                selected_ids = selection.selected_ids
+                selection.deleteLater()
+                if not accepted:
+                    return
+                selected_references = {identity: references[identity] for identity in selected_ids}
+                file_filter = "Anki (*.apkg)"
+
+            path, chosen_filter = QFileDialog.getSaveFileName(
+                self, self._t("Export to Anki"), str(directory / "cambridge-anki.apkg"), file_filter
+            )
+            if not path:
+                return
+            if selected_references is not None:
+                records = [
+                    saved
+                    for saved in scan_recordings(directory)
+                    if saved.recording.id in selected_references
+                ]
+                # A bare legacy MP3 can have the same ID as a removed sidecar.
+                available_ids = {
+                    saved.recording.id
+                    for saved in records
+                    if selected_references[saved.recording.id].is_file()
+                }
+                missing = selected_references.keys() - available_ids
+                if missing:
+                    raise AnkiRecordingUnavailableError(
+                        "Unavailable collection IDs: " + ", ".join(sorted(missing))
+                    )
+            if selected_references is None and chosen_filter.startswith("TSV"):
                 output = export_anki(
                     records, Path(path).with_suffix(""), language=self.translation_language
                 )
@@ -1069,6 +1102,16 @@ class MainWindow(QMainWindow):
             self._status("Anki export saved: {path}", path=output)
         except (OSError, ValueError) as exc:
             self._status("Export: {error}", severity="error", error=exc)
+            if selected_references is not None and isinstance(exc, AnkiRecordingUnavailableError):
+                QMessageBox.warning(
+                    self,
+                    self._t("Export to Anki"),
+                    self._t(
+                        "A selected recording or its audio is unavailable. "
+                        "Use {refresh} in the collection and try again.",
+                        refresh=self._t("Refresh"),
+                    ),
+                )
 
     def _translation_finished(self):
         if self._translation_worker is not None:
