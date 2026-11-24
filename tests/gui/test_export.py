@@ -92,8 +92,9 @@ def _items(view):
     return [view.item(index) for index in range(view.count())]
 
 
+@pytest.mark.parametrize("tag", ["", " chapter-7 "])
 def test_export_selection_keeps_distinct_meanings_across_filters(
-    window, saved_choices, monkeypatch, tmp_path
+    window, saved_choices, monkeypatch, tmp_path, tag
 ):
     expected = saved_choices[:3]
 
@@ -124,6 +125,7 @@ def test_export_selection_keeps_distinct_meanings_across_filters(
         assert all(
             item.checkState() == Qt.CheckState.Checked for item in _items(dialog.recordings_list)
         )
+        dialog.tag_edit.setText(tag)
         dialog.export_button.click()
         return dialog.result()
 
@@ -138,11 +140,51 @@ def test_export_selection_keeps_distinct_meanings_across_filters(
     window.export_collection()
 
     notes, _, cards, media, _ = inspect_package(destination, tmp_path)
-    rows = [values.split("\x1f") for _, _, values in notes]
+    rows = [values.split("\x1f") for _, _, values, _ in notes]
     fields = {row[0]: row[1:4] for row in rows}
     assert fields == {r.id: [r.word, r.part_of_speech, r.definition] for r in expected}
+    assert all(tags.split() == tag.split() for _, _, _, tags in notes)
     assert len(notes) == len(cards) == 3
     assert len(media) == 2
+
+
+@pytest.mark.parametrize(
+    ("tag", "reason"),
+    [
+        ("chapter-7 chapter-8", "Enter one Anki tag"),
+        ("chapter::7", "Enter one Anki tag"),
+        ("a" * 65, "64 characters"),
+        (" marked ", "Anki reserves this tag name"),
+        ("LEECH", "Anki reserves this tag name"),
+        ("none", "Anki reserves this tag name"),
+    ],
+)
+def test_invalid_export_tag_can_be_corrected(
+    window, saved_choices, monkeypatch, tmp_path, tag, reason
+):
+    destination = tmp_path / "corrected.apkg"
+
+    def enter_tag(dialog):
+        dialog.recordings_list.item(0).setCheckState(Qt.CheckState.Checked)
+        dialog.tag_edit.setText(tag)
+        dialog.export_button.click()
+        assert dialog.result() != gui.ExportSelectionDialog.DialogCode.Accepted
+        assert not dialog.tag_error.isHidden()
+        assert reason in dialog.tag_error.text()
+
+        dialog.tag_edit.setText("a" * 64)
+        assert dialog.tag_error.isHidden()
+        assert dialog.selection_label.text() == "Selected for export: 1"
+        dialog.export_button.click()
+        return dialog.result()
+
+    monkeypatch.setattr(gui.ExportSelectionDialog, "exec", enter_tag)
+    monkeypatch.setattr(
+        gui.QFileDialog, "getSaveFileName", lambda *args: (str(destination), "Anki (*.apkg)")
+    )
+    window.export_collection()
+    notes, *_ = inspect_package(destination, tmp_path)
+    assert len(notes) == 1 and notes[0][3].split() == ["a" * 64]
 
 
 def test_empty_export_selection_cannot_open_save_dialog(window, saved_choices, monkeypatch):

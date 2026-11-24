@@ -296,12 +296,20 @@ definition, part of speech and accent to distinguish entries with the same word.
 **Selected for export** shows every checked entry, including entries hidden by
 the filter. Use **Clear selection** to uncheck them all.
 
+The dialog shows the selected count and an **Anki tag (optional)** field.
+Enter one tag such as `chapter-7` to apply it to every note in the package.
+Use up to 64 ASCII letters, digits, hyphens or underscores. Surrounding
+whitespace is trimmed. The names `marked`, `leech` and `none` are reserved,
+regardless of case. Leave the field blank for an untagged package.
+
 Review the selection, click **Export** and save the `.apkg`. If a selected entry
 or its audio is unavailable, use **Refresh** in the collection before trying again.
 The selected-recording and whole-collection options also offer TSV.
 
 Import the package in Anki with **File → Import**. Export works without Anki
-running, and the package includes the note type and audio.
+running, and the package includes the note type and audio. In Anki's **Browse**
+window, search for `tag:chapter-7` to find notes with that tag.
+[Anki search syntax](https://docs.ankiweb.net/manual/searching#tags-decks-cards-and-notes)
 
 ```sh
 cambridge-audio --output-dir downloads --export-anki exports/my-deck.apkg
@@ -351,6 +359,15 @@ renders `{{Source}}`. To keep a personal translation through future exports, edi
 it in the Cambridge collection, which supplies the exported contents. Editing it
 only in Anki does not guarantee preservation on the next import. Import option
 labels may differ by Anki version or interface language.
+
+In Anki 26.09.4, updating a note replaces its tags with those from the package.
+With overlapping exports tagged `chapter-7` and `chapter-8`, **If newer** leaves
+the shared note with `chapter-8` when the second package is newer. **Always**
+also applies `chapter-8`. **Never** keeps `chapter-7`, as does **If newer** when
+the local note is newer. Updating from an untagged package clears the note's
+tags. Keeping both batch tags requires a separate step after import. Select the
+shared note in **Browse** and add the missing tag with **Notes → Add Tags**.
+[Anki browser actions](https://docs.ankiweb.net/manual/browsing#notes)
 
 Missing/damaged MP3s or unresolved translation choices fail the export before
 replacing the previous package. Existing files are replaced only if recognized as

@@ -435,6 +435,15 @@ RUSSIAN.update(
         "Filter by word or phrase": "Фильтр по слову или фразе",
         "Selected for export: {count}": "Выбрано для экспорта: {count}",
         "Clear selection": "Снять все отметки",
+        "Anki tag (optional)": "Тег Anki (необязательно)",
+        "Use at most 64 characters for the Anki tag.": "Тег Anki может содержать до 64 символов.",
+        "Enter one Anki tag using only English letters, digits, hyphens or underscores.": (
+            "Введите один тег Anki. Допустимы английские буквы, цифры, дефисы "
+            "и знаки подчёркивания."
+        ),
+        "Anki reserves this tag name. Choose a different tag.": (
+            "Это служебное имя Anki. Выберите другой тег."
+        ),
         "A selected recording or its audio is unavailable. "
         "Use {refresh} in the collection and try again.": (
             "Выбранная запись или её аудио недоступны. "

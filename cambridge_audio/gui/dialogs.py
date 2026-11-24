@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
+from ..anki import normalize_anki_tag
 from ..i18n import translate
 from ..library import SavedRecording
 from .theme import ContentList, install_scrollbars
@@ -67,6 +68,7 @@ class ExportSelectionDialog(QDialog):
         super().__init__(parent)
         self.language = language
         self._selected_ids: set[str] = set()
+        self.tag = ""
         self.setWindowTitle(self._t("Export to Anki"))
 
         layout = QVBoxLayout(self)
@@ -102,6 +104,22 @@ class ExportSelectionDialog(QDialog):
             view.setVerticalScrollMode(QListWidget.ScrollMode.ScrollPerPixel)
             view.setSpacing(4)
             install_scrollbars(view)
+
+        tag_row = QHBoxLayout()
+        self.tag_edit = QLineEdit()
+        self.tag_edit.setClearButtonEnabled(True)
+        tag_label = QLabel(self._t("Anki tag (optional)"))
+        tag_label.setBuddy(self.tag_edit)
+        tag_row.addWidget(tag_label)
+        tag_row.addWidget(self.tag_edit, 1)
+        layout.addLayout(tag_row)
+        self.tag_error = QLabel()
+        self.tag_error.setWordWrap(True)
+        self.tag_error.setObjectName("status")
+        self.tag_error.setProperty("severity", "error")
+        self.tag_error.hide()
+        self.tag_edit.textChanged.connect(self.tag_error.hide)
+        layout.addWidget(self.tag_error)
 
         self._rows: dict[str, tuple[str, str]] = {}
         for saved in records:
@@ -145,8 +163,16 @@ class ExportSelectionDialog(QDialog):
         return frozenset(self._selected_ids)
 
     def accept(self):
-        if self._selected_ids:
-            super().accept()
+        if not self._selected_ids:
+            return
+        try:
+            self.tag = normalize_anki_tag(self.tag_edit.text())
+        except ValueError as exc:
+            self.tag_error.setText(self._t(str(exc)))
+            self.tag_error.show()
+            self.tag_edit.setFocus()
+            return
+        super().accept()
 
     def _filter(self, text):
         query = " ".join(text.casefold().split())

@@ -25,7 +25,9 @@ def inspect_package(path, tmp_path):
         db.write_bytes(archive.read("collection.anki2"))
         media = json.loads(archive.read("media"))
         with closing(sqlite3.connect(db)) as connection:
-            notes = connection.execute("SELECT guid, mid, flds FROM notes ORDER BY flds").fetchall()
+            notes = connection.execute(
+                "SELECT guid, mid, flds, tags FROM notes ORDER BY flds"
+            ).fetchall()
             models = json.loads(connection.execute("SELECT models FROM col").fetchone()[0])
             cards = connection.execute("SELECT ord FROM cards").fetchall()
         return notes, models, cards, media, archive.read("SOURCES.txt").decode()
@@ -80,10 +82,12 @@ def test_guids_model_and_template_ids_survive_content_and_media_edits(client, tm
     old, models, _, media, _ = inspect_package(output, tmp_path)
     record.path.write_bytes(b"ID3replacement")
     changed = replace(record, word="Bank", definition="revised", ipa="new", audio_sha256="")
-    export_apkg([SavedRecording(changed)], output)
+    export_apkg([SavedRecording(changed)], output, tag="chapter-7")
     new, new_models, _, new_media, _ = inspect_package(output, tmp_path)
     assert old[0][:2] == new[0][:2]
     assert old[0][2] != new[0][2]
+    assert old[0][3].split() == []
+    assert new[0][3].split() == ["chapter-7"]
     assert media != new_media
     assert (
         models[str(anki.MODEL_ID)]["tmpls"][0]["id"]
@@ -130,9 +134,10 @@ def test_explicit_tsv_transition_preserves_original_guid_and_note_type(client, t
     before = reference.read_bytes()
     for _ in range(2):
         assert adopt_anki_identities(records, reference, tmp_path) == 1
-    output = export_apkg(records, tmp_path / "export.apkg")
+    output = export_apkg(records, tmp_path / "export.apkg", tag="chapter-7")
     notes, models, _, _, _ = inspect_package(output, tmp_path)
     assert notes[0][:2] == ("oldGuid001", 1700000000)
+    assert notes[0][3].split() == ["chapter-7"]
     assert models["1700000000"]["name"] == "My original TSV type"
     assert reference.read_bytes() == before
 

@@ -3,6 +3,7 @@
 import csv
 import html
 import os
+import re
 import shutil
 from contextlib import closing
 from pathlib import Path
@@ -355,7 +356,20 @@ def adopt_anki_identities(records, reference: Path, directory: Path) -> int:
     return len(matches)
 
 
-def export_apkg(records, destination: Path, *, language: str = "russian") -> Path:
+def normalize_anki_tag(tag: str) -> str:
+    tag = tag.strip()
+    if len(tag) > 64:
+        raise ValueError("Use at most 64 characters for the Anki tag.")
+    if tag and not re.fullmatch(r"[A-Za-z0-9_-]+", tag):
+        raise ValueError(
+            "Enter one Anki tag using only English letters, digits, hyphens or underscores."
+        )
+    if tag.lower() in {"marked", "leech", "none"}:
+        raise ValueError("Anki reserves this tag name. Choose a different tag.")
+    return tag
+
+
+def export_apkg(records, destination: Path, *, language: str = "russian", tag: str = "") -> Path:
     """Publish a complete package atomically, with stable note identity and hashed media."""
     import hashlib
     import json
@@ -367,6 +381,7 @@ def export_apkg(records, destination: Path, *, language: str = "russian") -> Pat
     records = list(records)
     if not records:
         raise ValueError("No recordings selected for export.")
+    tag = normalize_anki_tag(tag)
     destination = Path(destination).absolute()
     if destination.suffix.lower() != ".apkg":
         raise ValueError("Choose an .apkg file.")
@@ -481,7 +496,11 @@ def export_apkg(records, destination: Path, *, language: str = "russian") -> Pat
                 guid = identity["guid"]
             fields = [field(v) for v in values]
             fields[-1] = _source_disclosure(source)
-            deck.add_note(genanki.Note(model=note_model, fields=fields, guid=guid))
+            deck.add_note(
+                genanki.Note(
+                    model=note_model, fields=fields, guid=guid, tags=[tag] if tag else None
+                )
+            )
         output = staging / "collection.apkg"
         genanki.Package(deck, media_files=list(media.values())).write_to_file(
             str(output), timestamp=timestamp

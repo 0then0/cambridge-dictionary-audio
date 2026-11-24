@@ -238,6 +238,17 @@ MESSAGES = {
     "Filter by word or phrase": "Nach Wort oder Ausdruck filtern",
     "Selected for export: {count}": "Für den Export ausgewählt: {count}",
     "Clear selection": "Auswahl aufheben",
+    "Anki tag (optional)": "Anki-Schlagwort (optional)",
+    "Use at most 64 characters for the Anki tag.": (
+        "Das Anki-Schlagwort darf höchstens 64 Zeichen lang sein."
+    ),
+    "Enter one Anki tag using only English letters, digits, hyphens or underscores.": (
+        "Gib ein Anki-Schlagwort mit Buchstaben von A bis Z, Ziffern, "
+        "Binde- oder Unterstrichen ein."
+    ),
+    "Anki reserves this tag name. Choose a different tag.": (
+        "Anki verwendet diesen Namen intern. Wähle ein anderes Schlagwort."
+    ),
     "A selected recording or its audio is unavailable. "
     "Use {refresh} in the collection and try again.": (
         "Ein ausgewählter Eintrag oder seine Audiodatei ist nicht verfügbar. "

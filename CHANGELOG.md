@@ -6,7 +6,10 @@ the corresponding application releases or source history.
 
 ## Unreleased
 
-No changes yet.
+### Added
+
+- The desktop **Choose recordings...** export can apply an optional Anki tag to
+  every note in the `.apkg`.
 
 ## 1.2.0 (2026-11-23)
 

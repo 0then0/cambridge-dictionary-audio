@@ -238,6 +238,14 @@ MESSAGES = {
     "Filter by word or phrase": "単語やフレーズで絞り込む",
     "Selected for export: {count}": "エクスポート対象: {count} 件",
     "Clear selection": "選択をクリア",
+    "Anki tag (optional)": "Anki タグ（任意）",
+    "Use at most 64 characters for the Anki tag.": "Anki タグは 64 文字以内にしてください。",
+    "Enter one Anki tag using only English letters, digits, hyphens or underscores.": (
+        "Anki タグは 1 つだけ入力してください。半角英数字、ハイフン、アンダースコアが使えます。"
+    ),
+    "Anki reserves this tag name. Choose a different tag.": (
+        "このタグ名は Anki で予約されています。別のタグを指定してください。"
+    ),
     "A selected recording or its audio is unavailable. "
     "Use {refresh} in the collection and try again.": (
         "選択した項目またはその音声が利用できません。"

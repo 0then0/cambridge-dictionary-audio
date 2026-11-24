@@ -1051,6 +1051,7 @@ class MainWindow(QMainWindow):
         scope = dialog.textValue()
         directory = self.output_dir
         selected_references = None
+        tag = ""
         try:
             records = (
                 [self._selected_saved()] if scope == choices[0] else scan_recordings(directory)
@@ -1065,6 +1066,7 @@ class MainWindow(QMainWindow):
                 selection = ExportSelectionDialog(self, records, self.language)
                 accepted = selection.exec() == ExportSelectionDialog.DialogCode.Accepted
                 selected_ids = selection.selected_ids
+                tag = selection.tag
                 selection.deleteLater()
                 if not accepted:
                     return
@@ -1098,7 +1100,9 @@ class MainWindow(QMainWindow):
                     records, Path(path).with_suffix(""), language=self.translation_language
                 )
             else:
-                output = export_apkg(records, Path(path), language=self.translation_language)
+                output = export_apkg(
+                    records, Path(path), language=self.translation_language, tag=tag
+                )
             self._status("Anki export saved: {path}", path=output)
         except (OSError, ValueError) as exc:
             self._status("Export: {error}", severity="error", error=exc)
