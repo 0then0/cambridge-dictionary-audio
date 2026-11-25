@@ -6,6 +6,10 @@ the corresponding application releases or source history.
 
 ## Unreleased
 
+No changes yet.
+
+## 1.3.0 (2026-11-25)
+
 ### Added
 
 - The desktop **Choose recordings...** export can apply an optional Anki tag to
